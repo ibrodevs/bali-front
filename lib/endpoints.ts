@@ -20,7 +20,35 @@ export type ApiScooter = {
   is_featured?: boolean;
 };
 
+export type ApiVehicleType = {
+  id: number;
+  code: string;
+  name: string;
+};
+
+export type ApiVehicleModel = {
+  id: number;
+  name: string;
+  brand: string;
+  type?: number;
+  type_name?: string;
+  type_code?: string;
+  engine_cc: number;
+  transmission: string;
+  fuel_consumption: number | string;
+  year: number;
+  trunk: string;
+  helmets_count: number;
+  description: string;
+  rental_terms: string;
+};
+
 export type ApiScooterDetail = ApiScooter & {
+  model?: number;
+  sku?: string;
+  color?: string;
+  base_price_usd?: string | number;
+  mileage?: number;
   full_description?: string;
   characteristics?: {
     engine_cc?: number;
@@ -34,7 +62,7 @@ export type ApiScooterDetail = ApiScooter & {
   gallery?: { id: number; image: string; alt_text?: string; sort_order?: number; is_main?: boolean }[];
   available_addons?: ApiAddon[];
   rental_terms?: string;
-  model_info?: { brand?: string; type_code?: string; type_name?: string };
+  model_info?: Partial<ApiVehicleModel>;
 };
 
 export type ApiAddon = {
@@ -87,6 +115,158 @@ export type ApiPayment = {
   currency: string;
   payment_url?: string;
   created_at: string;
+};
+
+export type ApiAdminUser = {
+  id: number;
+  email: string;
+  full_name?: string;
+  phone?: string;
+  role?: string;
+  is_staff?: boolean;
+  is_superuser?: boolean;
+  created_at?: string;
+};
+
+export type ApiAnalyticsRevenue = {
+  bookings_count: number;
+  revenue: string | number;
+  currency: string;
+  period?: string;
+};
+
+export type ApiAnalyticsFunnelStep = {
+  step: string;
+  label: string;
+  count: number;
+  dropoff_percent: string | number;
+};
+
+export type ApiAnalyticsFunnel = {
+  funnel: ApiAnalyticsFunnelStep[];
+  visitors: number;
+  checkout_started: number;
+  bookings_created: number;
+  conversion_rate: string | number;
+  checkout_conversion_rate: string | number;
+  period?: string;
+};
+
+export type ApiCustomerSegment = {
+  id: number;
+  code: string;
+  name: string;
+  discount_percent?: string | number;
+};
+
+export type ApiCustomerProfile = {
+  id: number;
+  user?: {
+    id: number;
+    email: string;
+    full_name?: string;
+    phone?: string;
+    role?: string;
+  };
+  segment?: ApiCustomerSegment | null;
+  created_at?: string;
+  updated_at?: string;
+  notes?: Array<{
+    id: number;
+    text: string;
+    created_at?: string;
+    updated_at?: string;
+  }>;
+  interactions?: Array<{
+    id: number;
+    interaction_type: string;
+    description: string;
+    occurred_at?: string;
+    created_at?: string;
+  }>;
+};
+
+export type ApiStaffTask = {
+  id: number;
+  title: string;
+  description?: string;
+  status: string;
+  due_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  assigned_to?: {
+    id: number;
+    email: string;
+    full_name?: string;
+  } | null;
+  checklist_items?: Array<{
+    id: number;
+    title: string;
+    is_completed: boolean;
+  }>;
+  comments?: Array<{
+    id: number;
+    text: string;
+    created_at?: string;
+  }>;
+};
+
+export type ApiSupportTicket = {
+  id: number;
+  subject: string;
+  status: string;
+  channel: string;
+  created_at?: string;
+  closed_at?: string | null;
+  user?: {
+    id: number;
+    email: string;
+    full_name?: string;
+    phone?: string;
+  };
+  messages?: Array<{
+    id: number;
+    message: string;
+    created_at?: string;
+    sender?: {
+      id: number;
+      email: string;
+      full_name?: string;
+    };
+  }>;
+};
+
+export type ApiChatThread = {
+  id: number;
+  title: string;
+  status: string;
+  created_at?: string;
+  updated_at?: string;
+  message_count?: number;
+  participants?: Array<{
+    id: number;
+    role: string;
+    user?: {
+      id: number;
+      email: string;
+      full_name?: string;
+    };
+  }>;
+  last_message?: {
+    text: string;
+    created_at?: string;
+    sender_name?: string | null;
+  } | null;
+  messages?: Array<{
+    id: number;
+    text: string;
+    created_at?: string;
+    sender?: {
+      id: number;
+      email: string;
+      full_name?: string;
+    };
+  }>;
 };
 
 export type ApiDeliveryZone = { id: number; name: string; price: string | number; is_active: boolean; bounds?: unknown };
@@ -149,12 +329,26 @@ export type ApiBootstrap = {
   deliveryZones?: Array<{ id: number; name: string; deliveryFeeUSD?: number; deliveryFeeIDR?: number; freeDelivery?: boolean; timeMinutes?: number; latitude?: number; longitude?: number }>;
 };
 
+export type AdminScooterPayload = {
+  model: number;
+  title: string;
+  slug: string;
+  sku: string;
+  color: string;
+  base_price_usd: string | number;
+  status: string;
+  mileage: number;
+  is_featured: boolean;
+};
+
 export const endpoints = {
   bootstrap: (lang?: string) => api<ApiBootstrap>('/public/bootstrap/', { lang }),
 
   scooters: (params?: { search?: string; start_date?: string; end_date?: string; page?: number }, lang?: string) =>
     api<Paginated<ApiScooter> | ApiScooter[]>('/scooters/', { query: params, lang }),
   scooter: (idOrSlug: string | number, lang?: string) => api<ApiScooterDetail>(`/scooters/${idOrSlug}/`, { lang }),
+  scooterTypes: () => api<Paginated<ApiVehicleType> | ApiVehicleType[]>('/scooter-types/'),
+  scooterModels: () => api<Paginated<ApiVehicleModel> | ApiVehicleModel[]>('/scooter-models/'),
   scooterAvailability: (id: number | string, params: { year?: number; month?: number; start_date?: string; end_date?: string }) =>
     api<ApiAvailabilityCalendar | { vehicle_id: number; start_date: string; end_date: string; is_available: boolean }>(`/scooters/${id}/availability/`, { query: params }),
 
@@ -210,6 +404,50 @@ export const endpoints = {
   profile: () => api<ApiUser>('/profile/', { auth: true }),
   updateProfile: (body: Partial<Pick<ApiUser, 'full_name' | 'phone' | 'country' | 'language' | 'currency'>>) =>
     api<ApiUser>('/profile/', { method: 'PATCH', body, auth: true }),
+
+  adminScooters: (params?: { page?: number; search?: string; status?: string }) =>
+    api<Paginated<ApiScooterDetail> | ApiScooterDetail[]>('/admin/scooters/', { auth: true, query: params }),
+  adminCreateScooter: (body: AdminScooterPayload) =>
+    api<ApiScooterDetail>('/admin/scooters/', { method: 'POST', body, auth: true }),
+  adminUpdateScooter: (id: number | string, body: Partial<AdminScooterPayload>) =>
+    api<ApiScooterDetail>(`/admin/scooters/${id}/`, { method: 'PATCH', body, auth: true }),
+  adminDeleteScooter: (id: number | string) =>
+    api<void>(`/admin/scooters/${id}/`, { method: 'DELETE', auth: true }),
+
+  adminBookings: (params?: { page?: number; status?: string }) =>
+    api<Paginated<ApiBooking> | ApiBooking[]>('/admin/bookings/', { auth: true, query: params }),
+  adminConfirmBooking: (id: number | string) =>
+    api<{ status: string }>(`/admin/bookings/${id}/confirm/`, { method: 'POST', auth: true }),
+  adminMarkBookingDelivery: (id: number | string) =>
+    api<{ status: string }>(`/admin/bookings/${id}/mark-delivery/`, { method: 'POST', auth: true }),
+  adminCancelBooking: (id: number | string) =>
+    api<{ status: string }>(`/admin/bookings/${id}/cancel/`, { method: 'POST', auth: true }),
+  adminMarkBookingActive: (id: number | string) =>
+    api<{ status: string }>(`/admin/bookings/${id}/mark-active/`, { method: 'POST', auth: true }),
+  adminCompleteBooking: (id: number | string) =>
+    api<{ status: string }>(`/admin/bookings/${id}/complete/`, { method: 'POST', auth: true }),
+  adminUsers: (params?: { page?: number; search?: string }) =>
+    api<Paginated<ApiAdminUser> | ApiAdminUser[]>('/admin/users/', { auth: true, query: params }),
+  adminAnalyticsRevenue: (params?: { start_date?: string; end_date?: string }) =>
+    api<ApiAnalyticsRevenue>('/admin/analytics/revenue/', { auth: true, query: params }),
+  adminAnalyticsFunnel: (params?: { start_date?: string; end_date?: string }) =>
+    api<ApiAnalyticsFunnel>('/admin/analytics/funnel/', { auth: true, query: params }),
+  adminCustomerProfiles: (params?: { page?: number; search?: string; segment?: number | string; page_size?: number }) =>
+    api<Paginated<ApiCustomerProfile> | ApiCustomerProfile[]>('/admin/crm/customer-profiles/', { auth: true, query: params }),
+  adminStaffTasks: (params?: { page?: number; status?: string; page_size?: number }) =>
+    api<Paginated<ApiStaffTask> | ApiStaffTask[]>('/admin/tasks/staff-tasks/', { auth: true, query: params }),
+  adminSupportTickets: (params?: { page?: number; status?: string; page_size?: number }) =>
+    api<Paginated<ApiSupportTicket> | ApiSupportTicket[]>('/admin/support/tickets/', { auth: true, query: params }),
+  adminChatThreads: (params?: { page?: number; status?: string; search?: string; page_size?: number }) =>
+    api<Paginated<ApiChatThread> | ApiChatThread[]>('/admin/chat/threads/', { auth: true, query: params }),
+  adminAddons: (params?: { page?: number; page_size?: number }) =>
+    api<Paginated<ApiAddon> | ApiAddon[]>('/add-ons/', { auth: true, query: params }),
+  adminCreateAddon: (body: Partial<ApiAddon>) =>
+    api<ApiAddon>('/add-ons/', { method: 'POST', body, auth: true }),
+  adminUpdateAddon: (id: number | string, body: Partial<ApiAddon>) =>
+    api<ApiAddon>(`/add-ons/${id}/`, { method: 'PATCH', body, auth: true }),
+  adminDeleteAddon: (id: number | string) =>
+    api<void>(`/add-ons/${id}/`, { method: 'DELETE', auth: true }),
 };
 
 export type BookingCreatePayload = {

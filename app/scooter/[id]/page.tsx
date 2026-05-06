@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { BRPhoto, BREyebrow, BRPrice, BRPrimary } from '@/components/BR';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
+import { useCurrency } from '@/lib/i18n/CurrencyProvider';
 import {
   EngineIcon,
   FuelIcon,
@@ -34,6 +35,7 @@ export default function ScooterDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { t, locale } = useLocale();
+  const { convertPrice, symbol } = useCurrency();
   const [scooter, setScooter] = useState<DisplayScooter | null>(null);
   const [addons, setAddons] = useState<AddonView[]>([]);
   const [gallery, setGallery] = useState<string[]>([]);
@@ -335,7 +337,10 @@ export default function ScooterDetailPage() {
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 14, fontWeight: 500 }}>{a.name}</div>
-                        <div className="br-mono" style={{ fontSize: 11, color: sub }}>${a.price.toFixed(2)}/{t.common.day}</div>
+                        <div className="br-mono" style={{ fontSize: 11, color: sub }}>
+                          {symbol}
+                          {(Math.round(convertPrice(a.price) * 100) / 100).toFixed(2)}/{t.common.day}
+                        </div>
                       </div>
                       <div
                         className="br-mono"
@@ -361,7 +366,8 @@ export default function ScooterDetailPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 16, borderTop: `1px solid ${border}` }}>
                 <span className="br-display" style={{ fontSize: 16 }}>{t.detail.total}</span>
                 <span style={{ background: '#FFD700', color: '#000', padding: '6px 14px', borderRadius: 999, fontFamily: 'var(--br-mono)', fontSize: 22, fontWeight: 600 }}>
-                  ${total.toFixed(2)}
+                  {symbol}
+                  {(Math.round(convertPrice(total) * 100) / 100).toFixed(2)}
                 </span>
               </div>
               <BRPrimary onClick={goBook} full style={{ marginTop: 20, padding: '18px', fontSize: 15 }}>{t.detail.reserve}</BRPrimary>
@@ -375,7 +381,8 @@ export default function ScooterDetailPage() {
         <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
           <span className="br-mono" style={{ fontSize: 10, color: sub, letterSpacing: '0.12em' }}>{t.detail.total.toUpperCase()} · {t.detail.withAddons}</span>
           <span className="br-display" style={{ fontSize: 22, letterSpacing: '-0.02em' }}>
-            ${total.toFixed(2)}
+            {symbol}
+            {(Math.round(convertPrice(total) * 100) / 100).toFixed(2)}
           </span>
         </div>
         <BRPrimary onClick={goBook} style={{ flexShrink: 0, padding: '14px 22px' }}>{t.detail.reserve} →</BRPrimary>

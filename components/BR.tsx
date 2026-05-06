@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 
 export function BRLogo({ size = 22, dark = false }: { size?: number; dark?: boolean }) {
@@ -90,11 +90,28 @@ export function BREyebrow({ children, style }: { children: React.ReactNode; styl
 
 export function BRPrice({ amount, currency = '$', per = 'day', size = 22 }: { amount: number; currency?: string; per?: string; size?: number }) {
   const { t } = useLocale();
+  // Try to use currency context if available
+  let convertPrice = (x: number) => x;
+  let symbol = currency;
+  
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const ctx = require('@/lib/i18n/CurrencyProvider').useCurrency?.();
+    if (ctx) {
+      convertPrice = ctx.convertPrice;
+      symbol = ctx.symbol;
+    }
+  } catch (e) {
+    // Context not available, use defaults
+  }
+  
+  const convertedAmount = Math.round(convertPrice(amount) * 100) / 100;
   const period = per === 'day' ? t.common.day : per;
+  
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4 }}>
-      <span className="br-mono" style={{ fontSize: size * 0.6, opacity: 0.6 }}>{currency}</span>
-      <span className="br-mono" style={{ fontSize: size, fontWeight: 600, letterSpacing: '-0.02em' }}>{amount}</span>
+      <span className="br-mono" style={{ fontSize: size * 0.6, opacity: 0.6 }}>{symbol}</span>
+      <span className="br-mono" style={{ fontSize: size, fontWeight: 600, letterSpacing: '-0.02em' }}>{convertedAmount}</span>
       <span className="br-mono" style={{ fontSize: size * 0.5, opacity: 0.55 }}>/{period}</span>
     </span>
   );

@@ -33,6 +33,8 @@ export type ApiUser = {
   full_name?: string;
   phone?: string;
   role?: string;
+  is_staff?: boolean;
+  is_superuser?: boolean;
   country?: string;
   language?: string;
   currency?: string;

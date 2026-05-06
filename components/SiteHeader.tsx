@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { BRLogo, BRPrimary } from './BR';
 import LanguageSwitcher from './LanguageSwitcher';
+import CurrencySwitcher from './CurrencySwitcher';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { useAuth } from '@/lib/i18n/AuthProvider';
 
@@ -65,17 +66,23 @@ export default function SiteHeader({ dark = false }: { dark?: boolean }) {
 
   const closeAll = () => { setMobileMenuOpen(false); setUserMenuOpen(false); };
 
+  const isAdmin = user && (user.is_staff || user.is_superuser || ['admin', 'manager', 'staff'].includes((user.role || '').toLowerCase()));
+
   const navLinks = (
     <>
       <Link href="/catalog" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.catalog}</Link>
       <Link href="/how-it-works" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.how}</Link>
       <Link href="/#delivery" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.locations}</Link>
+      {isAdmin && (
+        <Link href="/admin" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>🔧 Админ панель</Link>
+      )}
     </>
   );
 
   const headerActions = (
     <>
       <LanguageSwitcher dark={dark} />
+      <CurrencySwitcher dark={dark} />
       {user ? (
         <div style={{ position: 'relative' }}>
           <button

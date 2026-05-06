@@ -379,6 +379,44 @@ function scooterBadgeColor(status) {
   return 'red';
 }
 
+function slugify(value) {
+  return String(value || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function emptyFleetDraft() {
+  return {
+    id: null,
+    model: '',
+    title: '',
+    slug: '',
+    sku: '',
+    color: '',
+    base_price_usd: '',
+    status: 'available',
+    mileage: '0',
+    is_featured: false,
+  };
+}
+
+function fleetDraftFromScooter(item) {
+  return {
+    id: item.id,
+    model: item.model ? String(item.model) : '',
+    title: item.title || '',
+    slug: item.slug || '',
+    sku: item.sku || '',
+    color: item.color || '',
+    base_price_usd: String(item.base_price_usd ?? item.price_per_day ?? ''),
+    status: item.status || 'available',
+    mileage: String(item.mileage ?? 0),
+    is_featured: Boolean(item.is_featured),
+  };
+}
+
 function initials(value) {
   const source = (value || '').trim();
   if (!source) {
@@ -574,70 +612,250 @@ function OverviewView({ data, onOpenView }) {
   );
 }
 
-function FleetView({ scooters, savingScooterId, onPatchScooter }) {
+function FleetView({
+  scooters,
+  scooterModels,
+  savingScooterId,
+  savingFleetForm,
+  deletingScooterId,
+  onPatchScooter,
+  onCreateScooter,
+  onDeleteScooter,
+}) {
+  const [selectedId, setSelectedId] = React.useState(null);
+  const [draft, setDraft] = React.useState(emptyFleetDraft);
+
+  React.useEffect(() => {
+    if (selectedId == null) {
+      return;
+    }
+    const current = scooters.find((item) => item.id === selectedId);
+    if (current) {
+      setDraft(fleetDraftFromScooter(current));
+      return;
+    }
+    setSelectedId(null);
+    setDraft(emptyFleetDraft());
+  }, [scooters, selectedId]);
+
+  function handleSelect(item) {
+    setSelectedId(item.id);
+    setDraft(fleetDraftFromScooter(item));
+  }
+
+  function handleCreateNew() {
+    setSelectedId(null);
+    setDraft(emptyFleetDraft());
+  }
+
+  function updateDraft(key, value) {
+    setDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  async function submitFleetForm() {
+    if (!draft.model || !draft.title.trim() || !draft.slug.trim() || !draft.sku.trim() || !draft.base_price_usd) {
+      return;
+    }
+
+    const payload = {
+      model: Number(draft.model),
+      title: draft.title.trim(),
+      slug: draft.slug.trim(),
+      sku: draft.sku.trim(),
+      color: draft.color.trim(),
+      base_price_usd: draft.base_price_usd,
+      status: draft.status,
+      mileage: Number(draft.mileage || 0),
+      is_featured: draft.is_featured,
+    };
+
+    const saved = await onCreateScooter(payload, draft.id);
+    if (saved?.id) {
+      setSelectedId(saved.id);
+      setDraft(fleetDraftFromScooter(saved));
+    }
+  }
+
+  async function removeScooter() {
+    if (!draft.id) {
+      return;
+    }
+    const shouldDelete = window.confirm(`Delete scooter "${draft.title}"?`);
+    if (!shouldDelete) {
+      return;
+    }
+    const removedId = draft.id;
+    await onDeleteScooter(removedId);
+    if (removedId === selectedId) {
+      setSelectedId(null);
+      setDraft(emptyFleetDraft());
+    }
+  }
+
+  const selectedModel = scooterModels.find((item) => String(item.id) === draft.model);
+
   return (
     <div style={{ overflowY: 'auto', height: '100%', padding: '28px 32px' }}>
-      <SectionHeader title="Fleet Management" subtitle={`${scooters.length} vehicles from backend`} />
-      {scooters.length === 0 ? (
-        <EmptyState label="No scooters found." />
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16 }}>
-          {scooters.map((item) => {
-            const busy = savingScooterId === item.id;
-            return (
-              <Panel key={item.id} style={{ overflow: 'hidden' }}>
-                <div style={{ height: 180, position: 'relative', background: item.main_image ? `center / cover no-repeat url(${item.main_image})` : 'linear-gradient(145deg,#111 0%,#2a2a2a 100%)' }}>
-                  {!item.main_image ? (
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Sora', fontWeight: 700, fontSize: 20, color: 'rgba(255,255,255,0.7)' }}>
-                      {item.title}
+      <SectionHeader
+        title="Fleet Management"
+        subtitle={`${scooters.length} vehicles from backend`}
+        action={<Button variant="dark" onClick={handleCreateNew}>Add scooter</Button>}
+      />
+      <div style={{ display: 'grid', gridTemplateColumns: '1.15fr 0.85fr', gap: 16, alignItems: 'start' }}>
+        <div>
+          {scooters.length === 0 ? (
+            <EmptyState label="No scooters found." />
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
+              {scooters.map((item) => {
+                const busy = savingScooterId === item.id;
+                const selected = draft.id === item.id;
+                return (
+                  <Panel
+                    key={item.id}
+                    style={{
+                      overflow: 'hidden',
+                      border: selected ? `2px solid ${A.gold}` : `1px solid ${A.g200}`,
+                    }}
+                  >
+                    <div
+                      onClick={() => handleSelect(item)}
+                      style={{ cursor: 'pointer', height: 180, position: 'relative', background: item.main_image ? `center / cover no-repeat url(${item.main_image})` : 'linear-gradient(145deg,#111 0%,#2a2a2a 100%)' }}
+                    >
+                      {!item.main_image ? (
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Sora', fontWeight: 700, fontSize: 20, color: 'rgba(255,255,255,0.7)', padding: 16, textAlign: 'center' }}>
+                          {item.title}
+                        </div>
+                      ) : null}
+                      <div style={{ position: 'absolute', top: 12, left: 12 }}>
+                        <Badge color={scooterBadgeColor(item.status)}>{item.status}</Badge>
+                      </div>
+                      <div style={{ position: 'absolute', top: 12, right: 12 }}>
+                        <Badge color={item.is_featured ? 'gold' : 'default'}>{item.is_featured ? 'featured' : 'catalog'}</Badge>
+                      </div>
                     </div>
-                  ) : null}
-                  <div style={{ position: 'absolute', top: 12, left: 12 }}>
-                    <Badge color={scooterBadgeColor(item.status)}>{item.status}</Badge>
-                  </div>
-                  <div style={{ position: 'absolute', top: 12, right: 12 }}>
-                    <Badge color={item.is_featured ? 'gold' : 'default'}>{item.is_featured ? 'featured' : 'catalog'}</Badge>
-                  </div>
-                </div>
-                <div style={{ padding: 18 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
-                    <div>
-                      <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 16, color: A.black }}>{item.title}</div>
-                      <div style={{ fontFamily: 'Inter', fontSize: 12, color: A.g500 }}>{item.type} · {item.engine_capacity}cc · {item.slug}</div>
+                    <div style={{ padding: 18 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+                        <div>
+                          <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 16, color: A.black }}>{item.title}</div>
+                          <div style={{ fontFamily: 'Inter', fontSize: 12, color: A.g500 }}>{item.type} · {item.engine_capacity}cc · {item.slug}</div>
+                        </div>
+                        <div style={{ fontFamily: 'Sora', fontWeight: 800, fontSize: 20, color: A.black }}>{formatMoney(item.price_per_day)}</div>
+                      </div>
+                      <div style={{ fontFamily: 'Inter', fontSize: 13, lineHeight: 1.6, color: A.g700, marginBottom: 14 }}>{item.short_description}</div>
+                      <div style={{ display: 'grid', gap: 12 }}>
+                        <Field label="Quick status">
+                          <Select
+                            value={item.status}
+                            disabled={busy}
+                            onChange={(event) => onPatchScooter(item.id, { status: event.target.value })}
+                          >
+                            <option value="available">available</option>
+                            <option value="rented">rented</option>
+                            <option value="maintenance">maintenance</option>
+                            <option value="inactive">inactive</option>
+                          </Select>
+                        </Field>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                          <div style={{ fontFamily: 'Inter', fontSize: 13, color: A.g700 }}>Featured on website</div>
+                          <Button
+                            variant={item.is_featured ? 'dark' : 'outline'}
+                            disabled={busy}
+                            onClick={() => onPatchScooter(item.id, { is_featured: !item.is_featured })}
+                          >
+                            {busy ? 'Saving…' : item.is_featured ? 'Disable' : 'Enable'}
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                    <div style={{ fontFamily: 'Sora', fontWeight: 800, fontSize: 20, color: A.black }}>{formatMoney(item.price_per_day)}</div>
-                  </div>
-                  <div style={{ fontFamily: 'Inter', fontSize: 13, lineHeight: 1.6, color: A.g700, marginBottom: 14 }}>{item.short_description}</div>
-                  <div style={{ display: 'grid', gap: 12 }}>
-                    <Field label="Status">
-                      <Select
-                        value={item.status}
-                        disabled={busy}
-                        onChange={(event) => onPatchScooter(item.id, { status: event.target.value })}
-                      >
-                        <option value="available">available</option>
-                        <option value="rented">rented</option>
-                        <option value="maintenance">maintenance</option>
-                        <option value="inactive">inactive</option>
-                      </Select>
-                    </Field>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                      <div style={{ fontFamily: 'Inter', fontSize: 13, color: A.g700 }}>Featured on website</div>
-                      <Button
-                        variant={item.is_featured ? 'dark' : 'outline'}
-                        disabled={busy}
-                        onClick={() => onPatchScooter(item.id, { is_featured: !item.is_featured })}
-                      >
-                        {busy ? 'Saving…' : item.is_featured ? 'Disable' : 'Enable'}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </Panel>
-            );
-          })}
+                  </Panel>
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
+
+        <Panel style={{ padding: 22, position: 'sticky', top: 28 }}>
+          <SectionHeader
+            title={draft.id ? 'Edit Scooter' : 'New Scooter'}
+            subtitle={draft.id ? `Update item #${draft.id}` : 'Create a new product for catalog'}
+          />
+          <div style={{ display: 'grid', gap: 14 }}>
+            <Field label="Model">
+              <Select value={draft.model} onChange={(event) => updateDraft('model', event.target.value)}>
+                <option value="">Select model</option>
+                {scooterModels.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.brand} {item.name} · {item.type_name || 'Type'}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Field label="Status">
+                <Select value={draft.status} onChange={(event) => updateDraft('status', event.target.value)}>
+                  <option value="available">available</option>
+                  <option value="rented">rented</option>
+                  <option value="maintenance">maintenance</option>
+                  <option value="inactive">inactive</option>
+                </Select>
+              </Field>
+              <Field label="Mileage">
+                <Input type="number" min="0" value={draft.mileage} onChange={(event) => updateDraft('mileage', event.target.value)} />
+              </Field>
+            </div>
+            <Field label="Title">
+              <Input value={draft.title} onChange={(event) => updateDraft('title', event.target.value)} placeholder="Honda PCX 160" />
+            </Field>
+            <Field label="Slug">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10 }}>
+                <Input value={draft.slug} onChange={(event) => updateDraft('slug', event.target.value)} placeholder="honda-pcx-160" />
+                <Button variant="outline" onClick={() => updateDraft('slug', slugify(draft.title || draft.slug))}>Auto</Button>
+              </div>
+            </Field>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Field label="SKU">
+                <Input value={draft.sku} onChange={(event) => updateDraft('sku', event.target.value)} placeholder="PCX-160-BLK" />
+              </Field>
+              <Field label="Color">
+                <Input value={draft.color} onChange={(event) => updateDraft('color', event.target.value)} placeholder="Black" />
+              </Field>
+            </div>
+            <Field label="Price per day, USD">
+              <Input type="number" min="0" step="0.01" value={draft.base_price_usd} onChange={(event) => updateDraft('base_price_usd', event.target.value)} />
+            </Field>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'Inter', fontSize: 14, color: A.black }}>
+              <input type="checkbox" checked={draft.is_featured} onChange={(event) => updateDraft('is_featured', event.target.checked)} />
+              <span>Show as featured on website</span>
+            </label>
+            <Panel style={{ padding: 14, background: A.g100 }}>
+              <div style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: A.g500, marginBottom: 10 }}>
+                Model info
+              </div>
+              <div style={{ display: 'grid', gap: 8, fontFamily: 'Inter', fontSize: 13, color: A.g700 }}>
+                <div>Brand: <strong style={{ color: A.black }}>{selectedModel?.brand || '—'}</strong></div>
+                <div>Type: <strong style={{ color: A.black }}>{selectedModel?.type_name || '—'}</strong></div>
+                <div>Engine: <strong style={{ color: A.black }}>{selectedModel?.engine_cc ? `${selectedModel.engine_cc}cc` : '—'}</strong></div>
+                <div>Transmission: <strong style={{ color: A.black }}>{selectedModel?.transmission || '—'}</strong></div>
+              </div>
+            </Panel>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <Button variant="primary" size="md" disabled={savingFleetForm} onClick={submitFleetForm}>
+                {savingFleetForm ? 'Saving…' : draft.id ? 'Save scooter' : 'Create scooter'}
+              </Button>
+              <Button variant="outline" size="md" onClick={handleCreateNew}>Reset</Button>
+              {draft.id ? (
+                <Button variant="danger" size="md" disabled={deletingScooterId === draft.id} onClick={removeScooter}>
+                  {deletingScooterId === draft.id ? 'Deleting…' : 'Delete'}
+                </Button>
+              ) : null}
+            </div>
+            <div style={{ fontFamily: 'Inter', fontSize: 12, color: A.g500 }}>
+              Required fields: model, title, slug, SKU, price.
+            </div>
+          </div>
+        </Panel>
+      </div>
     </div>
   );
 }
@@ -1128,12 +1346,15 @@ function AdminApp() {
   const [loginForm, setLoginForm] = React.useState({ email: '', password: '' });
   const [busyBookingId, setBusyBookingId] = React.useState(null);
   const [savingScooterId, setSavingScooterId] = React.useState(null);
+  const [savingFleetForm, setSavingFleetForm] = React.useState(false);
+  const [deletingScooterId, setDeletingScooterId] = React.useState(null);
   const [sendingReply, setSendingReply] = React.useState(false);
   const [activeThreadId, setActiveThreadId] = React.useState(null);
   const [threadMessages, setThreadMessages] = React.useState([]);
   const [data, setData] = React.useState({
     bookings: [],
     scooters: [],
+    scooterModels: [],
     users: [],
     profiles: [],
     revenue: { revenue: 0, bookings_count: 0 },
@@ -1173,6 +1394,7 @@ function AdminApp() {
       const requiredResults = await Promise.all([
         fetchAllPages('/admin/bookings/?ordering=-created_at', accessToken),
         fetchAllPages('/admin/scooters/', accessToken),
+        fetchAllPages('/scooter-models/', accessToken),
         fetchAllPages('/admin/users/', accessToken),
       ]);
 
@@ -1205,7 +1427,8 @@ function AdminApp() {
       setData({
         bookings: requiredResults[0],
         scooters: requiredResults[1],
-        users: requiredResults[2],
+        scooterModels: requiredResults[2],
+        users: requiredResults[3],
         profiles: resolved.profiles,
         revenue: resolved.revenue,
         funnel: resolved.funnel,
@@ -1285,6 +1508,7 @@ function AdminApp() {
     setData({
       bookings: [],
       scooters: [],
+      scooterModels: [],
       users: [],
       profiles: [],
       revenue: { revenue: 0, bookings_count: 0 },
@@ -1314,6 +1538,41 @@ function AdminApp() {
       setError(patchError.message || 'Unable to update scooter');
     } finally {
       setSavingScooterId(null);
+    }
+  }
+
+  async function handleSaveScooter(payload, scooterId = null) {
+    setSavingFleetForm(true);
+    setError('');
+    try {
+      const response = await requestJson(scooterId ? `/admin/scooters/${scooterId}/` : '/admin/scooters/', {
+        method: scooterId ? 'PATCH' : 'POST',
+        body: JSON.stringify(payload),
+        token: session.access,
+      });
+      await loadAdminData(session.access);
+      return response;
+    } catch (saveError) {
+      setError(saveError.message || 'Unable to save scooter');
+      return null;
+    } finally {
+      setSavingFleetForm(false);
+    }
+  }
+
+  async function handleDeleteScooter(scooterId) {
+    setDeletingScooterId(scooterId);
+    setError('');
+    try {
+      await requestJson(`/admin/scooters/${scooterId}/`, {
+        method: 'DELETE',
+        token: session.access,
+      });
+      await loadAdminData(session.access);
+    } catch (deleteError) {
+      setError(deleteError.message || 'Unable to delete scooter');
+    } finally {
+      setDeletingScooterId(null);
     }
   }
 
@@ -1397,8 +1656,13 @@ function AdminApp() {
     fleet: (
       <FleetView
         scooters={data.scooters}
+        scooterModels={data.scooterModels}
         savingScooterId={savingScooterId}
+        savingFleetForm={savingFleetForm}
+        deletingScooterId={deletingScooterId}
         onPatchScooter={handlePatchScooter}
+        onCreateScooter={handleSaveScooter}
+        onDeleteScooter={handleDeleteScooter}
       />
     ),
     bookings: (
