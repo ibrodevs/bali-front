@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { BRLogo, BRPrimary } from './BR';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -9,6 +10,7 @@ import { useAuth } from '@/lib/i18n/AuthProvider';
 export default function SiteHeader({ dark = false }: { dark?: boolean }) {
   const { t } = useLocale();
   const { user, signOut } = useAuth();
+  const pathname = usePathname();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -50,6 +52,11 @@ export default function SiteHeader({ dark = false }: { dark?: boolean }) {
     return () => document.removeEventListener('keydown', onKey);
   }, []);
 
+  useEffect(() => {
+    setMobileMenuOpen(false);
+    setUserMenuOpen(false);
+  }, [pathname]);
+
   const fg = dark ? '#fff' : '#000';
   const border = dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
   const bgSolid = dark ? 'rgba(10,10,10,0.92)' : 'rgba(255,255,255,0.92)';
@@ -57,6 +64,42 @@ export default function SiteHeader({ dark = false }: { dark?: boolean }) {
   const headerBg = scrolled ? bgScrolled : bgSolid;
 
   const closeAll = () => { setMobileMenuOpen(false); setUserMenuOpen(false); };
+
+  const navLinks = (
+    <>
+      <Link href="/catalog" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.catalog}</Link>
+      <Link href="/how-it-works" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.how}</Link>
+      <Link href="/#delivery" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.locations}</Link>
+    </>
+  );
+
+  const headerActions = (
+    <>
+      <LanguageSwitcher dark={dark} />
+      {user ? (
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setUserMenuOpen((o) => !o)}
+            className="br-mono"
+            style={{ padding: '8px 14px', borderRadius: 999, border: `1px solid ${border}`, background: 'transparent', color: fg, fontSize: 12, cursor: 'pointer', minHeight: 40 }}
+          >
+            {(user.full_name || user.email).split(' ')[0]} ▾
+          </button>
+          {userMenuOpen && (
+            <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 8, background: dark ? '#141414' : '#fff', border: `1px solid ${border}`, borderRadius: 12, padding: 6, minWidth: 200, boxShadow: 'var(--br-shadow-lg)', zIndex: 50 }}>
+              <Link href="/profile" onClick={closeAll} style={{ display: 'block', padding: '10px 12px', borderRadius: 8, color: fg, textDecoration: 'none', fontSize: 13 }}>{t.nav.profile}</Link>
+              <button onClick={() => { closeAll(); signOut(); }} style={{ display: 'block', width: '100%', padding: '10px 12px', borderRadius: 8, border: 0, background: 'transparent', color: fg, textAlign: 'left', cursor: 'pointer', fontSize: 13 }}>{t.nav.logout}</button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <Link href="/login" onClick={closeAll} className="br-mono" style={{ padding: '8px 14px', borderRadius: 999, border: `1px solid ${border}`, color: fg, fontSize: 12, textDecoration: 'none', minHeight: 40, display: 'inline-flex', alignItems: 'center' }}>
+          {t.nav.login}
+        </Link>
+      )}
+      <BRPrimary href="/catalog" onClick={closeAll}>{t.nav.book} ↗</BRPrimary>
+    </>
+  );
 
   return (
     <>
@@ -72,7 +115,7 @@ export default function SiteHeader({ dark = false }: { dark?: boolean }) {
           position: 'sticky',
           top: 0,
           background: headerBg,
-          zIndex: 5,
+          zIndex: mobileMenuOpen ? 52 : 5,
           gap: 16,
           flexWrap: 'wrap',
           transition: 'background 220ms var(--br-easing), border-color 220ms',
@@ -84,7 +127,11 @@ export default function SiteHeader({ dark = false }: { dark?: boolean }) {
           className="br-site-header-burger"
           aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
           aria-expanded={mobileMenuOpen}
-          onClick={() => setMobileMenuOpen((open) => !open)}
+          aria-controls="site-header-menu"
+          onClick={() => {
+            setUserMenuOpen(false);
+            setMobileMenuOpen((open) => !open);
+          }}
           style={{
             border: `1px solid ${border}`,
             background: 'transparent',
@@ -104,37 +151,21 @@ export default function SiteHeader({ dark = false }: { dark?: boolean }) {
             <span style={{ display: 'block', width: 18, height: 1.5, background: fg, transition: 'transform 220ms var(--br-easing)', transform: mobileMenuOpen ? 'translateY(-5.75px) rotate(-45deg)' : 'none' }} />
           </span>
         </button>
-        <div className={`br-site-header-menu${mobileMenuOpen ? ' open' : ''}`} style={{ display: 'contents' }}>
+        <div className="br-site-header-menu br-site-header-menu-desktop">
           <nav className="br-site-header-nav" style={{ display: 'flex', gap: 28, fontSize: 14, fontWeight: 500 }}>
-            <Link href="/catalog" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.catalog}</Link>
-            <Link href="/how-it-works" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.how}</Link>
-            <Link href="/#delivery" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.locations}</Link>
+            {navLinks}
           </nav>
           <div className="br-site-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <LanguageSwitcher dark={dark} />
-            {user ? (
-              <div style={{ position: 'relative' }}>
-                <button
-                  onClick={() => setUserMenuOpen((o) => !o)}
-                  className="br-mono"
-                  style={{ padding: '8px 14px', borderRadius: 999, border: `1px solid ${border}`, background: 'transparent', color: fg, fontSize: 12, cursor: 'pointer', minHeight: 40 }}
-                >
-                  {(user.full_name || user.email).split(' ')[0]} ▾
-                </button>
-                {userMenuOpen && (
-                  <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 8, background: dark ? '#141414' : '#fff', border: `1px solid ${border}`, borderRadius: 12, padding: 6, minWidth: 200, boxShadow: 'var(--br-shadow-lg)', zIndex: 50 }}>
-                    <Link href="/profile" onClick={closeAll} style={{ display: 'block', padding: '10px 12px', borderRadius: 8, color: fg, textDecoration: 'none', fontSize: 13 }}>{t.nav.profile}</Link>
-                    <button onClick={() => { closeAll(); signOut(); }} style={{ display: 'block', width: '100%', padding: '10px 12px', borderRadius: 8, border: 0, background: 'transparent', color: fg, textAlign: 'left', cursor: 'pointer', fontSize: 13 }}>{t.nav.logout}</button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <Link href="/login" onClick={closeAll} className="br-mono" style={{ padding: '8px 14px', borderRadius: 999, border: `1px solid ${border}`, color: fg, fontSize: 12, textDecoration: 'none', minHeight: 40, display: 'inline-flex', alignItems: 'center' }}>
-                {t.nav.login}
-              </Link>
-            )}
-            <BRPrimary href="/catalog" onClick={closeAll}>{t.nav.book} ↗</BRPrimary>
+            {headerActions}
           </div>
+        </div>
+      </div>
+      <div id="site-header-menu" className={`br-site-header-menu br-site-header-menu-mobile${mobileMenuOpen ? ' open' : ''}`}>
+        <nav className="br-site-header-nav" style={{ display: 'flex', gap: 28, fontSize: 14, fontWeight: 500 }}>
+          {navLinks}
+        </nav>
+        <div className="br-site-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {headerActions}
         </div>
       </div>
       <div

@@ -6,6 +6,7 @@ import { LOCALES, Locale } from '@/lib/i18n/dictionaries';
 export default function LanguageSwitcher({ dark = false }: { dark?: boolean }) {
   const { locale, setLocale } = useLocale();
   const [open, setOpen] = useState(false);
+  const [openUpwards, setOpenUpwards] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const current = LOCALES.find((l) => l.code === locale) || LOCALES[0];
 
@@ -15,6 +16,17 @@ export default function LanguageSwitcher({ dark = false }: { dark?: boolean }) {
     };
     document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const media = window.matchMedia('(max-width: 760px)');
+    const syncDirection = () => setOpenUpwards(media.matches);
+
+    syncDirection();
+    media.addEventListener('change', syncDirection);
+    return () => media.removeEventListener('change', syncDirection);
   }, []);
 
   const fg = dark ? '#fff' : '#000';
@@ -30,7 +42,21 @@ export default function LanguageSwitcher({ dark = false }: { dark?: boolean }) {
         <span style={{ fontSize: 9, opacity: 0.5 }}>▾</span>
       </button>
       {open && (
-        <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 8, background: bg, border: `1px solid ${border}`, borderRadius: 12, padding: 6, minWidth: 180, boxShadow: '0 12px 30px -12px rgba(0,0,0,0.35)', zIndex: 50 }}>
+        <div style={{
+          position: 'absolute',
+          right: 0,
+          background: bg,
+          border: `1px solid ${border}`,
+          borderRadius: 12,
+          padding: 6,
+          minWidth: 180,
+          boxShadow: openUpwards ? '0 -12px 30px -12px rgba(0,0,0,0.35)' : '0 12px 30px -12px rgba(0,0,0,0.35)',
+          zIndex: 50,
+          top: openUpwards ? 'auto' : '100%',
+          bottom: openUpwards ? '100%' : 'auto',
+          marginTop: openUpwards ? 0 : 8,
+          marginBottom: openUpwards ? 8 : 0,
+        }}>
           {LOCALES.map((l) => (
             <button key={l.code} onClick={() => { setLocale(l.code as Locale); setOpen(false); }}
               style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 10px', borderRadius: 8, border: 0, background: locale === l.code ? (dark ? 'rgba(255,215,0,0.12)' : '#FFF6CC') : 'transparent', color: fg, cursor: 'pointer', textAlign: 'left', fontSize: 13 }}>
