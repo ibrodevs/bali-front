@@ -3,7 +3,7 @@ function trimTrailingSlash(value: string) {
 }
 
 function normalizeApiBase(value?: string) {
-  const fallback = 'http://127.0.0.1:8000/api/v1';
+  const fallback = 'https://bali21.pythonanywhere.com/api/v1';
   const raw = (value || fallback).trim();
   if (!raw) return fallback;
 
@@ -13,7 +13,7 @@ function normalizeApiBase(value?: string) {
 }
 
 function normalizeMediaBase(value?: string) {
-  const fallback = 'http://127.0.0.1:8000';
+  const fallback = 'https://bali21.pythonanywhere.com';
   const raw = (value || fallback).trim();
   if (!raw) return fallback;
   return trimTrailingSlash(raw);
