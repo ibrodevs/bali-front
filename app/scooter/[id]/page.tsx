@@ -20,7 +20,7 @@ import { mediaUrl } from '@/lib/api';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { BR_ADDONS } from '@/lib/data';
 import { BR_SCOOTERS } from '@/lib/data';
-import { mapApiScooterDetail, DisplayScooter, pickTone, resolveScooterImage } from '@/lib/displayScooter';
+import { mapApiScooterDetail, DisplayScooter, pickTone, resolveScooterImage, resolveScooterRouteId } from '@/lib/displayScooter';
 
 type AddonView = { id: string | number; apiId?: number; name: string; icon: string; price: number };
 
@@ -62,7 +62,7 @@ export default function ScooterDetailPage() {
 
     (async () => {
       try {
-        const detail = await endpoints.scooter(id, locale);
+        const detail = await endpoints.scooter(resolveScooterRouteId(id, id) || id, locale);
         if (cancelled) return;
         const mapped = mapApiScooterDetail(detail);
         setScooter(mapped);

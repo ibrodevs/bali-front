@@ -44,6 +44,17 @@ const LOCAL_SCOOTER_KEYWORDS: Array<[string[], string]> = [
   [['adv'], RED_SPORT_SCOOTER],
   [['meteor'], RED_CLASSIC_SCOOTER],
 ];
+const SCOOTER_ROUTE_ALIASES: Record<string, string> = {
+  pcx160: 'honda-pcx-160',
+  nmax155: 'yamaha-nmax-155',
+  vespa: 'vespa-primavera-125',
+  xmax: 'yamaha-xmax-300',
+  forza: 'honda-forza-250',
+  scoopy: 'honda-scoopy-110',
+  beat: 'honda-beat-110',
+  aerox: 'yamaha-aerox-155',
+  fazzio: 'yamaha-fazzio-125',
+};
 
 export type DisplayScooter = Scooter & {
   apiId?: number | string;
@@ -88,6 +99,29 @@ export function resolveScooterImageObjectPosition(id?: string | number | null, l
   if (value.includes('vespa')) return '52% bottom';
   if (value.includes('aerox')) return '50% 78%';
   return '50% bottom';
+}
+
+export function resolveScooterRouteId(id?: string | number | null, label?: string | null): string | undefined {
+  const variants = [normalizeLookup(id), normalizeLookup(label)].filter(Boolean);
+  for (const key of variants) {
+    const alias = SCOOTER_ROUTE_ALIASES[key.replace(/\s+/g, '')];
+    if (alias) return alias;
+  }
+  for (const value of variants) {
+    if (value.includes('pcx')) return 'honda-pcx-160';
+    if (value.includes('nmax')) return 'yamaha-nmax-155';
+    if (value.includes('vario')) return 'honda-vario-160';
+    if (value.includes('vespa')) return 'vespa-primavera-125';
+    if (value.includes('xmax')) return 'yamaha-xmax-300';
+    if (value.includes('forza')) return 'honda-forza-250';
+    if (value.includes('scoopy')) return 'honda-scoopy-110';
+    if (value.includes('beat')) return 'honda-beat-110';
+    if (value.includes('aerox')) return 'yamaha-aerox-155';
+    if (value.includes('fazzio')) return 'yamaha-fazzio-125';
+    if (value.includes('adv')) return 'honda-adv-160';
+    if (value.includes('meteor')) return 'royal-enfield-meteor';
+  }
+  return id ? String(id) : undefined;
 }
 
 function statusFromApi(s: ApiScooter): Scooter['status'] {

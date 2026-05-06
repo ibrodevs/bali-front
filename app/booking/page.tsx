@@ -8,6 +8,7 @@ import { BREyebrow, BRChip, BRPrimary } from '@/components/BR';
 import SiteFooter from '@/components/SiteFooter';
 import SiteHeader from '@/components/SiteHeader';
 import { ApiError, mediaUrl } from '@/lib/api';
+import { resolveScooterRouteId } from '@/lib/displayScooter';
 import {
   ApiAddon,
   ApiAvailabilityCalendar,
@@ -172,8 +173,9 @@ function BookingPageInner() {
   const search = useSearchParams();
 
   const scooterId = numberParam(search.get('scooter_id'));
-  const routeId = search.get('route_id') || search.get('slug') || search.get('name') || '';
   const initialName = search.get('name') || 'Scooter';
+  const rawRouteId = search.get('route_id') || search.get('slug') || search.get('name') || '';
+  const routeId = resolveScooterRouteId(rawRouteId, initialName) || rawRouteId;
   const initialPrice = Number(search.get('price') || '0') || 0;
 
   const [scooter, setScooter] = useState<ApiScooterDetail | null>(null);

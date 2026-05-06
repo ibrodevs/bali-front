@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { BRPhoto, BRChip, BRPrice } from './BR';
 import { GaugeIcon, LightningIcon, WeightIcon } from './Icons';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
-import { DisplayScooter } from '@/lib/displayScooter';
+import { DisplayScooter, resolveScooterRouteId } from '@/lib/displayScooter';
 
 export default function ScooterCard({ s, dark = false, large = false }: { s: DisplayScooter; dark?: boolean; large?: boolean }) {
   const { t } = useLocale();
@@ -11,9 +11,10 @@ export default function ScooterCard({ s, dark = false, large = false }: { s: Dis
   const sub = dark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.55)';
   const isAvail = s.status === 'available';
   const hasImage = Boolean(s.imageUrl);
+  const routeId = s.apiId ?? resolveScooterRouteId(s.id, s.name) ?? s.id;
   return (
     <Link
-      href={`/scooter/${s.apiId ?? s.id}`}
+      href={`/scooter/${routeId}`}
       className={`br-card br-scooter-card ${dark ? 'dark' : ''} ${hasImage ? 'has-cutout-image' : ''}`}
       style={{
         display: 'flex',
