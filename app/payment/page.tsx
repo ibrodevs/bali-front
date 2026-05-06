@@ -370,7 +370,7 @@ function PaymentInner() {
               <p style={{ marginTop: 16, fontSize: 15, lineHeight: 1.55, maxWidth: 460 }}>
                 {reserveOnly ? copy.reservedDesc : t.payment.confirmedDesc}
               </p>
-              <div style={{ marginTop: 20, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <div className="br-payment-success-actions" style={{ marginTop: 20, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 <BRPrimary href="/profile" style={{ background: '#000', color: '#FFD700' }}>{copy.openProfile}</BRPrimary>
                 <BRPrimary href="/" style={{ background: '#fff', color: '#000' }}>{t.payment.home}</BRPrimary>
               </div>
@@ -378,7 +378,7 @@ function PaymentInner() {
           ) : (
             !paymentUrl && !loading && (
               <>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
+                <div className="br-payment-methods" style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
                   {(['card', 'cash', 'crypto'] as const).map((p) => (
                     <button
                       key={p}
@@ -407,9 +407,9 @@ function PaymentInner() {
                 </div>
 
                 {!user && (
-                  <div style={{ border: `1px solid ${border}`, borderRadius: 14, padding: 18, marginBottom: 20 }}>
+                  <div className="br-payment-card" style={{ border: `1px solid ${border}`, borderRadius: 14, padding: 18, marginBottom: 20 }}>
                     <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.12em', color: sub }}>{copy.accountForProfile}</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginTop: 14 }}>
+                    <div className="br-payment-guest-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginTop: 14 }}>
                       <Field label={t.auth.name}>
                         <input value={guestName} onChange={(e) => setGuestName(e.target.value)} style={inputStyle} />
                       </Field>
@@ -469,7 +469,7 @@ function PaymentInner() {
                   ))}
                 </div>
                 {error && <div className="br-mono" style={{ marginTop: 20, color: '#B91C1C', fontSize: 13 }}>{error}</div>}
-                <div style={{ marginTop: 40 }}>
+                <div className="br-payment-cta-wrap" style={{ marginTop: 40 }}>
                   <BRPrimary onClick={handleConfirm} disabled={submitting || (!booking && !draft)} style={{ padding: '20px 36px', fontSize: 15 }}>
                     {submitting
                       ? t.common.loading
@@ -557,7 +557,7 @@ function CardTemplate({
     return `${digits.slice(0, 2)}/${digits.slice(2)}`;
   }
   return (
-    <div style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 14, padding: 22, background: '#fff' }}>
+    <div className="br-payment-card" style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 14, padding: 22, background: '#fff' }}>
       <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.55)' }}>
         {copy.bankCard}
       </div>
@@ -584,7 +584,7 @@ function CardTemplate({
             autoComplete="cc-number"
           />
         </Field>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14 }}>
+        <div className="br-payment-card-expiry-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14 }}>
           <Field label={copy.cardExpiry}>
             <input
               value={cardExpiry}
@@ -623,7 +623,7 @@ function CashTemplate({
   deliveryAddress: string;
 }) {
   return (
-    <div style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 14, padding: 22, background: '#fff' }}>
+    <div className="br-payment-card" style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 14, padding: 22, background: '#fff' }}>
       <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.55)' }}>
         {copy.cashTitle}
       </div>
@@ -677,7 +677,7 @@ function CryptoTemplate({
     { id: 'ETH', label: 'Ethereum', network: 'ETH mainnet' },
   ];
   return (
-    <div style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 14, padding: 22, background: '#fff' }}>
+    <div className="br-payment-card" style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 14, padding: 22, background: '#fff' }}>
       <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.55)' }}>
         {copy.cryptoTitle}
       </div>
@@ -687,7 +687,7 @@ function CryptoTemplate({
       <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.55)' }}>
         {copy.selectCurrency}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, marginTop: 12 }}>
+      <div className="br-payment-crypto-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, marginTop: 12 }}>
         {options.map((o) => {
           const selected = currency === o.id;
           return (

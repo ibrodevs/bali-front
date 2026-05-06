@@ -1286,13 +1286,36 @@ input[type="time"]:hover::-webkit-calendar-picker-indicator {
 .br-profile-main-column,
 .br-profile-stats,
 .br-profile-booking-meta,
-.br-profile-booking-top {
+.br-profile-booking-top,
+.br-booking-main-column,
+.br-booking-selected-grid,
+.br-booking-time-grid,
+.br-booking-calendar-months,
+.br-booking-month-grid,
+.br-payment-methods,
+.br-payment-guest-grid,
+.br-payment-card-expiry-grid,
+.br-payment-crypto-grid {
   min-width: 0;
 }
 
 @media (max-width: 1100px) {
   .br-profile-grid {
     grid-template-columns: 1fr !important;
+  }
+
+  .br-booking-selected-grid,
+  .br-payment-guest-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .br-booking-calendar-months {
+    grid-template-columns: 1fr !important;
+  }
+
+  .br-booking-summary-aside {
+    position: static !important;
+    top: auto !important;
   }
 
   .br-how-hero-grid,
@@ -1353,6 +1376,83 @@ input[type="time"]:hover::-webkit-calendar-picker-indicator {
 
   .br-profile-actions > * {
     width: 100%;
+  }
+
+  .br-booking-hero,
+  .br-booking-content {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .br-booking-hero {
+    padding-top: 40px !important;
+    padding-bottom: 24px !important;
+  }
+
+  .br-booking-content {
+    padding-top: 24px !important;
+    padding-bottom: 56px !important;
+  }
+
+  .br-booking-card,
+  .br-booking-summary-card,
+  .br-payment-card {
+    padding: 20px 16px !important;
+    border-radius: 18px !important;
+  }
+
+  .br-booking-time-grid,
+  .br-payment-card-expiry-grid,
+  .br-payment-guest-grid,
+  .br-payment-crypto-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .br-booking-calendar-head,
+  .br-booking-calendar-legend {
+    flex-wrap: wrap;
+  }
+
+  .br-booking-calendar-legend {
+    gap: 10px 14px !important;
+  }
+
+  .br-booking-month-days {
+    gap: 3px !important;
+  }
+
+  .br-booking-addon-option {
+    padding: 12px 14px !important;
+  }
+
+  .br-payment-methods,
+  .br-payment-success-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .br-payment-methods > *,
+  .br-payment-success-actions > * {
+    width: 100%;
+  }
+
+  .br-payment-cta-wrap > * {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .br-booking-selected-grid {
+    gap: 14px !important;
+  }
+
+  .br-booking-month-days {
+    font-size: 10px !important;
+  }
+
+  .br-calendar-day {
+    min-height: 68px;
   }
 }
 

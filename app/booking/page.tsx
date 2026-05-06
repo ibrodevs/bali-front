@@ -367,7 +367,7 @@ function BookingPageInner() {
     <div style={{ minHeight: '100vh', background: '#fff', color: '#000' }}>
       <SiteHeader />
 
-      <section style={{ padding: '56px 48px 28px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+      <section className="br-booking-hero" style={{ padding: '56px 48px 28px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
         <BREyebrow>{copy.pageEyebrow}</BREyebrow>
         <h1 className="br-display" style={{ fontSize: 'clamp(40px, 7vw, 76px)', lineHeight: 0.94, letterSpacing: '-0.04em', margin: '12px 0 14px' }}>
           {copy.pageTitle}
@@ -377,17 +377,17 @@ function BookingPageInner() {
         </p>
       </section>
 
-      <section style={{ padding: '32px 48px 88px' }}>
+      <section className="br-booking-content" style={{ padding: '32px 48px 88px' }}>
         <div className="br-booking-payment-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 420px', gap: 24, alignItems: 'start' }}>
-          <div style={{ display: 'grid', gap: 24 }}>
-            <div style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
+          <div className="br-booking-main-column" style={{ display: 'grid', gap: 24 }}>
+            <div className="br-booking-card" style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
               <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
                 {copy.selectedScooter}
               </div>
               {loadingScooter ? (
                 <div className="br-mono" style={{ marginTop: 16, color: 'rgba(0,0,0,0.55)' }}>{t.common.loading}</div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: '160px minmax(0, 1fr)', gap: 18, marginTop: 16 }}>
+                <div className="br-booking-selected-grid" style={{ display: 'grid', gridTemplateColumns: '160px minmax(0, 1fr)', gap: 18, marginTop: 16 }}>
                   <div style={{ borderRadius: 16, background: '#F5F5F5', minHeight: 120, overflow: 'hidden', display: 'grid', placeItems: 'center' }}>
                     {displayImage ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -430,11 +430,11 @@ function BookingPageInner() {
               }}
             />
 
-            <div style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
+            <div className="br-booking-card" style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
               <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
                 {copy.timeTitle}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14, marginTop: 18 }}>
+              <div className="br-booking-time-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14, marginTop: 18 }}>
                 <Field label={copy.startTime}>
                   <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} style={inputStyle} />
                 </Field>
@@ -449,7 +449,7 @@ function BookingPageInner() {
               ) : null}
             </div>
 
-            <div style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
+            <div className="br-booking-card" style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
               <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
                 {copy.addressTitle}
               </div>
@@ -469,7 +469,7 @@ function BookingPageInner() {
               </div>
             </div>
 
-            <div style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
+            <div className="br-booking-card" style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
               <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
                 {copy.addonsTitle}
               </div>
@@ -491,6 +491,7 @@ function BookingPageInner() {
                               : [...current, addon.id]
                           )
                         }
+                        className="br-booking-addon-option"
                         style={{
                           display: 'flex',
                           justifyContent: 'space-between',
@@ -519,8 +520,8 @@ function BookingPageInner() {
             </div>
           </div>
 
-          <aside style={{ position: 'sticky', top: 90, display: 'grid', gap: 18 }}>
-            <div style={{ borderRadius: 22, background: '#F5F5F5', padding: 24 }}>
+          <aside className="br-booking-summary-aside" style={{ position: 'sticky', top: 90, display: 'grid', gap: 18 }}>
+            <div className="br-booking-summary-card" style={{ borderRadius: 22, background: '#F5F5F5', padding: 24 }}>
               <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
                 {copy.summaryTitle}
               </div>
@@ -703,8 +704,8 @@ function AvailabilityCalendarBlock({
   }
 
   return (
-    <div style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+    <div className="br-booking-card br-booking-calendar-panel" style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
+      <div className="br-booking-calendar-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
           {copy.calendarTitle}
         </div>
@@ -714,7 +715,7 @@ function AvailabilityCalendarBlock({
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 16, marginTop: 14, color: 'rgba(0,0,0,0.62)', fontSize: 12 }}>
+      <div className="br-booking-calendar-legend" style={{ display: 'flex', gap: 16, marginTop: 14, color: 'rgba(0,0,0,0.62)', fontSize: 12 }}>
         <Legend color="#16A34A" label={copy.legendAvailable} />
         <Legend color="#DC2626" label={copy.legendBooked} />
         <Legend color="#FFD700" label={copy.legendSelected} />
@@ -723,7 +724,7 @@ function AvailabilityCalendarBlock({
       {loading && <div className="br-mono" style={{ marginTop: 14, color: 'rgba(0,0,0,0.55)', fontSize: 12 }}>{t.common.loading}</div>}
       {error && <div className="br-mono" style={{ marginTop: 14, color: '#B91C1C', fontSize: 12 }}>{error}</div>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 18, marginTop: 18 }}>
+      <div className="br-booking-calendar-months" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 18, marginTop: 18 }}>
         {monthsToShow.map((m) => (
           <MonthGrid
             key={`${m.year}-${m.month}`}
@@ -782,11 +783,11 @@ function MonthGrid({
   }
 
   return (
-    <div>
+    <div className="br-booking-month-grid">
       <div className="br-mono" style={{ fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.62)' }}>
         {monthLabel}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginTop: 10, fontSize: 11 }}>
+      <div className="br-booking-month-days" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginTop: 10, fontSize: 11 }}>
         {weekdays.map((d, i) => (
           <div key={i} className="br-mono" style={{ textAlign: 'center', color: 'rgba(0,0,0,0.45)', padding: '4px 0' }}>
             {d}
