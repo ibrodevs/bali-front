@@ -1,5 +1,26 @@
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://bali21.pythonanywhere.com/api/v1';
-export const MEDIA_BASE = process.env.NEXT_PUBLIC_MEDIA_URL || 'https://bali21.pythonanywhere.com';
+function trimTrailingSlash(value: string) {
+  return value.replace(/\/+$/, '');
+}
+
+function normalizeApiBase(value?: string) {
+  const fallback = 'http://127.0.0.1:8000/api/v1';
+  const raw = (value || fallback).trim();
+  if (!raw) return fallback;
+
+  const cleaned = trimTrailingSlash(raw);
+  if (/\/api\/v1$/i.test(cleaned)) return cleaned;
+  return `${cleaned}/api/v1`;
+}
+
+function normalizeMediaBase(value?: string) {
+  const fallback = 'http://127.0.0.1:8000';
+  const raw = (value || fallback).trim();
+  if (!raw) return fallback;
+  return trimTrailingSlash(raw);
+}
+
+export const API_BASE = normalizeApiBase(process.env.NEXT_PUBLIC_API_URL);
+export const MEDIA_BASE = normalizeMediaBase(process.env.NEXT_PUBLIC_MEDIA_URL);
 
 const ACCESS_KEY = 'br_access';
 const REFRESH_KEY = 'br_refresh';
@@ -17,6 +38,19 @@ export type ApiUser = {
   currency?: string;
   avatar?: string | null;
   created_at?: string;
+  bookings?: Array<{
+    id: number;
+    order_number: string;
+    scooter: { id: number; title: string; sku?: string };
+    start_datetime: string;
+    end_datetime: string;
+    rental_days: number;
+    delivery_address?: string | null;
+    total_price: string;
+    currency: string;
+    payment_status: string;
+    status: string;
+  }>;
 };
 
 export const tokens = {

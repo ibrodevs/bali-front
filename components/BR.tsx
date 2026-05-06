@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import React from 'react';
+import { useLocale } from '@/lib/i18n/LocaleProvider';
 
 export function BRLogo({ size = 22, dark = false }: { size?: number; dark?: boolean }) {
   const fg = dark ? '#fff' : '#000';
@@ -40,11 +41,16 @@ const STATUS_MAP: Record<string, { color: string; bg: string; text: string }> = 
 };
 
 export function BRChip({ status }: { status: string }) {
+  const { t } = useLocale();
   const s = STATUS_MAP[status] || STATUS_MAP.available;
+  const label =
+    (t.common.statusLabels as Record<string, string> | undefined)?.[status] ||
+    (t.common.statusLabels as Record<string, string> | undefined)?.available ||
+    s.text;
   return (
     <span className="br-chip br-mono" style={{ color: s.color, background: s.bg, fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.08em' }}>
       <span className="br-chip-dot" style={{ background: s.color }} />
-      {s.text}
+      {label}
     </span>
   );
 }
@@ -83,11 +89,13 @@ export function BREyebrow({ children, style }: { children: React.ReactNode; styl
 }
 
 export function BRPrice({ amount, currency = '$', per = 'day', size = 22 }: { amount: number; currency?: string; per?: string; size?: number }) {
+  const { t } = useLocale();
+  const period = per === 'day' ? t.common.day : per;
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4 }}>
       <span className="br-mono" style={{ fontSize: size * 0.6, opacity: 0.6 }}>{currency}</span>
       <span className="br-mono" style={{ fontSize: size, fontWeight: 600, letterSpacing: '-0.02em' }}>{amount}</span>
-      <span className="br-mono" style={{ fontSize: size * 0.5, opacity: 0.55 }}>/{per}</span>
+      <span className="br-mono" style={{ fontSize: size * 0.5, opacity: 0.55 }}>/{period}</span>
     </span>
   );
 }

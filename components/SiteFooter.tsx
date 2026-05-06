@@ -6,6 +6,13 @@ import { useLocale } from '@/lib/i18n/LocaleProvider';
 export default function SiteFooter() {
   const { t } = useLocale();
   const cols = Object.entries(t.footer.cols);
+  const resolveHref = (item: string) => {
+    if (item === t.nav.catalog) return '/catalog';
+    if (item === t.nav.how) return '/how-it-works';
+    if (item === t.nav.locations) return '/#delivery';
+    return '#';
+  };
+
   return (
     <div className="br-site-footer" style={{ background: '#000', color: '#fff', padding: '60px 48px 24px' }}>
       <div className="br-site-footer-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: 40, paddingBottom: 40, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
@@ -23,7 +30,7 @@ export default function SiteFooter() {
             <div className="br-mono" style={{ fontSize: 10, color: '#FFD700', letterSpacing: '0.16em', marginBottom: 14 }}>{h.toUpperCase()}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {items.map((it: string) => (
-                <Link key={it} href="#" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: 14 }}>{it}</Link>
+                <Link key={it} href={resolveHref(it)} style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: 14 }}>{it}</Link>
               ))}
             </div>
           </div>

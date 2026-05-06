@@ -3,10 +3,52 @@ import { mediaUrl } from './api';
 import { Scooter, BR_SCOOTERS } from './data';
 
 const TONES = ['sand', 'ocean', 'sunset', 'mist', 'jungle', 'warm'];
+const GRAY_SCOOTER = '/scooters/scooter-gray-new.png';
+const RED_SPORT_SCOOTER = '/scooters/scooter-red-sport-new.png';
+const RED_CLASSIC_SCOOTER = '/scooters/scooter-red-classic-new.png';
+const LOCAL_SCOOTER_IMAGES: Record<string, string> = {
+  pcx160: GRAY_SCOOTER,
+  'honda-pcx-160': GRAY_SCOOTER,
+  nmax155: GRAY_SCOOTER,
+  'yamaha-nmax-155': GRAY_SCOOTER,
+  'honda-vario-160': GRAY_SCOOTER,
+  vespa: RED_CLASSIC_SCOOTER,
+  'vespa-sprint-150': RED_CLASSIC_SCOOTER,
+  'vespa-primavera-125': RED_CLASSIC_SCOOTER,
+  xmax: RED_SPORT_SCOOTER,
+  'yamaha-xmax-300': RED_SPORT_SCOOTER,
+  forza: RED_SPORT_SCOOTER,
+  'honda-forza-250': RED_SPORT_SCOOTER,
+  scoopy: RED_CLASSIC_SCOOTER,
+  'honda-scoopy-110': RED_CLASSIC_SCOOTER,
+  beat: RED_CLASSIC_SCOOTER,
+  'honda-beat-110': RED_CLASSIC_SCOOTER,
+  aerox: RED_SPORT_SCOOTER,
+  'yamaha-aerox-155': RED_SPORT_SCOOTER,
+  fazzio: RED_CLASSIC_SCOOTER,
+  'yamaha-fazzio-125': RED_CLASSIC_SCOOTER,
+  'honda-adv-160': RED_SPORT_SCOOTER,
+  'royal-enfield-meteor': RED_CLASSIC_SCOOTER,
+};
+const LOCAL_SCOOTER_KEYWORDS: Array<[string[], string]> = [
+  [['pcx'], GRAY_SCOOTER],
+  [['nmax'], GRAY_SCOOTER],
+  [['vario'], GRAY_SCOOTER],
+  [['vespa'], RED_CLASSIC_SCOOTER],
+  [['xmax'], RED_SPORT_SCOOTER],
+  [['forza'], RED_SPORT_SCOOTER],
+  [['scoopy'], RED_CLASSIC_SCOOTER],
+  [['beat'], RED_CLASSIC_SCOOTER],
+  [['aerox'], RED_SPORT_SCOOTER],
+  [['fazzio'], RED_CLASSIC_SCOOTER],
+  [['adv'], RED_SPORT_SCOOTER],
+  [['meteor'], RED_CLASSIC_SCOOTER],
+];
 
 export type DisplayScooter = Scooter & {
   apiId?: number | string;
   imageUrl?: string;
+  imageObjectPosition?: string;
   reviewsCount?: number;
   rating?: number;
 };
@@ -18,6 +60,36 @@ export function pickTone(seed: string | number): string {
   return TONES[Math.abs(h) % TONES.length];
 }
 
+function normalizeLookup(value?: string | number | null): string {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ');
+}
+
+export function resolveScooterImage(id?: string | number | null, label?: string | null): string | undefined {
+  const variants = [normalizeLookup(id), normalizeLookup(label)].filter(Boolean);
+  for (const key of variants) {
+    if (LOCAL_SCOOTER_IMAGES[key]) return LOCAL_SCOOTER_IMAGES[key];
+  }
+  for (const value of variants) {
+    for (const [keywords, image] of LOCAL_SCOOTER_KEYWORDS) {
+      if (keywords.every((keyword) => value.includes(keyword))) return image;
+    }
+  }
+  return undefined;
+}
+
+export function resolveScooterImageObjectPosition(id?: string | number | null, label?: string | null): string {
+  const value = `${normalizeLookup(id)} ${normalizeLookup(label)}`;
+  if (value.includes('scoopy')) return '52% bottom';
+  if (value.includes('beat')) return '50% bottom';
+  if (value.includes('vespa')) return '52% bottom';
+  if (value.includes('aerox')) return '50% 78%';
+  return '50% bottom';
+}
+
 function statusFromApi(s: ApiScooter): Scooter['status'] {
   if (s.status === 'available' || s.status === 'booked' || s.status === 'partial' || s.status === 'service') return s.status;
   if (s.is_available === false) return 'booked';
@@ -26,6 +98,7 @@ function statusFromApi(s: ApiScooter): Scooter['status'] {
 
 export function mapApiScooter(s: ApiScooter): DisplayScooter {
   const id = s.slug || String(s.id);
+  const localImage = resolveScooterImage(id, s.title);
   return {
     id,
     apiId: s.id,
@@ -39,7 +112,8 @@ export function mapApiScooter(s: ApiScooter): DisplayScooter {
     range: 0,
     top: 0,
     weight: 0,
-    imageUrl: s.main_image ? mediaUrl(s.main_image) : undefined,
+    imageUrl: s.main_image ? mediaUrl(s.main_image) : localImage,
+    imageObjectPosition: resolveScooterImageObjectPosition(id, s.title),
     reviewsCount: s.reviews_count,
     rating: s.rating_avg,
   };
@@ -58,5 +132,10 @@ export function mapApiScooterDetail(s: ApiScooterDetail): DisplayScooter {
 }
 
 export function fallbackScooters(): DisplayScooter[] {
-  return BR_SCOOTERS.map((s) => ({ ...s, apiId: undefined }));
+  return BR_SCOOTERS.map((s) => ({
+    ...s,
+    apiId: undefined,
+    imageUrl: resolveScooterImage(s.id, s.name),
+    imageObjectPosition: resolveScooterImageObjectPosition(s.id, s.name),
+  }));
 }

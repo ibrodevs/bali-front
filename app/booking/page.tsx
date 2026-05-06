@@ -1,354 +1,292 @@
 'use client';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+
+import type { CSSProperties, ReactNode } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { BRPhoto, BREyebrow, BRPrimary, BROutline, BRChip } from '@/components/BR';
-import SiteHeader from '@/components/SiteHeader';
+import { BREyebrow, BRChip, BRPrimary } from '@/components/BR';
 import SiteFooter from '@/components/SiteFooter';
-import { useLocale } from '@/lib/i18n/LocaleProvider';
-import { Locale } from '@/lib/i18n/dictionaries';
-import { useAuth } from '@/lib/i18n/AuthProvider';
+import SiteHeader from '@/components/SiteHeader';
+import { ApiError, mediaUrl } from '@/lib/api';
 import {
+  ApiAddon,
   ApiAvailabilityCalendar,
   ApiBookingQuote,
-  ApiAddon,
+  ApiScooterDetail,
+  AvailabilityDayStatus,
   endpoints,
-  GuestBookingPayload,
-  BookingCreatePayload,
-  toApiPaymentMethod,
   unwrapList,
 } from '@/lib/endpoints';
-import { ApiError, mediaUrl, tokens } from '@/lib/api';
+import { bookingDraftStore } from '@/lib/bookingDraft';
+import { useLocale } from '@/lib/i18n/LocaleProvider';
 
-const bookingQuoteCache = new Map<string, ApiBookingQuote>();
-const availabilityCache = new Map<string, ApiAvailabilityCalendar>();
-
-type DeliveryZoneView = {
-  id: number;
-  name: string;
-  latitude: number;
-  longitude: number;
-  deliveryFeeUSD: number;
-  freeDelivery: boolean;
-  timeMinutes: number;
-};
-
-type AddonView = {
+type AddonOption = {
   id: number;
   name: string;
   price: number;
-  description?: string;
 };
 
-const BOOKING_COPY_EN = {
-  searchPickup: 'Pickup zone',
-  startTime: 'Start time',
-  endTime: 'Return time',
-  promo: 'Promo code',
-  preview: 'Live quote',
-  eta: 'Delivery ETA',
-  selectZone: 'Select a delivery zone',
-  summary: 'Booking summary',
-  noScooter: 'Pick a scooter from the catalog first.',
-  calendar: 'Availability calendar',
-  calendarHint: 'Green days are free, orange days have partial occupancy, red days are booked.',
-  pickStart: 'Pick-up date',
-  pickEnd: 'Return date',
-  availability: 'Availability',
-  available: 'Available',
-  partial: 'Partial',
-  booked: 'Booked',
-  maintenance: 'Maintenance',
-  unavailableDay: 'This day is unavailable.',
-  extras: 'Travel extras',
-  secureCard: 'After confirmation you will be redirected to a secure payment page.',
-  secureCash: 'Booking will be reserved now. You can pay on delivery.',
-  secureCrypto: 'We will generate a crypto invoice right after booking.',
-  selectedRange: 'Selected range',
-};
+const quoteCache = new Map<string, ApiBookingQuote>();
 
-const BOOKING_COPY_RU = {
-  searchPickup: 'Зона получения',
-  startTime: 'Время начала',
-  endTime: 'Время возврата',
-  promo: 'Промокод',
-  preview: 'Живой расчёт',
-  eta: 'Время доставки',
-  selectZone: 'Выбери зону доставки',
-  summary: 'Сводка брони',
-  noScooter: 'Сначала выбери скутер в каталоге.',
-  calendar: 'Календарь занятости',
-  calendarHint: 'Зелёные даты свободны, оранжевые заняты частично, красные уже забронированы.',
-  pickStart: 'Дата получения',
-  pickEnd: 'Дата возврата',
-  availability: 'Доступность',
-  available: 'Доступно',
-  partial: 'Частично',
-  booked: 'Забронировано',
-  maintenance: 'Сервис',
-  unavailableDay: 'Эта дата недоступна.',
-  extras: 'Дополнения',
-  secureCard: 'После подтверждения откроется защищённая страница оплаты.',
-  secureCash: 'Бронь создастся сразу. Оплата будет при получении.',
-  secureCrypto: 'Сразу после бронирования мы создадим крипто-инвойс.',
-  selectedRange: 'Выбранный период',
-};
+const BOOKING_COPY = {
+  en: {
+    pageEyebrow: 'STEP 2 OF 3',
+    pageTitle: 'Dates and delivery address',
+    pageDesc: 'Green days are available, red ones are already booked. Choose the rental period and add your delivery address.',
+    noScooter: 'Choose a scooter from the catalog first.',
+    selectedScooter: 'SELECTED SCOOTER',
+    photo: 'PHOTO',
+    changeScooter: 'Change scooter',
+    timeTitle: 'PICKUP / RETURN TIME',
+    startTime: 'Start time',
+    endTime: 'End time',
+    invalidRange: 'End date/time must be later than start date/time.',
+    addressTitle: 'DELIVERY ADDRESS',
+    addressLabel: 'Delivery address',
+    addressPlaceholder: 'Villa, hotel, or exact delivery address',
+    promoCode: 'Promo code',
+    optional: 'Optional',
+    addonsTitle: 'ADD-ONS',
+    addonsHelp: 'Extra options can be added to the booking right away.',
+    addonsUnavailable: 'Extra options are not available.',
+    summaryTitle: 'STEP 2 SUMMARY',
+    pickDates: 'Select dates in the calendar',
+    datesNotSelected: 'Dates are not selected',
+    noOptions: 'No options selected',
+    base: 'Base',
+    addons: 'Add-ons',
+    delivery: 'Delivery',
+    estimatedTotal: 'Estimated total',
+    continueToPayment: 'Continue to payment',
+    nextStepHint: 'On the next step you will choose the payment method.',
+    calendarTitle: 'AVAILABILITY CALENDAR',
+    legendAvailable: 'Available',
+    legendBooked: 'Booked',
+    legendSelected: 'Selected',
+    loadAvailabilityFailed: 'Failed to load availability',
+    pickEndDate: 'Selected {date} — click the end date.',
+    weekdays: ['M', 'T', 'W', 'T', 'F', 'S', 'S'],
+    selectedAddons: '{n} add-ons · ${amount}',
+  },
+  ru: {
+    pageEyebrow: 'ШАГ 2 ИЗ 3',
+    pageTitle: 'Даты и адрес доставки',
+    pageDesc: 'Зелёные дни свободны, красные уже заняты. Выберите период аренды и укажите адрес доставки.',
+    noScooter: 'Сначала выберите скутер в каталоге.',
+    selectedScooter: 'ВЫБРАННЫЙ СКУТЕР',
+    photo: 'ФОТО',
+    changeScooter: 'Изменить скутер',
+    timeTitle: 'ВРЕМЯ ПОЛУЧЕНИЯ / ВОЗВРАТА',
+    startTime: 'Время начала',
+    endTime: 'Время окончания',
+    invalidRange: 'Дата и время окончания должны быть позже начала.',
+    addressTitle: 'АДРЕС ДОСТАВКИ',
+    addressLabel: 'Адрес доставки',
+    addressPlaceholder: 'Вилла, отель или точный адрес доставки',
+    promoCode: 'Промокод',
+    optional: 'Необязательно',
+    addonsTitle: 'ДОПОЛНЕНИЯ',
+    addonsHelp: 'Дополнительные опции можно добавить сразу к бронированию.',
+    addonsUnavailable: 'Дополнительные опции недоступны.',
+    summaryTitle: 'СВОДКА ШАГА 2',
+    pickDates: 'Выберите даты в календаре',
+    datesNotSelected: 'Даты не выбраны',
+    noOptions: 'Опции не выбраны',
+    base: 'База',
+    addons: 'Допы',
+    delivery: 'Доставка',
+    estimatedTotal: 'Примерный итог',
+    continueToPayment: 'Перейти к оплате',
+    nextStepHint: 'На следующем шаге вы выберете способ оплаты.',
+    calendarTitle: 'КАЛЕНДАРЬ ДОСТУПНОСТИ',
+    legendAvailable: 'Свободно',
+    legendBooked: 'Занято',
+    legendSelected: 'Выбрано',
+    loadAvailabilityFailed: 'Не удалось загрузить доступность',
+    pickEndDate: 'Выбран {date} — нажмите на дату окончания.',
+    weekdays: ['П', 'В', 'С', 'Ч', 'П', 'С', 'В'],
+    selectedAddons: '{n} допов · ${amount}',
+  },
+  zh: { pageEyebrow: '第 2 步 / 共 3 步', pageTitle: '日期和送车地址', pageDesc: '绿色日期可用，红色日期已被预订。请选择租期并填写送车地址。', noScooter: '请先在车型页面选择一辆车。', selectedScooter: '已选车型', photo: '照片', changeScooter: '更换车型', timeTitle: '取车 / 还车时间', startTime: '开始时间', endTime: '结束时间', invalidRange: '结束日期和时间必须晚于开始时间。', addressTitle: '送车地址', addressLabel: '送车地址', addressPlaceholder: '别墅、酒店或准确地址', promoCode: '优惠码', optional: '可选', addonsTitle: '附加项', addonsHelp: '可以立即把附加项加入预订。', addonsUnavailable: '暂无附加项。', summaryTitle: '第 2 步摘要', pickDates: '请在日历中选择日期', datesNotSelected: '尚未选择日期', noOptions: '未选择附加项', base: '基础价', addons: '附加项', delivery: '送车', estimatedTotal: '预估总价', continueToPayment: '继续付款', nextStepHint: '下一步选择支付方式。', calendarTitle: '可用日期日历', legendAvailable: '可用', legendBooked: '已订', legendSelected: '已选', loadAvailabilityFailed: '加载可用日期失败', pickEndDate: '已选 {date}，请点击结束日期。', weekdays: ['一', '二', '三', '四', '五', '六', '日'], selectedAddons: '{n} 个附加项 · ${amount}' },
+  id: { pageEyebrow: 'LANGKAH 2 DARI 3', pageTitle: 'Tanggal dan alamat pengantaran', pageDesc: 'Hari hijau tersedia, hari merah sudah dipesan. Pilih masa sewa dan isi alamat pengantaran.', noScooter: 'Pilih skuter dari katalog terlebih dahulu.', selectedScooter: 'SKUTER TERPILIH', photo: 'FOTO', changeScooter: 'Ganti skuter', timeTitle: 'WAKTU AMBIL / KEMBALI', startTime: 'Waktu mulai', endTime: 'Waktu selesai', invalidRange: 'Tanggal/waktu selesai harus setelah mulai.', addressTitle: 'ALAMAT PENGANTARAN', addressLabel: 'Alamat pengantaran', addressPlaceholder: 'Vila, hotel, atau alamat lengkap', promoCode: 'Kode promo', optional: 'Opsional', addonsTitle: 'TAMBAHAN', addonsHelp: 'Tambahan bisa langsung dimasukkan ke pesanan.', addonsUnavailable: 'Tambahan tidak tersedia.', summaryTitle: 'RINGKASAN LANGKAH 2', pickDates: 'Pilih tanggal di kalender', datesNotSelected: 'Tanggal belum dipilih', noOptions: 'Belum ada tambahan', base: 'Dasar', addons: 'Tambahan', delivery: 'Antar', estimatedTotal: 'Perkiraan total', continueToPayment: 'Lanjut ke pembayaran', nextStepHint: 'Pada langkah berikutnya Anda memilih metode pembayaran.', calendarTitle: 'KALENDER KETERSEDIAAN', legendAvailable: 'Tersedia', legendBooked: 'Dipesan', legendSelected: 'Dipilih', loadAvailabilityFailed: 'Gagal memuat ketersediaan', pickEndDate: 'Dipilih {date} — klik tanggal akhir.', weekdays: ['S', 'S', 'R', 'K', 'J', 'S', 'M'], selectedAddons: '{n} tambahan · ${amount}' },
+  de: { pageEyebrow: 'SCHRITT 2 VON 3', pageTitle: 'Daten und Lieferadresse', pageDesc: 'Grüne Tage sind verfügbar, rote bereits gebucht. Wähle den Mietzeitraum und gib die Lieferadresse ein.', noScooter: 'Bitte zuerst einen Roller im Katalog wählen.', selectedScooter: 'AUSGEWÄHLTER ROLLER', photo: 'FOTO', changeScooter: 'Roller wechseln', timeTitle: 'ABHOL- / RÜCKGABEZEIT', startTime: 'Startzeit', endTime: 'Endzeit', invalidRange: 'Enddatum/-zeit muss nach dem Start liegen.', addressTitle: 'LIEFERADRESSE', addressLabel: 'Lieferadresse', addressPlaceholder: 'Villa, Hotel oder genaue Lieferadresse', promoCode: 'Promocode', optional: 'Optional', addonsTitle: 'EXTRAS', addonsHelp: 'Extras können sofort zur Buchung hinzugefügt werden.', addonsUnavailable: 'Keine Extras verfügbar.', summaryTitle: 'SCHRITT-2-ZUSAMMENFASSUNG', pickDates: 'Bitte Daten im Kalender wählen', datesNotSelected: 'Keine Daten gewählt', noOptions: 'Keine Extras gewählt', base: 'Basis', addons: 'Extras', delivery: 'Lieferung', estimatedTotal: 'Geschätzte Summe', continueToPayment: 'Weiter zur Zahlung', nextStepHint: 'Im nächsten Schritt wählst du die Zahlungsmethode.', calendarTitle: 'VERFÜGBARKEITSKALENDER', legendAvailable: 'Verfügbar', legendBooked: 'Gebucht', legendSelected: 'Ausgewählt', loadAvailabilityFailed: 'Verfügbarkeit konnte nicht geladen werden', pickEndDate: '{date} gewählt — Enddatum anklicken.', weekdays: ['M', 'D', 'M', 'D', 'F', 'S', 'S'], selectedAddons: '{n} Extras · ${amount}' },
+  fr: { pageEyebrow: 'ÉTAPE 2 SUR 3', pageTitle: 'Dates et adresse de livraison', pageDesc: 'Les jours verts sont disponibles, les rouges sont déjà réservés. Choisissez la période et ajoutez votre adresse.', noScooter: 'Choisissez d’abord un scooter dans le catalogue.', selectedScooter: 'SCOOTER SÉLECTIONNÉ', photo: 'PHOTO', changeScooter: 'Changer de scooter', timeTitle: 'HEURE DE PRISE / RETOUR', startTime: 'Heure de début', endTime: 'Heure de fin', invalidRange: 'La date/heure de fin doit être après le début.', addressTitle: 'ADRESSE DE LIVRAISON', addressLabel: 'Adresse de livraison', addressPlaceholder: 'Villa, hôtel ou adresse exacte', promoCode: 'Code promo', optional: 'Optionnel', addonsTitle: 'OPTIONS', addonsHelp: 'Les options peuvent être ajoutées immédiatement à la réservation.', addonsUnavailable: 'Aucune option disponible.', summaryTitle: 'RÉSUMÉ DE L’ÉTAPE 2', pickDates: 'Choisissez les dates dans le calendrier', datesNotSelected: 'Dates non choisies', noOptions: 'Aucune option choisie', base: 'Base', addons: 'Options', delivery: 'Livraison', estimatedTotal: 'Total estimé', continueToPayment: 'Continuer vers le paiement', nextStepHint: 'À l’étape suivante, vous choisirez le mode de paiement.', calendarTitle: 'CALENDRIER DE DISPONIBILITÉ', legendAvailable: 'Disponible', legendBooked: 'Réservé', legendSelected: 'Sélectionné', loadAvailabilityFailed: 'Impossible de charger la disponibilité', pickEndDate: '{date} sélectionné — cliquez sur la date de fin.', weekdays: ['L', 'M', 'M', 'J', 'V', 'S', 'D'], selectedAddons: '{n} options · ${amount}' },
+} as const;
+type BookingCopy = (typeof BOOKING_COPY)[keyof typeof BOOKING_COPY];
 
-const BOOKING_COPY: Record<Locale, typeof BOOKING_COPY_EN> = {
-  en: BOOKING_COPY_EN,
-  ru: BOOKING_COPY_RU,
-  zh: BOOKING_COPY_EN,
-  id: BOOKING_COPY_EN,
-  de: BOOKING_COPY_EN,
-  fr: BOOKING_COPY_EN,
-};
-
-function addDays(date: Date, days: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
+function numberParam(value: string | null) {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
-function toDateInputValue(date: Date) {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, '0');
-  const day = `${date.getDate()}`.padStart(2, '0');
-  return `${year}-${month}-${day}`;
+function parseAddonIds(value: string | null) {
+  if (!value) return [];
+  return value
+    .split(',')
+    .map((item) => Number(item))
+    .filter((item) => Number.isFinite(item));
 }
 
-function combineDateTime(date: string, time: string) {
-  return `${date}T${time}:00`;
+function addonPriceValue(addon: ApiAddon) {
+  return Number(addon.priceUSD ?? addon.price_usd ?? addon.price ?? 0);
 }
 
-function startOfMonth(value: string) {
-  const [year, month] = value.split('-').map(Number);
-  return new Date(year, (month || 1) - 1, 1);
+function toAddonOptions(addons: ApiAddon[]) {
+  return addons.map((addon) => ({
+    id: addon.id,
+    name: addon.name,
+    price: addonPriceValue(addon),
+  }));
 }
 
-function shiftMonth(date: Date, delta: number) {
-  return new Date(date.getFullYear(), date.getMonth() + delta, 1);
+function formatDateKey(year: number, month: number, day: number) {
+  const m = String(month + 1).padStart(2, '0');
+  const d = String(day).padStart(2, '0');
+  return `${year}-${m}-${d}`;
 }
 
-function formatMonth(date: Date, locale: string) {
-  return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(date);
+function parseDateKey(key: string): Date | null {
+  if (!key) return null;
+  const [y, m, d] = key.split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
 }
 
-function formatDateRange(start: string, end: string, locale: string) {
-  const formatter = new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric' });
-  return `${formatter.format(new Date(start))} - ${formatter.format(new Date(end))}`;
-}
-
-function statusTone(status: ApiAvailabilityCalendar['days'][number]['status']) {
-  if (status === 'booked') return { bg: '#FEF2F2', border: '#FCA5A5', fg: '#991B1B' };
-  if (status === 'partially_booked') return { bg: '#FFF7ED', border: '#FDBA74', fg: '#9A3412' };
-  if (status === 'maintenance') return { bg: '#F3F4F6', border: '#D1D5DB', fg: '#374151' };
-  return { bg: '#F0FDF4', border: '#86EFAC', fg: '#166534' };
+function compareKey(a: string, b: string) {
+  return a < b ? -1 : a > b ? 1 : 0;
 }
 
 export default function BookingPage() {
   return (
     <Suspense fallback={null}>
-      <BookingFlow />
+      <BookingPageInner />
     </Suspense>
   );
 }
 
-function BookingFlow() {
-  const { t, locale, tr } = useLocale();
-  const copy = BOOKING_COPY[locale];
-  const { user, refresh } = useAuth();
+function BookingPageInner() {
+  const { t, locale } = useLocale();
+  const copy = BOOKING_COPY[locale as keyof typeof BOOKING_COPY] || BOOKING_COPY.en;
   const router = useRouter();
   const search = useSearchParams();
-  const now = new Date();
 
-  const scooterApiId = Number(search.get('scooter_id') || '') || null;
-  const routeId = search.get('route_id') || search.get('slug') || 'catalog';
-  const fallbackSlug = search.get('slug') || 'scooter';
-  const fallbackName = search.get('name') || 'Scooter';
-  const fallbackPrice = Number(search.get('price') || '0');
-  const initialStartDate = search.get('start_date') || toDateInputValue(addDays(now, 2));
-  const initialEndDate = search.get('end_date') || toDateInputValue(addDays(now, 7));
-  const initialStartTime = search.get('start_time') || '08:00';
-  const initialEndTime = search.get('end_time') || '20:00';
-  const initialAddonIds = (search.get('addons') || '')
-    .split(',')
-    .map((value) => Number(value))
-    .filter((value) => Number.isFinite(value) && value > 0);
+  const scooterId = numberParam(search.get('scooter_id'));
+  const routeId = search.get('route_id') || search.get('slug') || search.get('name') || '';
+  const initialName = search.get('name') || 'Scooter';
+  const initialPrice = Number(search.get('price') || '0') || 0;
 
-  const [step, setStep] = useState(1);
-  const [pm, setPm] = useState<'card' | 'cash' | 'crypto'>('card');
-  const [zones, setZones] = useState<DeliveryZoneView[]>([]);
-  const [zoneId, setZoneId] = useState<number | null>(null);
-  const [address, setAddress] = useState('Villa Cendana, Jl. Pantai Berawa, Canggu');
+  const [scooter, setScooter] = useState<ApiScooterDetail | null>(null);
+  const [addons, setAddons] = useState<AddonOption[]>([]);
+  const [loadingScooter, setLoadingScooter] = useState(Boolean(scooterId || routeId));
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [selectedAddOnIds, setSelectedAddOnIds] = useState<number[]>(parseAddonIds(search.get('addons')));
+
+  const [startDateKey, setStartDateKey] = useState<string>('');
+  const [endDateKey, setEndDateKey] = useState<string>('');
+  const [startTime, setStartTime] = useState(search.get('start_time') || '09:00');
+  const [endTime, setEndTime] = useState(search.get('end_time') || '18:00');
+
+  const [deliveryAddress, setDeliveryAddress] = useState('');
   const [promoCode, setPromoCode] = useState('');
-  const [startDate, setStartDate] = useState(initialStartDate);
-  const [endDate, setEndDate] = useState(initialEndDate);
-  const [startTime, setStartTime] = useState(initialStartTime);
-  const [endTime, setEndTime] = useState(initialEndTime);
-  const [guestEmail, setGuestEmail] = useState('');
-  const [guestName, setGuestName] = useState('');
-  const [guestPhone, setGuestPhone] = useState('');
-  const [selectedAddOnIds, setSelectedAddOnIds] = useState<number[]>(initialAddonIds);
-  const [availableAddons, setAvailableAddons] = useState<AddonView[]>([]);
-  const [scooterName, setScooterName] = useState(fallbackName);
-  const [scooterSlug, setScooterSlug] = useState(fallbackSlug);
-  const [scooterImage, setScooterImage] = useState<string | null>(null);
-  const [visibleMonth, setVisibleMonth] = useState(startOfMonth(initialStartDate));
-  const [calendarMode, setCalendarMode] = useState<'start' | 'end'>('start');
-  const [availability, setAvailability] = useState<ApiAvailabilityCalendar | null>(null);
-  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+
   const [quote, setQuote] = useState<ApiBookingQuote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    endpoints.bootstrap(locale)
-      .then((bootstrap) => {
-        if (cancelled) return;
-        const nextZones = (bootstrap.deliveryZones || []).map((zone) => ({
-          id: zone.id,
-          name: zone.name,
-          latitude: Number(zone.latitude || 0),
-          longitude: Number(zone.longitude || 0),
-          deliveryFeeUSD: Number(zone.deliveryFeeUSD || 0),
-          freeDelivery: Boolean(zone.freeDelivery),
-          timeMinutes: Number(zone.timeMinutes || 30),
-        }));
-        setZones(nextZones);
-        if (nextZones.length && zoneId === null) {
-          setZoneId(nextZones[0].id);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [locale, zoneId]);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (!scooterApiId) {
-      setScooterName(fallbackName);
-      setScooterSlug(fallbackSlug);
+    if (!scooterId && !routeId) {
+      setLoadingScooter(false);
+      setLoadError(copy.noScooter);
       return;
     }
 
-    endpoints.scooter(scooterApiId, locale)
+    setLoadingScooter(true);
+    setLoadError(null);
+
+    const detailRequest = scooterId
+      ? endpoints.scooter(scooterId, locale)
+      : endpoints.scooter(routeId, locale);
+
+    detailRequest
       .then(async (detail) => {
         if (cancelled) return;
-        setScooterName(detail.title || fallbackName);
-        setScooterSlug(detail.slug || fallbackSlug);
-        setScooterImage(detail.main_image ? mediaUrl(detail.main_image) : null);
-        const fromDetail = (detail.available_addons || []).map((addon: ApiAddon) => ({
-          id: addon.id,
-          name: addon.name,
-          price: Number(addon.price_usd ?? addon.price ?? 0),
-          description: addon.description,
-        }));
-        if (fromDetail.length) {
-          setAvailableAddons(fromDetail);
-          return;
-        }
-        const addons = unwrapList(await endpoints.addons(locale));
-        if (!cancelled) {
-          setAvailableAddons(addons.map((addon) => ({
-            id: addon.id,
-            name: addon.name,
-            price: Number(addon.price_usd ?? addon.price ?? 0),
-            description: addon.description,
-          })));
+        setScooter(detail);
+        if (detail.available_addons?.length) {
+          setAddons(toAddonOptions(detail.available_addons));
+        } else {
+          const addonList = unwrapList(await endpoints.addons(locale));
+          if (!cancelled) setAddons(toAddonOptions(addonList));
         }
       })
-      .catch(async () => {
+      .catch(async (error) => {
+        if (cancelled) return;
         try {
-          const addons = unwrapList(await endpoints.addons(locale));
-          if (!cancelled) {
-            setAvailableAddons(addons.map((addon) => ({
-              id: addon.id,
-              name: addon.name,
-              price: Number(addon.price_usd ?? addon.price ?? 0),
-              description: addon.description,
-            })));
-          }
+          const addonList = unwrapList(await endpoints.addons(locale));
+          if (!cancelled) setAddons(toAddonOptions(addonList));
         } catch {}
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [scooterApiId, fallbackName, fallbackSlug, locale]);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!scooterApiId) {
-      setAvailability(null);
-      return;
-    }
-
-    const key = `${scooterApiId}:${visibleMonth.getFullYear()}-${visibleMonth.getMonth() + 1}`;
-    const cached = availabilityCache.get(key);
-    if (cached) {
-      setAvailability(cached);
-      return;
-    }
-
-    setAvailabilityLoading(true);
-    endpoints.scooterAvailability(scooterApiId, {
-      year: visibleMonth.getFullYear(),
-      month: visibleMonth.getMonth() + 1,
-    })
-      .then((result) => {
-        if (cancelled || !('days' in result)) return;
-        availabilityCache.set(key, result);
-        setAvailability(result);
-      })
-      .catch(() => {
-        if (!cancelled) setAvailability(null);
+        setLoadError(error instanceof ApiError ? error.message : t.auth.error);
       })
       .finally(() => {
-        if (!cancelled) setAvailabilityLoading(false);
+        if (!cancelled) setLoadingScooter(false);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [scooterApiId, visibleMonth]);
+  }, [copy.noScooter, locale, routeId, scooterId, t.auth.error]);
 
-  const selectedZone = useMemo(() => zones.find((zone) => zone.id === zoneId) || null, [zones, zoneId]);
-  const startDateTime = combineDateTime(startDate, startTime);
-  const endDateTime = combineDateTime(endDate, endTime);
-  const dateIsValid = new Date(endDateTime).getTime() > new Date(startDateTime).getTime();
+  const effectiveScooterId = scooterId || (scooter ? Number(scooter.id) : null);
+
+  const isDateRangeValid = Boolean(
+    startDateKey &&
+      endDateKey &&
+      compareKey(startDateKey, endDateKey) <= 0 &&
+      new Date(`${endDateKey}T${endTime}:00`).getTime() >
+        new Date(`${startDateKey}T${startTime}:00`).getTime()
+  );
 
   const quoteRequest = useMemo(() => {
-    if (!scooterApiId || !dateIsValid) return null;
+    if (!effectiveScooterId || !isDateRangeValid) return null;
     return {
-      scooter_id: scooterApiId,
-      start_datetime: startDateTime,
-      end_datetime: endDateTime,
-      delivery_address: address || undefined,
-      delivery_latitude: selectedZone?.latitude || undefined,
-      delivery_longitude: selectedZone?.longitude || undefined,
+      scooter_id: effectiveScooterId,
+      start_datetime: `${startDateKey}T${startTime}:00`,
+      end_datetime: `${endDateKey}T${endTime}:00`,
+      delivery_time: `${startDateKey}T${startTime}:00`,
+      delivery_address: deliveryAddress.trim() || undefined,
       add_on_ids: selectedAddOnIds.length ? selectedAddOnIds : undefined,
       promo_code: promoCode.trim() || undefined,
-      payment_method: toApiPaymentMethod(pm),
+      payment_method: 'online_card' as const,
       currency: 'USD',
-    } as const;
-  }, [scooterApiId, dateIsValid, startDateTime, endDateTime, address, selectedZone, selectedAddOnIds, promoCode, pm]);
+    };
+  }, [
+    deliveryAddress,
+    effectiveScooterId,
+    endDateKey,
+    endTime,
+    isDateRangeValid,
+    promoCode,
+    selectedAddOnIds,
+    startDateKey,
+    startTime,
+  ]);
 
-  const quoteRequestKey = useMemo(() => (quoteRequest ? JSON.stringify(quoteRequest) : null), [quoteRequest]);
+  const quoteKey = useMemo(() => (quoteRequest ? JSON.stringify(quoteRequest) : null), [quoteRequest]);
 
   useEffect(() => {
-    if (!quoteRequest || !quoteRequestKey) {
+    if (!quoteRequest || !quoteKey) {
       setQuote(null);
+      setQuoteError(null);
       return;
     }
 
-    const cached = bookingQuoteCache.get(quoteRequestKey);
+    const cached = quoteCache.get(quoteKey);
     if (cached) {
       setQuote(cached);
-      setQuoteLoading(false);
+      setQuoteError(null);
       return;
     }
 
@@ -356,498 +294,609 @@ function BookingFlow() {
     const timer = window.setTimeout(() => {
       setQuoteLoading(true);
       endpoints.bookingCalculate(quoteRequest, controller.signal)
-        .then((nextQuote) => {
-          bookingQuoteCache.set(quoteRequestKey, nextQuote);
-          setQuote(nextQuote);
-          setError(null);
+        .then((response) => {
+          quoteCache.set(quoteKey, response);
+          setQuote(response);
+          setQuoteError(null);
         })
-        .catch((nextError) => {
+        .catch((error) => {
           if (controller.signal.aborted) return;
-          if (nextError instanceof ApiError && nextError.status === 429) {
-            setError('Too many price checks. Please wait a moment.');
-            return;
-          }
           setQuote(null);
-          setError(nextError instanceof ApiError ? nextError.message : t.auth.error);
+          setQuoteError(error instanceof ApiError ? error.message : t.auth.error);
         })
         .finally(() => {
           if (!controller.signal.aborted) setQuoteLoading(false);
         });
-    }, 350);
+    }, 250);
 
     return () => {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [quoteRequest, quoteRequestKey, t.auth.error]);
+  }, [quoteKey, quoteRequest, t.auth.error]);
 
-  const fg = '#000';
-  const bg = '#fff';
-  const sub = 'rgba(0,0,0,0.55)';
-  const surf = '#F5F5F5';
-  const border = 'rgba(0,0,0,0.08)';
-
-  const rentalDays = Math.max(
-    1,
-    Math.ceil((new Date(endDateTime).getTime() - new Date(startDateTime).getTime()) / (1000 * 60 * 60 * 24))
-  );
-
-  const summary = {
-    rentalDays: quote?.rental_days || rentalDays,
-    base: Number(quote?.base_price || fallbackPrice * rentalDays),
-    addons: Number(quote?.add_ons_price || 0),
-    delivery: selectedZone ? (selectedZone.freeDelivery ? 0 : Number(selectedZone.deliveryFeeUSD || 0)) : Number(quote?.delivery_price || 0),
-    discount: Number(quote?.discount_amount || 0),
-    markup: Number(quote?.markup_amount || 0),
-  };
-  const summaryTotal = Math.max(0, summary.base + summary.addons + summary.delivery - summary.discount + summary.markup);
-
-  const selectedAddOns = useMemo(
-    () => availableAddons.filter((addon) => selectedAddOnIds.includes(addon.id)),
-    [availableAddons, selectedAddOnIds]
-  );
-
-  const canContinueStep1 = Boolean(scooterApiId) && dateIsValid;
-  const canContinueStep2 = Boolean(selectedZone) && Boolean(address.trim());
-  const canSubmit = Boolean(scooterApiId) && dateIsValid && quote && !submitting;
-
-  function toggleAddOn(addOnId: number) {
-    setSelectedAddOnIds((current) =>
-      current.includes(addOnId) ? current.filter((value) => value !== addOnId) : [...current, addOnId]
-    );
-  }
-
-  function onCalendarDayClick(day: ApiAvailabilityCalendar['days'][number]) {
-    if (day.status === 'booked' || day.status === 'maintenance') {
-      setError(copy.unavailableDay);
+  function handleContinueToPayment() {
+    if (!quoteRequest || !effectiveScooterId || !quote || quoteError) {
       return;
     }
 
-    setError(null);
-    const clicked = new Date(`${day.date}T12:00:00`);
-    if (calendarMode === 'start') {
-      setStartDate(day.date);
-      if (new Date(`${endDate}T12:00:00`).getTime() <= clicked.getTime()) {
-        setEndDate(toDateInputValue(addDays(clicked, 1)));
-      }
-      setCalendarMode('end');
-    } else {
-      const start = new Date(`${startDate}T12:00:00`);
-      if (clicked.getTime() <= start.getTime()) {
-        setStartDate(day.date);
-        setEndDate(toDateInputValue(addDays(clicked, 1)));
-      } else {
-        setEndDate(day.date);
-      }
-      setCalendarMode('start');
-    }
+    bookingDraftStore.set({
+      scooter_id: effectiveScooterId,
+      route_id: routeId || undefined,
+      name: scooter?.title || initialName,
+      image: scooter?.main_image ? mediaUrl(scooter.main_image) : null,
+      currency: quote.currency || 'USD',
+      start_datetime: quoteRequest.start_datetime,
+      end_datetime: quoteRequest.end_datetime,
+      delivery_time: quoteRequest.delivery_time,
+      delivery_address: quoteRequest.delivery_address,
+      add_on_ids: quoteRequest.add_on_ids,
+      promo_code: quoteRequest.promo_code,
+    });
+
+    const paymentQuery = new URLSearchParams({
+      scooter_id: String(effectiveScooterId),
+      name: scooter?.title || initialName,
+      step: '3',
+    });
+
+    if (routeId) paymentQuery.set('route_id', routeId);
+    router.push(`/payment?${paymentQuery.toString()}`);
   }
 
-  async function submitBooking() {
-    if (!scooterApiId) {
-      setError(copy.noScooter);
-      return;
-    }
-    if (!dateIsValid) {
-      setError('Return date must be after pickup date.');
-      return;
-    }
+  const displayName = scooter?.title || initialName;
+  const displayImage = scooter?.main_image ? mediaUrl(scooter.main_image) : null;
+  const displayStatus = scooter?.status || 'available';
+  const currency = quote?.currency || 'USD';
+  const baseTotal = Number(quote?.base_price || initialPrice || 0);
+  const addonsTotal = Number(quote?.add_ons_price || 0);
+  const deliveryTotal = Number(quote?.delivery_price || 0);
+  const grandTotal = Number(quote?.total_price || baseTotal + addonsTotal + deliveryTotal);
+  const rentalDays = Number(quote?.rental_days || 0);
 
-    setError(null);
-    setSubmitting(true);
-    try {
-      const base: BookingCreatePayload = {
-        scooter_id: scooterApiId,
-        start_datetime: startDateTime,
-        end_datetime: endDateTime,
-        delivery_address: address || undefined,
-        delivery_latitude: selectedZone?.latitude || undefined,
-        delivery_longitude: selectedZone?.longitude || undefined,
-        add_on_ids: selectedAddOnIds.length ? selectedAddOnIds : undefined,
-        promo_code: promoCode.trim() || undefined,
-        payment_method: toApiPaymentMethod(pm),
-        currency: 'USD',
-      };
+  const addonsSubtotal = useMemo(() => {
+    return selectedAddOnIds.reduce((sum, id) => {
+      const found = addons.find((a) => a.id === id);
+      return sum + (found?.price || 0);
+    }, 0);
+  }, [addons, selectedAddOnIds]);
 
-      let bookingId: number;
-      if (user) {
-        const booking = await endpoints.createBooking(base, locale);
-        bookingId = booking.id;
-      } else {
-        if (!guestEmail || !guestName) {
-          setError(`${t.booking.guestEmail} / ${t.booking.guestName}`);
-          setSubmitting(false);
-          return;
-        }
-        const response = await endpoints.guestCreateBooking({
-          ...base,
-          guest_email: guestEmail,
-          guest_full_name: guestName,
-          guest_phone: guestPhone || undefined,
-          language: locale,
-        } as GuestBookingPayload, locale);
-        if (response.auth?.access && response.auth?.refresh) {
-          tokens.set({ access: response.auth.access, refresh: response.auth.refresh });
-          await refresh();
-        }
-        bookingId = response.booking.id;
-      }
-
-      router.push(`/payment?booking_id=${bookingId}&name=${encodeURIComponent(scooterName)}&payment=${pm}`);
-    } catch (nextError) {
-      setError(nextError instanceof ApiError ? nextError.message : t.auth.error);
-      setSubmitting(false);
-    }
-  }
-
-  const calendarDays = availability?.days || [];
-  const firstWeekday = calendarDays.length ? new Date(`${calendarDays[0].date}T12:00:00`).getDay() : 0;
-  const rangeStart = new Date(`${startDate}T12:00:00`).getTime();
-  const rangeEnd = new Date(`${endDate}T12:00:00`).getTime();
+  const canConfirmDates = Boolean(quote && !quoteLoading && !quoteError && isDateRangeValid);
 
   return (
-    <div style={{ background: bg, color: fg, minHeight: '100vh' }}>
+    <div style={{ minHeight: '100vh', background: '#fff', color: '#000' }}>
       <SiteHeader />
-      <div className="br-booking-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', borderBottom: `1px solid ${border}`, gap: 16, flexWrap: 'wrap' }}>
-        <div className="br-mono" style={{ fontSize: 11, color: sub, letterSpacing: '0.12em' }}>BOOKING · {scooterSlug.toUpperCase()}</div>
-        <div className="br-booking-steps" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          {[1, 2, 3].map((n) => (
-            <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 10, height: 10, borderRadius: 999, background: step >= n ? '#FFD700' : '#E6E6E6' }} />
-              <span className="br-mono" style={{ fontSize: 11, letterSpacing: '0.1em', color: step === n ? fg : sub }}>
-                {['DATES', 'DELIVERY', 'PAYMENT'][n - 1]}
-              </span>
-              {n < 3 && <div style={{ width: 24, height: 1, background: border, marginLeft: 8 }} />}
-            </div>
-          ))}
-        </div>
-        <button onClick={() => setStep(Math.max(1, step - 1))} className="br-mono" style={{ background: 'transparent', border: `1px solid ${border}`, color: fg, padding: '8px 14px', borderRadius: 999, fontSize: 11, cursor: 'pointer' }}>{t.booking.back}</button>
-      </div>
 
-      <div className="br-booking-shell" style={{ gridTemplateColumns: 'minmax(0, 1fr) 430px', gap: 0 }}>
-          <div className="br-booking-main" style={{ padding: '56px 56px 64px' }}>
-          <BREyebrow>{tr(t.booking.step, { n: step })}</BREyebrow>
-          <h1 className="br-display" style={{ fontSize: 'clamp(40px, 6vw, 64px)', lineHeight: 0.98, margin: '12px 0 16px', letterSpacing: '-0.03em' }}>
-            {step === 1 && t.booking.s1Title}
-            {step === 2 && t.booking.s2Title}
-            {step === 3 && t.booking.s3Title}
-          </h1>
-          <p style={{ color: sub, maxWidth: 720, fontSize: 15, lineHeight: 1.6, margin: '0 0 24px' }}>
-            {step === 1 && copy.calendarHint}
-            {step === 2 && `${copy.selectZone}. ${copy.eta}: ${selectedZone?.timeMinutes || 30} min.`}
-            {step === 3 && (pm === 'cash' ? copy.secureCash : pm === 'crypto' ? copy.secureCrypto : copy.secureCard)}
-          </p>
+      <section style={{ padding: '56px 48px 28px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+        <BREyebrow>{copy.pageEyebrow}</BREyebrow>
+        <h1 className="br-display" style={{ fontSize: 'clamp(40px, 7vw, 76px)', lineHeight: 0.94, letterSpacing: '-0.04em', margin: '12px 0 14px' }}>
+          {copy.pageTitle}
+        </h1>
+        <p style={{ margin: 0, maxWidth: 760, color: 'rgba(0,0,0,0.62)', lineHeight: 1.65 }}>
+          {copy.pageDesc}
+        </p>
+      </section>
 
-          {step === 1 && (
-            <div style={{ display: 'grid', gap: 24 }}>
-              <div style={{ background: surf, borderRadius: 22, padding: 22, border: `1px solid ${border}` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <div>
-                    <div className="br-display" style={{ fontSize: 28 }}>{copy.calendar}</div>
-                    <div className="br-mono" style={{ marginTop: 6, fontSize: 11, color: sub, letterSpacing: '0.12em' }}>
-                      {copy.selectedRange}: {formatDateRange(startDate, endDate, locale)}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <button onClick={() => setVisibleMonth(shiftMonth(visibleMonth, -1))} className="br-mono" style={{ border: `1px solid ${border}`, background: '#fff', borderRadius: 999, padding: '8px 12px', cursor: 'pointer' }}>←</button>
-                    <div className="br-mono" style={{ padding: '8px 12px', borderRadius: 999, background: '#fff', border: `1px solid ${border}`, minWidth: 190, textAlign: 'center' }}>
-                      {formatMonth(visibleMonth, locale)}
-                    </div>
-                    <button onClick={() => setVisibleMonth(shiftMonth(visibleMonth, 1))} className="br-mono" style={{ border: `1px solid ${border}`, background: '#fff', borderRadius: 999, padding: '8px 12px', cursor: 'pointer' }}>→</button>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 18 }}>
-                  {[
-                    ['start', copy.pickStart],
-                    ['end', copy.pickEnd],
-                  ].map(([value, label]) => (
-                    <button
-                      key={value}
-                      onClick={() => setCalendarMode(value as 'start' | 'end')}
-                      className="br-mono"
-                      style={{
-                        padding: '10px 14px',
-                        borderRadius: 999,
-                        border: `1px solid ${calendarMode === value ? '#FFD700' : border}`,
-                        background: calendarMode === value ? '#FFF6CC' : '#fff',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-
-                <div style={{ marginTop: 18 }}>
-                  <div className="br-calendar-grid">
-                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((label) => (
-                      <div key={label} className="br-mono" style={{ fontSize: 11, color: sub, padding: '0 2px 6px', letterSpacing: '0.08em' }}>{label}</div>
-                    ))}
-                    {Array.from({ length: firstWeekday }).map((_, index) => (
-                      <div key={`blank-${index}`} />
-                    ))}
-                    {availabilityLoading && !calendarDays.length ? (
-                      Array.from({ length: 28 }).map((_, index) => (
-                        <div key={`loading-${index}`} className="br-calendar-day br-skeleton" />
-                      ))
+      <section style={{ padding: '32px 48px 88px' }}>
+        <div className="br-booking-payment-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 420px', gap: 24, alignItems: 'start' }}>
+          <div style={{ display: 'grid', gap: 24 }}>
+            <div style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
+              <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
+                {copy.selectedScooter}
+              </div>
+              {loadingScooter ? (
+                <div className="br-mono" style={{ marginTop: 16, color: 'rgba(0,0,0,0.55)' }}>{t.common.loading}</div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: '160px minmax(0, 1fr)', gap: 18, marginTop: 16 }}>
+                  <div style={{ borderRadius: 16, background: '#F5F5F5', minHeight: 120, overflow: 'hidden', display: 'grid', placeItems: 'center' }}>
+                    {displayImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={displayImage} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 12 }} />
                     ) : (
-                      calendarDays.map((day) => {
-                        const tone = statusTone(day.status);
-                        const dayTs = new Date(`${day.date}T12:00:00`).getTime();
-                        const inRange = dayTs >= rangeStart && dayTs <= rangeEnd;
-                        const isStart = day.date === startDate;
-                        const isEnd = day.date === endDate;
-                        return (
-                          <button
-                            key={day.date}
-                            onClick={() => onCalendarDayClick(day)}
-                            className="br-calendar-day"
-                            style={{
-                              borderRadius: 16,
-                              border: `1px solid ${inRange ? '#FFD700' : tone.border}`,
-                              background: inRange ? '#FFF6CC' : tone.bg,
-                              color: tone.fg,
-                              padding: 10,
-                              textAlign: 'left',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.08em' }}>{day.date.slice(-2)}</div>
-                            <div style={{ marginTop: 10, fontSize: 13, fontWeight: 600 }}>
-                              {day.status === 'partially_booked' ? copy.partial : day.status === 'maintenance' ? copy.maintenance : day.status === 'booked' ? copy.booked : copy.available}
-                            </div>
-                            {(isStart || isEnd) && (
-                              <div className="br-mono" style={{ marginTop: 10, fontSize: 10, color: '#000' }}>
-                                {isStart ? copy.pickStart : copy.pickEnd}
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })
+                      <div className="br-mono" style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>{copy.photo}</div>
                     )}
                   </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
-                  {[
-                    { label: copy.available, tone: statusTone('available') },
-                    { label: copy.partial, tone: statusTone('partially_booked') },
-                    { label: copy.booked, tone: statusTone('booked') },
-                    { label: copy.maintenance, tone: statusTone('maintenance') },
-                  ].map(({ label, tone }) => (
-                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 999, background: tone.bg, border: `1px solid ${tone.border}` }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: tone.fg, display: 'inline-block' }} />
-                      <span className="br-mono" style={{ fontSize: 11, color: tone.fg }}>{label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="br-booking-payment-grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
-                <div className="br-field">
-                  <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} style={{ background: bg, color: fg, borderColor: border }} />
-                  <label>{t.booking.pickUp}</label>
-                </div>
-                <div className="br-field">
-                  <input type="date" value={endDate} min={startDate} onChange={(event) => setEndDate(event.target.value)} style={{ background: bg, color: fg, borderColor: border }} />
-                  <label>{t.booking.return}</label>
-                </div>
-                <div className="br-field">
-                  <input type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} style={{ background: bg, color: fg, borderColor: border }} />
-                  <label>{copy.startTime}</label>
-                </div>
-                <div className="br-field">
-                  <input type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} style={{ background: bg, color: fg, borderColor: border }} />
-                  <label>{copy.endTime}</label>
-                </div>
-              </div>
-
-              <div>
-                <div className="br-display" style={{ fontSize: 28, marginBottom: 12 }}>{copy.extras}</div>
-                <div className="br-booking-zone-grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
-                  {availableAddons.map((addon) => {
-                    const selected = selectedAddOnIds.includes(addon.id);
-                    return (
-                      <button
-                        key={addon.id}
-                        onClick={() => toggleAddOn(addon.id)}
-                        style={{
-                          textAlign: 'left',
-                          padding: 16,
-                          borderRadius: 16,
-                          border: `1px solid ${selected ? '#FFD700' : border}`,
-                          background: selected ? '#FFF9DD' : '#fff',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                          <div className="br-display" style={{ fontSize: 20 }}>{addon.name}</div>
-                          {selected && <BRChip status="confirmed" />}
-                        </div>
-                        <div className="br-mono" style={{ marginTop: 8, fontSize: 11, color: sub }}>${addon.price.toFixed(2)}/{t.common.day}</div>
-                        {addon.description && <div style={{ marginTop: 8, fontSize: 13, color: sub, lineHeight: 1.5 }}>{addon.description}</div>}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div style={{ display: 'grid', gap: 18 }}>
-              <div>
-                <div className="br-mono" style={{ fontSize: 11, color: sub, letterSpacing: '0.12em', marginBottom: 12 }}>{copy.selectZone}</div>
-                <div className="br-booking-zone-grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
-                  {zones.map((zone) => (
-                    <button
-                      key={zone.id}
-                      onClick={() => setZoneId(zone.id)}
-                      style={{
-                        textAlign: 'left',
-                        padding: 16,
-                        borderRadius: 16,
-                        border: `1px solid ${zoneId === zone.id ? '#FFD700' : border}`,
-                        background: zoneId === zone.id ? '#FFF9DD' : '#fff',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <div className="br-display" style={{ fontSize: 22 }}>{zone.name}</div>
-                      <div className="br-mono" style={{ fontSize: 11, color: sub, marginTop: 6 }}>
-                        {zone.freeDelivery ? t.payment.free : `$${zone.deliveryFeeUSD.toFixed(2)}`} · {zone.timeMinutes} min
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                      <div className="br-display" style={{ fontSize: 28, lineHeight: 1 }}>
+                        {displayName}
                       </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="br-field">
-                <input value={address} onChange={(event) => setAddress(event.target.value)} style={{ background: '#fff', color: fg, borderColor: border }} />
-                <label>{t.booking.address}</label>
-              </div>
-
-              <div style={{ position: 'relative', height: 280, borderRadius: 16, overflow: 'hidden', border: `1px solid ${border}` }}>
-                <BRPhoto tone="ocean" label="MAP · DELIVERY ZONE" style={{ height: '100%' }} />
-                <div style={{ position: 'absolute', bottom: 12, left: 12, background: '#000', color: '#fff', padding: '8px 12px', borderRadius: 8, fontFamily: 'var(--br-mono)', fontSize: 11 }}>
-                  {selectedZone ? `${selectedZone.name} · ${copy.eta}: ${selectedZone.timeMinutes} min` : copy.selectZone}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div style={{ display: 'grid', gap: 18 }}>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {(['card', 'cash', 'crypto'] as const).map((value) => (
-                  <button key={value} onClick={() => setPm(value)} className="br-mono" style={{
-                    padding: '12px 20px', borderRadius: 999,
-                    border: `1px solid ${pm === value ? '#FFD700' : border}`,
-                    background: pm === value ? '#FFD700' : 'transparent',
-                    color: pm === value ? '#000' : fg,
-                    cursor: 'pointer', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase'
-                  }}>
-                    {value === 'card' && '◫ '}{value === 'cash' && '$ '}{value === 'crypto' && '◇ '}{value}
-                  </button>
-                ))}
-              </div>
-
-              {!user && (
-                <div style={{ display: 'grid', gap: 12 }}>
-                  <div className="br-field">
-                    <input value={guestEmail} onChange={(event) => setGuestEmail(event.target.value)} type="email" required style={{ background: bg, color: fg, borderColor: border }} />
-                    <label>{t.booking.guestEmail}</label>
-                  </div>
-                  <div className="br-booking-payment-grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
-                    <div className="br-field">
-                      <input value={guestName} onChange={(event) => setGuestName(event.target.value)} required style={{ background: bg, color: fg, borderColor: border }} />
-                      <label>{t.booking.guestName}</label>
+                      <BRChip status={displayStatus} />
                     </div>
-                    <div className="br-field">
-                      <input value={guestPhone} onChange={(event) => setGuestPhone(event.target.value)} style={{ background: bg, color: fg, borderColor: border }} />
-                      <label>{t.booking.guestPhone}</label>
+                    <div style={{ marginTop: 10, color: 'rgba(0,0,0,0.58)', fontSize: 14, lineHeight: 1.55 }}>
+                      {scooter?.type || t.nav.book}
+                      {scooter?.engine_capacity ? ` · ${scooter.engine_capacity}cc` : ''}
+                    </div>
+                    <div style={{ marginTop: 14 }}>
+                      <Link href={routeId ? `/scooter/${routeId}` : '/catalog'} className="br-mono" style={{ color: '#000', fontSize: 12 }}>
+                        {copy.changeScooter}
+                      </Link>
                     </div>
                   </div>
                 </div>
               )}
+              {loadError ? <div className="br-mono" style={{ marginTop: 16, color: '#B91C1C' }}>{loadError}</div> : null}
+            </div>
 
-              <div className="br-field">
-                <input value={promoCode} onChange={(event) => setPromoCode(event.target.value)} style={{ background: bg, color: fg, borderColor: border }} />
-                <label>{copy.promo}</label>
+            <AvailabilityCalendarBlock
+              scooterId={effectiveScooterId}
+              locale={locale}
+              copy={copy}
+              startDateKey={startDateKey}
+              endDateKey={endDateKey}
+              onPick={(start, end) => {
+                setStartDateKey(start);
+                setEndDateKey(end);
+              }}
+            />
+
+            <div style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
+              <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
+                {copy.timeTitle}
               </div>
-
-              <div style={{ background: surf, borderRadius: 18, border: `1px solid ${border}`, padding: 18 }}>
-                <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.12em', color: sub }}>{copy.availability}</div>
-                <div style={{ marginTop: 10, fontSize: 15, lineHeight: 1.6 }}>
-                  {pm === 'cash' ? copy.secureCash : pm === 'crypto' ? copy.secureCrypto : copy.secureCard}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14, marginTop: 18 }}>
+                <Field label={copy.startTime}>
+                  <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} style={inputStyle} />
+                </Field>
+                <Field label={copy.endTime}>
+                  <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} style={inputStyle} />
+                </Field>
+              </div>
+              {startDateKey && endDateKey && !isDateRangeValid ? (
+                <div className="br-mono" style={{ marginTop: 14, color: '#B91C1C', fontSize: 12 }}>
+                  {copy.invalidRange}
                 </div>
-              </div>
+              ) : null}
+            </div>
 
-              <div className="br-mono" style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: 11, color: sub, letterSpacing: '0.1em', flexWrap: 'wrap' }}>
-                <span>{t.booking.secure}</span>
-                <span>{t.booking.pci}</span>
-                <span>{t.booking.cancel24}</span>
+            <div style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
+              <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
+                {copy.addressTitle}
+              </div>
+              <div style={{ display: 'grid', gap: 14, marginTop: 18 }}>
+                <Field label={copy.addressLabel}>
+                  <textarea
+                    value={deliveryAddress}
+                    onChange={(e) => setDeliveryAddress(e.target.value)}
+                    rows={3}
+                    placeholder={copy.addressPlaceholder}
+                    style={{ ...inputStyle, resize: 'vertical', minHeight: 96 }}
+                  />
+                </Field>
+                <Field label={copy.promoCode}>
+                  <input value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())} placeholder={copy.optional} style={inputStyle} />
+                </Field>
               </div>
             </div>
-          )}
 
-          {error && <div className="br-mono" style={{ marginTop: 20, color: '#B91C1C', fontSize: 13 }}>{error}</div>}
+            <div style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
+              <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
+                {copy.addonsTitle}
+              </div>
+              <p style={{ margin: '12px 0 0', color: 'rgba(0,0,0,0.62)', lineHeight: 1.55 }}>
+                {copy.addonsHelp}
+              </p>
+              {addons.length > 0 ? (
+                <div style={{ display: 'grid', gap: 10, marginTop: 18 }}>
+                  {addons.map((addon) => {
+                    const selected = selectedAddOnIds.includes(addon.id);
+                    return (
+                      <button
+                        key={addon.id}
+                        type="button"
+                        onClick={() =>
+                          setSelectedAddOnIds((current) =>
+                            current.includes(addon.id)
+                              ? current.filter((item) => item !== addon.id)
+                              : [...current, addon.id]
+                          )
+                        }
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          gap: 12,
+                          width: '100%',
+                          textAlign: 'left',
+                          padding: '14px 16px',
+                          borderRadius: 14,
+                          border: selected ? '1px solid #FFD700' : '1px solid rgba(0,0,0,0.08)',
+                          background: selected ? 'rgba(255,215,0,0.16)' : '#F5F5F5',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <span>{addon.name}</span>
+                        <span className="br-mono">${addon.price.toFixed(2)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="br-mono" style={{ marginTop: 16, color: 'rgba(0,0,0,0.55)', fontSize: 12 }}>
+                  {copy.addonsUnavailable}
+                </div>
+              )}
+            </div>
+          </div>
 
-          <div style={{ display: 'flex', gap: 12, marginTop: 40, flexWrap: 'wrap' }}>
-            {step > 1 && <BROutline onClick={() => setStep(step - 1)}>{t.booking.back}</BROutline>}
-            {step === 1 && <BRPrimary onClick={() => setStep(2)} disabled={!canContinueStep1}>{t.booking.cont}</BRPrimary>}
-            {step === 2 && <BRPrimary onClick={() => setStep(3)} disabled={!canContinueStep2}>{t.booking.cont}</BRPrimary>}
-            {step === 3 && (
-              <BRPrimary onClick={submitBooking} disabled={!canSubmit}>
-                {submitting ? t.booking.submitting : `${t.booking.confirm} $${summaryTotal.toFixed(2)} →`}
+          <aside style={{ position: 'sticky', top: 90, display: 'grid', gap: 18 }}>
+            <div style={{ borderRadius: 22, background: '#F5F5F5', padding: 24 }}>
+              <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
+                {copy.summaryTitle}
+              </div>
+              <div className="br-display" style={{ marginTop: 12, fontSize: 28, lineHeight: 1 }}>
+                {displayName}
+              </div>
+              <div style={{ marginTop: 10, color: 'rgba(0,0,0,0.58)', lineHeight: 1.55 }}>
+                {startDateKey && endDateKey
+                  ? `${startDateKey} ${startTime} — ${endDateKey} ${endTime}`
+                  : copy.pickDates}
+              </div>
+              <div style={{ marginTop: 8, color: 'rgba(0,0,0,0.58)', lineHeight: 1.55 }}>
+                {rentalDays ? `${rentalDays} ${t.common.day}` : copy.datesNotSelected}
+              </div>
+              <div style={{ marginTop: 8, color: 'rgba(0,0,0,0.58)', lineHeight: 1.55 }}>
+                {selectedAddOnIds.length
+                  ? copy.selectedAddons.replace('{n}', String(selectedAddOnIds.length)).replace('{amount}', addonsSubtotal.toFixed(2))
+                  : copy.noOptions}
+              </div>
+
+              <div style={{ display: 'grid', gap: 10, marginTop: 22 }}>
+                <PriceRow label={copy.base} value={`${currency} ${baseTotal.toFixed(2)}`} />
+                <PriceRow label={copy.addons} value={`${currency} ${addonsTotal.toFixed(2)}`} />
+                <PriceRow label={copy.delivery} value={`${currency} ${deliveryTotal.toFixed(2)}`} />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+                <span className="br-display" style={{ fontSize: 20 }}>{copy.estimatedTotal}</span>
+                <span className="br-mono" style={{ fontSize: 28, fontWeight: 700 }}>{currency} {grandTotal.toFixed(2)}</span>
+              </div>
+
+              {quoteLoading ? <div className="br-mono" style={{ marginTop: 16, color: 'rgba(0,0,0,0.55)' }}>{t.common.loading}</div> : null}
+              {quoteError ? <div className="br-mono" style={{ marginTop: 16, color: '#B91C1C' }}>{quoteError}</div> : null}
+
+              <BRPrimary onClick={handleContinueToPayment} disabled={!canConfirmDates} full style={{ marginTop: 22 }}>
+                {copy.continueToPayment}
               </BRPrimary>
-            )}
-          </div>
-        </div>
 
-        <div className="br-booking-side" style={{ background: surf, padding: 32, borderLeft: `1px solid ${border}` }}>
-          {scooterImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={scooterImage} alt={scooterName} style={{ width: '100%', height: 220, objectFit: 'cover', borderRadius: 14 }} />
-          ) : (
-            <BRPhoto tone="sand" label={scooterSlug.toUpperCase()} style={{ height: 220, borderRadius: 14 }} />
-          )}
-          <div style={{ marginTop: 18 }}>
-            <div className="br-display" style={{ fontSize: 28, marginTop: 4 }}>{scooterName}</div>
-            <div className="br-mono" style={{ fontSize: 12, color: sub, marginTop: 6 }}>
-              {startDate} {startTime} → {endDate} {endTime}
+              <div style={{ marginTop: 14, color: 'rgba(0,0,0,0.58)', fontSize: 13, lineHeight: 1.55 }}>
+                {copy.nextStepHint}
+              </div>
             </div>
-          </div>
-
-          <div style={{ marginTop: 24, paddingTop: 24, borderTop: `1px solid ${border}` }}>
-            <BREyebrow>{copy.preview}</BREyebrow>
-            {quoteLoading ? (
-              <div className="br-mono" style={{ marginTop: 14, color: sub }}>{t.common.loading}</div>
-            ) : (
-              <>
-                {[
-                  [tr(t.booking.summary.days, { n: summary.rentalDays, p: (summary.base / Math.max(summary.rentalDays, 1)).toFixed(2) }), `$${summary.base.toFixed(2)}`],
-                  [copy.extras, selectedAddOns.length ? selectedAddOns.map((addon) => addon.name).join(', ') : '—'],
-                  [t.booking.summary.delivery, summary.delivery === 0 ? t.booking.summary.free : `$${summary.delivery.toFixed(2)}`],
-                  [copy.searchPickup, selectedZone?.name || '—'],
-                  [copy.availability, dateIsValid ? copy.available : '—'],
-                ].map(([label, value], index) => (
-                  <div key={index} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '8px 0', fontSize: 13, fontFamily: 'var(--br-mono)' }}>
-                    <span style={{ color: sub }}>{label}</span>
-                    <span style={{ textAlign: 'right' }}>{value}</span>
-                  </div>
-                ))}
-              </>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 16, paddingTop: 16, borderTop: `1px solid ${border}` }}>
-              <span className="br-display" style={{ fontSize: 18 }}>{copy.summary}</span>
-              <span style={{ background: '#FFD700', color: '#000', padding: '6px 14px', borderRadius: 999, fontFamily: 'var(--br-mono)', fontSize: 22, fontWeight: 600 }}>${summaryTotal.toFixed(2)}</span>
-            </div>
-            <Link href={`/scooter/${routeId}`} className="br-mono" style={{ display: 'block', textAlign: 'center', marginTop: 16, fontSize: 11, color: sub, letterSpacing: '0.12em' }}>{t.booking.summary.changeBike}</Link>
-          </div>
+          </aside>
         </div>
-      </div>
+      </section>
+
       <SiteFooter />
     </div>
   );
 }
+
+type CalendarMonth = {
+  year: number;
+  month: number;
+  data: ApiAvailabilityCalendar | null;
+};
+
+function AvailabilityCalendarBlock({
+  scooterId,
+  locale,
+  copy,
+  startDateKey,
+  endDateKey,
+  onPick,
+}: {
+  scooterId: number | null;
+  locale: string;
+  copy: BookingCopy;
+  startDateKey: string;
+  endDateKey: string;
+  onPick: (start: string, end: string) => void;
+}) {
+  const { t } = useLocale();
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  const [cursor, setCursor] = useState({ year: today.getFullYear(), month: today.getMonth() });
+  const [calendars, setCalendars] = useState<CalendarMonth[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const monthsToShow = useMemo(() => {
+    const second = new Date(cursor.year, cursor.month + 1, 1);
+    return [
+      { year: cursor.year, month: cursor.month },
+      { year: second.getFullYear(), month: second.getMonth() },
+    ];
+  }, [cursor]);
+
+  useEffect(() => {
+    if (!scooterId) return;
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    Promise.all(
+      monthsToShow.map(async (m) => {
+        try {
+          const data = await endpoints.scooterAvailability(scooterId, {
+            year: m.year,
+            month: m.month + 1,
+          });
+          if ('days' in data) return { ...m, data: data as ApiAvailabilityCalendar };
+          return { ...m, data: null };
+        } catch {
+          return { ...m, data: null };
+        }
+      })
+    )
+      .then((result) => {
+        if (cancelled) return;
+        setCalendars(result);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setError(e instanceof ApiError ? e.message : copy.loadAvailabilityFailed);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [copy.loadAvailabilityFailed, monthsToShow, scooterId]);
+
+  const dayStatusMap = useMemo(() => {
+    const map = new Map<string, AvailabilityDayStatus>();
+    for (const cal of calendars) {
+      if (!cal.data) continue;
+      for (const day of cal.data.days) {
+        map.set(day.date, day.status);
+      }
+    }
+    return map;
+  }, [calendars]);
+
+  const handleDayClick = useCallback(
+    (key: string) => {
+      const status = dayStatusMap.get(key) || 'available';
+      if (status !== 'available') return;
+      const dayDate = parseDateKey(key);
+      if (!dayDate || dayDate < today) return;
+
+      if (!startDateKey || (startDateKey && endDateKey)) {
+        onPick(key, '');
+        return;
+      }
+      if (compareKey(key, startDateKey) < 0) {
+        onPick(key, '');
+        return;
+      }
+      // Validate that range has no booked days
+      const start = parseDateKey(startDateKey);
+      const end = parseDateKey(key);
+      if (!start || !end) return;
+      const cursorD = new Date(start);
+      while (cursorD <= end) {
+        const k = formatDateKey(cursorD.getFullYear(), cursorD.getMonth(), cursorD.getDate());
+        const s = dayStatusMap.get(k) || 'available';
+        if (s !== 'available') {
+          onPick(key, '');
+          return;
+        }
+        cursorD.setDate(cursorD.getDate() + 1);
+      }
+      onPick(startDateKey, key);
+    },
+    [dayStatusMap, endDateKey, onPick, startDateKey, today]
+  );
+
+  function shiftMonth(delta: number) {
+    const next = new Date(cursor.year, cursor.month + delta, 1);
+    const minDate = new Date(today.getFullYear(), today.getMonth(), 1);
+    if (next < minDate) return;
+    setCursor({ year: next.getFullYear(), month: next.getMonth() });
+  }
+
+  return (
+    <div style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
+          {copy.calendarTitle}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button type="button" onClick={() => shiftMonth(-1)} className="br-mono" style={navButtonStyle}>←</button>
+          <button type="button" onClick={() => shiftMonth(1)} className="br-mono" style={navButtonStyle}>→</button>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 16, marginTop: 14, color: 'rgba(0,0,0,0.62)', fontSize: 12 }}>
+        <Legend color="#16A34A" label={copy.legendAvailable} />
+        <Legend color="#DC2626" label={copy.legendBooked} />
+        <Legend color="#FFD700" label={copy.legendSelected} />
+      </div>
+
+      {loading && <div className="br-mono" style={{ marginTop: 14, color: 'rgba(0,0,0,0.55)', fontSize: 12 }}>{t.common.loading}</div>}
+      {error && <div className="br-mono" style={{ marginTop: 14, color: '#B91C1C', fontSize: 12 }}>{error}</div>}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 18, marginTop: 18 }}>
+        {monthsToShow.map((m) => (
+          <MonthGrid
+            key={`${m.year}-${m.month}`}
+            year={m.year}
+            month={m.month}
+            locale={locale}
+            weekdays={copy.weekdays}
+            today={today}
+            startDateKey={startDateKey}
+            endDateKey={endDateKey}
+            statusMap={dayStatusMap}
+            onPick={handleDayClick}
+          />
+        ))}
+      </div>
+
+      {startDateKey && !endDateKey ? (
+        <div className="br-mono" style={{ marginTop: 14, color: 'rgba(0,0,0,0.62)', fontSize: 12 }}>
+          {copy.pickEndDate.replace('{date}', startDateKey)}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MonthGrid({
+  year,
+  month,
+  locale,
+  weekdays,
+  today,
+  startDateKey,
+  endDateKey,
+  statusMap,
+  onPick,
+}: {
+  year: number;
+  month: number;
+  locale: string;
+  weekdays: readonly string[];
+  today: Date;
+  startDateKey: string;
+  endDateKey: string;
+  statusMap: Map<string, AvailabilityDayStatus>;
+  onPick: (key: string) => void;
+}) {
+  const firstDay = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const offset = (firstDay.getDay() + 6) % 7; // Monday = 0
+
+  const monthLabel = firstDay.toLocaleString(locale, { month: 'long', year: 'numeric' });
+  const cells: Array<{ day: number; key: string } | null> = [];
+  for (let i = 0; i < offset; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push({ day: d, key: formatDateKey(year, month, d) });
+  }
+
+  return (
+    <div>
+      <div className="br-mono" style={{ fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.62)' }}>
+        {monthLabel}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginTop: 10, fontSize: 11 }}>
+        {weekdays.map((d, i) => (
+          <div key={i} className="br-mono" style={{ textAlign: 'center', color: 'rgba(0,0,0,0.45)', padding: '4px 0' }}>
+            {d}
+          </div>
+        ))}
+        {cells.map((cell, idx) => {
+          if (!cell) return <div key={idx} />;
+          const dayDate = new Date(year, month, cell.day);
+          const isPast = dayDate < today;
+          const status = statusMap.get(cell.key) || (isPast ? 'booked' : 'available');
+          const isAvailable = status === 'available' && !isPast;
+          const inRange =
+            startDateKey &&
+            endDateKey &&
+            compareKey(cell.key, startDateKey) >= 0 &&
+            compareKey(cell.key, endDateKey) <= 0;
+          const isStart = cell.key === startDateKey;
+          const isEnd = cell.key === endDateKey;
+          const selected = isStart || isEnd || inRange;
+
+          let bg = '#F5F5F5';
+          let color = 'rgba(0,0,0,0.4)';
+          if (isAvailable) {
+            bg = 'rgba(22,163,74,0.12)';
+            color = '#15803D';
+          }
+          if (status !== 'available' || isPast) {
+            bg = 'rgba(220,38,38,0.12)';
+            color = 'rgba(220,38,38,0.9)';
+          }
+          if (selected) {
+            bg = '#FFD700';
+            color = '#000';
+          }
+
+          return (
+            <button
+              key={cell.key}
+              type="button"
+              disabled={!isAvailable}
+              onClick={() => onPick(cell.key)}
+              style={{
+                aspectRatio: '1 / 1',
+                border: 'none',
+                borderRadius: 8,
+                background: bg,
+                color,
+                cursor: isAvailable ? 'pointer' : 'not-allowed',
+                fontSize: 13,
+                fontFamily: 'var(--br-mono)',
+                fontWeight: selected ? 700 : 500,
+              }}
+              aria-label={`${cell.key} ${status}`}
+            >
+              {cell.day}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Legend({ color, label }: { color: string; label: string }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      <span style={{ width: 10, height: 10, borderRadius: 3, background: color, display: 'inline-block' }} />
+      {label}
+    </span>
+  );
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label style={{ display: 'grid', gap: 8 }}>
+      <span className="br-mono" style={{ fontSize: 11, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.55)' }}>
+        {label.toUpperCase()}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+function PriceRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
+      <span style={{ color: 'rgba(0,0,0,0.58)' }}>{label}</span>
+      <span className="br-mono">{value}</span>
+    </div>
+  );
+}
+
+const inputStyle: CSSProperties = {
+  width: '100%',
+  minHeight: 48,
+  borderRadius: 14,
+  border: '1px solid rgba(0,0,0,0.12)',
+  background: '#fff',
+  padding: '12px 14px',
+  fontSize: 15,
+  color: '#000',
+  outline: 'none',
+};
+
+const navButtonStyle: CSSProperties = {
+  border: '1px solid rgba(0,0,0,0.12)',
+  background: '#fff',
+  width: 32,
+  height: 32,
+  borderRadius: 8,
+  cursor: 'pointer',
+  fontSize: 14,
+};

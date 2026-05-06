@@ -27,12 +27,12 @@ export const BR_SCOOTERS: Scooter[] = [
 export type Addon = { id: string; name: string; price: number; icon: string };
 
 export const BR_ADDONS: Addon[] = [
-  { id: 'helmet2', name: 'Second helmet',   price: 3,  icon: '◐' },
-  { id: 'phone',   name: 'Phone mount',     price: 2,  icon: '▢' },
-  { id: 'lock',    name: 'U-lock',          price: 4,  icon: '⌽' },
-  { id: 'rain',    name: 'Rain gear set',   price: 5,  icon: '☂' },
-  { id: 'box',     name: 'Top box (35L)',   price: 4,  icon: '▭' },
-  { id: 'insure',  name: 'Premium cover',   price: 8,  icon: '✦' },
+  { id: 'helmet2', name: 'Second helmet',   price: 3,  icon: 'helmet' },
+  { id: 'phone',   name: 'Phone mount',     price: 2,  icon: 'phone' },
+  { id: 'lock',    name: 'U-lock',          price: 4,  icon: 'lock' },
+  { id: 'rain',    name: 'Rain gear set',   price: 5,  icon: 'rain' },
+  { id: 'box',     name: 'Top box (35L)',   price: 4,  icon: 'box' },
+  { id: 'insure',  name: 'Premium cover',   price: 8,  icon: 'shield' },
 ];
 
 export const BR_LOCATIONS = ['Canggu', 'Seminyak', 'Ubud', 'Uluwatu', 'Sanur', 'Denpasar Airport'];

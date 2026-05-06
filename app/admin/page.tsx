@@ -110,7 +110,7 @@ export default function AdminPage() {
           {user?.role !== 'admin' ? (
             <div className="br-mono" style={{ padding: 20, color: '#666' }}>{t.admin.needAuth}</div>
           ) : bookings.length === 0 ? (
-            <div className="br-mono" style={{ padding: 20, color: '#666' }}>{loading ? 'Loading…' : '—'}</div>
+            <div className="br-mono" style={{ padding: 20, color: '#666' }}>{loading ? t.common.loading : t.admin.empty}</div>
           ) : (
             bookings.map((booking, i) => (
               <div key={booking.id} className="br-admin-table-row" style={{ display: 'grid', gridTemplateColumns: '110px 1fr 1fr 1fr 90px 130px 50px', padding: '16px 20px', borderBottom: i < bookings.length - 1 ? '1px solid #F0F0F0' : 'none', alignItems: 'center', fontSize: 13 }}>

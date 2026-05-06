@@ -37,7 +37,18 @@ export type ApiScooterDetail = ApiScooter & {
   model_info?: { brand?: string; type_code?: string; type_name?: string };
 };
 
-export type ApiAddon = { id: number; name: string; description?: string; icon?: string; category?: string; price_usd?: string | number; price?: string | number; image?: string };
+export type ApiAddon = {
+  id: number;
+  name: string;
+  description?: string;
+  icon?: string;
+  category?: string;
+  price_usd?: string | number;
+  priceUSD?: string | number;
+  price?: string | number;
+  priceType?: string;
+  image?: string;
+};
 
 export type ApiBooking = {
   id: number;
@@ -205,6 +216,7 @@ export type BookingCreatePayload = {
   scooter_id: number;
   start_datetime: string;
   end_datetime: string;
+  delivery_time?: string;
   delivery_address?: string;
   delivery_latitude?: number;
   delivery_longitude?: number;
