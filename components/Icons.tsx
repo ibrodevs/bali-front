@@ -274,6 +274,134 @@ export function CryptoIcon(props: IconProps) {
   );
 }
 
+export function MenuIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M4 7h16" />
+      <path d="M4 12h16" />
+      <path d="M4 17h16" />
+    </SvgIcon>
+  );
+}
+
+export function CloseIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="m6 6 12 12" />
+      <path d="M18 6 6 18" />
+    </SvgIcon>
+  );
+}
+
+export function OverviewIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M5 19V9" />
+      <path d="M12 19V5" />
+      <path d="M19 19v-7" />
+    </SvgIcon>
+  );
+}
+
+export function ClipboardIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <rect x="6" y="5" width="12" height="15" rx="2" />
+      <path d="M9 5.5h6" />
+      <path d="M9 10h6" />
+      <path d="M9 14h6" />
+    </SvgIcon>
+  );
+}
+
+export function ScooterIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <circle cx="7" cy="17" r="2" />
+      <circle cx="17" cy="17" r="2" />
+      <path d="M9 17h4.5c1.8 0 3.5-1 4.3-2.6L19 12h-5l-2-3H8" />
+      <path d="M10 9h3" />
+    </SvgIcon>
+  );
+}
+
+export function UsersIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <circle cx="9" cy="9" r="2.5" />
+      <circle cx="16" cy="10" r="2" />
+      <path d="M4.5 18a4.5 4.5 0 0 1 9 0" />
+      <path d="M13.5 18a3.5 3.5 0 0 1 5 0" />
+    </SvgIcon>
+  );
+}
+
+export function MessageIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M5 7.5A2.5 2.5 0 0 1 7.5 5h9A2.5 2.5 0 0 1 19 7.5v6A2.5 2.5 0 0 1 16.5 16H11l-4 3v-3H7.5A2.5 2.5 0 0 1 5 13.5Z" />
+    </SvgIcon>
+  );
+}
+
+export function DollarIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M12 3v18" />
+      <path d="M16 7.5c0-1.7-1.8-3-4-3s-4 1.3-4 3 1.2 2.5 4 3 4 1.2 4 3-1.8 3-4 3-4-1.3-4-3" />
+    </SvgIcon>
+  );
+}
+
+export function TagIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M4 10V5h5l8 8-5 5-8-8Z" />
+      <circle cx="8.5" cy="8.5" r="0.8" fill={props.color || 'currentColor'} stroke="none" />
+    </SvgIcon>
+  );
+}
+
+export function DiamondIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="m12 4 6.5 7L12 20 5.5 11Z" />
+      <path d="M8 4h8" />
+      <path d="m10 4-2 7h8l-2-7" />
+    </SvgIcon>
+  );
+}
+
+export function EyeIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M2.5 12s3.5-5 9.5-5 9.5 5 9.5 5-3.5 5-9.5 5-9.5-5-9.5-5Z" />
+      <circle cx="12" cy="12" r="2.5" />
+    </SvgIcon>
+  );
+}
+
+export function ReceiptIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M7 4h10v16l-2-1.5L13 20l-2-1.5L9 20l-2-1.5L5 20V6a2 2 0 0 1 2-2Z" />
+      <path d="M9 9h6" />
+      <path d="M9 13h6" />
+    </SvgIcon>
+  );
+}
+
+export function RefreshIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M20 7v5h-5" />
+      <path d="M4 17v-5h5" />
+      <path d="M7 8a7 7 0 0 1 11-1" />
+      <path d="M17 16a7 7 0 0 1-11 1" />
+    </SvgIcon>
+  );
+}
+
 export function GlobeBadge({
   label,
   size = 18,

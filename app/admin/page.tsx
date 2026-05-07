@@ -4,6 +4,21 @@ import { CSSProperties, ReactNode, useCallback, useEffect, useMemo, useState } f
 import Link from 'next/link';
 import { ApiError, mediaUrl } from '@/lib/api';
 import {
+  ClipboardIcon,
+  CloseIcon,
+  DiamondIcon,
+  DollarIcon,
+  EyeIcon,
+  MenuIcon,
+  MessageIcon,
+  OverviewIcon,
+  ReceiptIcon,
+  RefreshIcon,
+  ScooterIcon,
+  TagIcon,
+  UsersIcon,
+} from '@/components/Icons';
+import {
   ApiAnalyticsFunnel,
   ApiAnalyticsRevenue,
   AdminScooterPayload,
@@ -59,14 +74,14 @@ const A = {
 
 type AdminView = 'overview' | 'bookings' | 'fleet' | 'calendar' | 'crm' | 'analytics' | 'support';
 
-const NAV: { id: AdminView; icon: string; label: string }[] = [
-  { id: 'overview', icon: '📊', label: 'Overview' },
-  { id: 'bookings', icon: '📋', label: 'Bookings' },
-  { id: 'fleet', icon: '🛵', label: 'Fleet' },
-  { id: 'calendar', icon: '📅', label: 'Calendar' },
-  { id: 'crm', icon: '👥', label: 'CRM' },
-  { id: 'analytics', icon: '📈', label: 'Analytics' },
-  { id: 'support', icon: '💬', label: 'Support' },
+const NAV: { id: AdminView; icon: ReactNode; label: string }[] = [
+  { id: 'overview', icon: <OverviewIcon size={18} />, label: 'Overview' },
+  { id: 'bookings', icon: <ClipboardIcon size={18} />, label: 'Bookings' },
+  { id: 'fleet', icon: <ScooterIcon size={18} />, label: 'Fleet' },
+  { id: 'calendar', icon: <ReceiptIcon size={18} />, label: 'Calendar' },
+  { id: 'crm', icon: <UsersIcon size={18} />, label: 'CRM' },
+  { id: 'analytics', icon: <OverviewIcon size={18} />, label: 'Analytics' },
+  { id: 'support', icon: <MessageIcon size={18} />, label: 'Support' },
 ];
 
 type BadgeColor = 'default' | 'gold' | 'green' | 'red' | 'blue' | 'orange';
@@ -192,7 +207,7 @@ function SectionHeader({
   );
 }
 
-function StatCard({ label, value, helper, icon }: { label: string; value: string; helper?: string; icon: string }) {
+function StatCard({ label, value, helper, icon }: { label: string; value: string; helper?: string; icon: ReactNode }) {
   return (
     <div style={{ background: A.white, borderRadius: 14, padding: '22px 24px', border: `1px solid ${A.g200}` }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
@@ -217,7 +232,6 @@ function StatCard({ label, value, helper, icon }: { label: string; value: string
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: 18,
           }}
         >
           {icon}
@@ -310,9 +324,9 @@ function ErrorBanner({ error, onClose }: { error: string | null; onClose?: () =>
         <button
           type="button"
           onClick={onClose}
-          style={{ background: 'transparent', border: 'none', color: A.red, cursor: 'pointer', fontWeight: 700 }}
+          style={{ background: 'transparent', border: 'none', color: A.red, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
         >
-          ✕
+          <CloseIcon size={16} color={A.red} />
         </button>
       ) : null}
     </div>
@@ -778,7 +792,7 @@ export default function AdminPage() {
               background: view === item.id ? 'rgba(255,215,0,0.12)' : 'transparent',
             }}
           >
-            <span style={{ fontSize: 16, filter: view === item.id ? 'none' : 'grayscale(0.5) opacity(0.6)' }}>{item.icon}</span>
+            <span style={{ display: 'inline-flex', color: view === item.id ? A.gold : 'rgba(255,255,255,0.5)' }}>{item.icon}</span>
             <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: view === item.id ? 700 : 400, color: view === item.id ? A.white : 'rgba(255,255,255,0.5)' }}>
               {item.label}
             </span>
@@ -814,10 +828,10 @@ export default function AdminPage() {
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
-            style={{ background: 'transparent', border: 'none', color: A.white, cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '4px 6px' }}
+            style={{ background: 'transparent', border: 'none', color: A.white, cursor: 'pointer', lineHeight: 1, padding: '4px 6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
             aria-label="Menu"
           >
-            ☰
+            <MenuIcon size={20} color={A.white} />
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 22, height: 22, background: A.gold, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -831,10 +845,10 @@ export default function AdminPage() {
             type="button"
             onClick={loadAdminData}
             disabled={loading}
-            style={{ background: 'transparent', border: 'none', color: loading ? 'rgba(255,255,255,0.4)' : A.gold, cursor: loading ? 'not-allowed' : 'pointer', fontSize: 18, padding: '4px 6px' }}
+            style={{ background: 'transparent', border: 'none', color: loading ? 'rgba(255,255,255,0.4)' : A.gold, cursor: loading ? 'not-allowed' : 'pointer', padding: '4px 6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
             aria-label="Refresh"
           >
-            ↻
+            <RefreshIcon size={18} color={loading ? 'rgba(255,255,255,0.4)' : A.gold} />
           </button>
         </div>
 
@@ -849,35 +863,6 @@ export default function AdminPage() {
           ) : (
             viewMap[view]
           )}
-        </div>
-
-        {/* Bottom tab bar */}
-        <div style={{ height: 60, background: A.white, borderTop: `1px solid ${A.g200}`, display: 'flex', alignItems: 'stretch', flexShrink: 0, zIndex: 10 }}>
-          {NAV.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setView(item.id)}
-              style={{
-                flex: 1,
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 2,
-                padding: '6px 2px',
-                borderTop: view === item.id ? `2px solid ${A.gold}` : '2px solid transparent',
-              }}
-            >
-              <span style={{ fontSize: 18, filter: view === item.id ? 'none' : 'grayscale(0.4) opacity(0.5)' }}>{item.icon}</span>
-              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 9, fontWeight: view === item.id ? 700 : 400, color: view === item.id ? A.black : A.g500 }}>
-                {item.label}
-              </span>
-            </button>
-          ))}
         </div>
 
         {/* Slide-in drawer overlay */}
@@ -1029,10 +1014,10 @@ function OverviewView({ data, onOpenView, isMobile }: { data: AdminData; onOpenV
   return (
     <div style={{ overflowY: 'auto', height: '100%', padding: pad }}>
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isMobile ? 10 : 16, marginBottom: isMobile ? 16 : 28 }}>
-        <StatCard label="Revenue" value={formatMoney(revenue.revenue)} helper={`${revenue.bookings_count} paid bookings`} icon="💰" />
-        <StatCard label="Active Bookings" value={String(activeBookings.length)} helper="Current pipeline" icon="📋" />
-        <StatCard label="Fleet Utilization" value={`${utilization}%`} helper={`${scooters.length} vehicles`} icon="🛵" />
-        <StatCard label="Average Booking" value={formatMoney(averageBookingValue)} helper={`${payments.length} payments tracked`} icon="⭐" />
+        <StatCard label="Revenue" value={formatMoney(revenue.revenue)} helper={`${revenue.bookings_count} paid bookings`} icon={<DollarIcon size={18} color={A.g700} />} />
+        <StatCard label="Active Bookings" value={String(activeBookings.length)} helper="Current pipeline" icon={<ClipboardIcon size={18} color={A.g700} />} />
+        <StatCard label="Fleet Utilization" value={`${utilization}%`} helper={`${scooters.length} vehicles`} icon={<ScooterIcon size={18} color={A.g700} />} />
+        <StatCard label="Average Booking" value={formatMoney(averageBookingValue)} helper={`${payments.length} payments tracked`} icon={<DiamondIcon size={18} color={A.g700} />} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.6fr 1fr', gap: isMobile ? 12 : 16, marginBottom: isMobile ? 12 : 28 }}>
@@ -1666,9 +1651,9 @@ function CRMView({
     <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? '16px' : '28px 32px' }}>
       <SectionHeader title="CRM" subtitle="Customer profiles, segments and booking history" />
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
-        <StatCard label="Customers" value={String(customerRows.length)} helper="Client accounts with CRM data or bookings" icon="👥" />
-        <StatCard label="Segmented" value={String(vipCount)} helper="Profiles assigned to a segment" icon="🏷️" />
-        <StatCard label="Average LTV" value={formatMoney(averageLtv)} helper="Derived from bookings" icon="💎" />
+        <StatCard label="Customers" value={String(customerRows.length)} helper="Client accounts with CRM data or bookings" icon={<UsersIcon size={18} color={A.g700} />} />
+        <StatCard label="Segmented" value={String(vipCount)} helper="Profiles assigned to a segment" icon={<TagIcon size={18} color={A.g700} />} />
+        <StatCard label="Average LTV" value={formatMoney(averageLtv)} helper="Derived from bookings" icon={<DiamondIcon size={18} color={A.g700} />} />
       </div>
       {customerRows.length === 0 ? (
         <EmptyState label="No customer records available." />
@@ -1957,19 +1942,19 @@ function AnalyticsView({
     <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? '16px' : '28px 32px' }}>
       <SectionHeader title="Analytics" subtitle={revenue.period || 'Live backend analytics'} />
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isMobile ? 10 : 14, marginBottom: isMobile ? 16 : 24 }}>
-        <StatCard label="Gross Revenue" value={formatMoney(revenue.revenue)} helper={`${revenue.bookings_count} paid bookings`} icon="💰" />
-        <StatCard label="Visitors" value={String(funnel.visitors || 0)} helper="Analytics events" icon="👀" />
+        <StatCard label="Gross Revenue" value={formatMoney(revenue.revenue)} helper={`${revenue.bookings_count} paid bookings`} icon={<DollarIcon size={18} color={A.g700} />} />
+        <StatCard label="Visitors" value={String(funnel.visitors || 0)} helper="Analytics events" icon={<EyeIcon size={18} color={A.g700} />} />
         <StatCard
           label="Checkout Starts"
           value={String(funnel.checkout_started || 0)}
           helper={`${funnel.checkout_conversion_rate || 0}% from visitors`}
-          icon="🧾"
+          icon={<ReceiptIcon size={18} color={A.g700} />}
         />
         <StatCard
           label="Conversion"
           value={`${funnel.conversion_rate || 0}%`}
           helper={`${funnel.bookings_created || 0} bookings created`}
-          icon="📈"
+          icon={<OverviewIcon size={18} color={A.g700} />}
         />
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.4fr 1fr', gap: 16 }}>
