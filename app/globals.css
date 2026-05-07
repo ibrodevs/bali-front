@@ -546,6 +546,86 @@ button, a { -webkit-tap-highlight-color: transparent; }
   min-width: 180px;
 }
 
+.br-admin-textarea {
+  min-height: 120px;
+  padding: 12px 14px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.br-admin-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.br-admin-gallery-item {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #f2f2f2;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+.br-admin-gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.br-admin-gallery-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: #ffd700;
+  color: #111;
+  font-family: var(--br-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.br-admin-gallery-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(0,0,0,0.62);
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.br-admin-gallery-remove:hover {
+  background: #b91c1c;
+}
+
+.br-admin-gallery-remove:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.br-admin-gallery-placeholder {
+  grid-column: 1 / -1;
+  padding: 22px;
+  border: 1px dashed rgba(0,0,0,0.16);
+  border-radius: 14px;
+  color: rgba(0,0,0,0.55);
+  text-align: center;
+  background: rgba(255,255,255,0.5);
+}
+
 .br-admin-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

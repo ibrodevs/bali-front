@@ -43,6 +43,20 @@ export type ApiVehicleModel = {
   rental_terms: string;
 };
 
+export type AdminScooterModelPayload = {
+  name: string;
+  brand: string;
+  type: number;
+  engine_cc: number;
+  transmission: string;
+  fuel_consumption: number | string;
+  year: number;
+  trunk: string;
+  helmets_count: number;
+  description: string;
+  rental_terms: string;
+};
+
 export type ApiScooterDetail = ApiScooter & {
   model?: number;
   sku?: string;
@@ -67,6 +81,7 @@ export type ApiScooterDetail = ApiScooter & {
 
 export type ApiAddon = {
   id: number;
+  code?: string;
   name: string;
   description?: string;
   icon?: string;
@@ -74,8 +89,29 @@ export type ApiAddon = {
   price_usd?: string | number;
   priceUSD?: string | number;
   price?: string | number;
+  price_type?: string;
   priceType?: string;
+  is_active?: boolean;
+  sort_order?: number;
   image?: string;
+};
+
+export type AdminAddonPayload = {
+  code: string;
+  name: string;
+  description: string;
+  price_usd: string | number;
+  price_type: string;
+  is_active: boolean;
+  sort_order: number;
+};
+
+export type ApiScooterImage = {
+  id: number;
+  image: string;
+  alt_text?: string;
+  sort_order?: number;
+  is_main?: boolean;
 };
 
 export type ApiBooking = {
@@ -329,6 +365,53 @@ export type ApiBootstrap = {
   deliveryZones?: Array<{ id: number; name: string; deliveryFeeUSD?: number; deliveryFeeIDR?: number; freeDelivery?: boolean; timeMinutes?: number; latitude?: number; longitude?: number }>;
 };
 
+export type ApiChatMessage = {
+  id: number;
+  thread?: number;
+  text: string;
+  created_at?: string;
+  sender?: {
+    id: number;
+    email: string;
+    full_name?: string;
+    role?: string;
+  } | null;
+};
+
+export type ApiQuickReply = {
+  id: number;
+  title: string;
+  text: string;
+  is_active?: boolean;
+};
+
+export type ApiAuditLog = {
+  id: number;
+  action: string;
+  user_email?: string | null;
+  created_at?: string;
+  content_type?: { app_label?: string; model?: string } | null;
+  changes?: unknown;
+  object_repr?: string;
+};
+
+export type ApiLoginLog = {
+  id: number;
+  user_email?: string | null;
+  is_success: boolean;
+  ip_address?: string;
+  user_agent?: string;
+  created_at?: string;
+};
+
+export type ApiWebhookLog = {
+  id: number;
+  provider: string;
+  status: string;
+  payload?: unknown;
+  created_at?: string;
+};
+
 export type AdminScooterPayload = {
   model: number;
   title: string;
@@ -349,6 +432,8 @@ export const endpoints = {
   scooter: (idOrSlug: string | number, lang?: string) => api<ApiScooterDetail>(`/scooters/${idOrSlug}/`, { lang }),
   scooterTypes: () => api<Paginated<ApiVehicleType> | ApiVehicleType[]>('/scooter-types/'),
   scooterModels: () => api<Paginated<ApiVehicleModel> | ApiVehicleModel[]>('/scooter-models/'),
+  adminCreateScooterModel: (body: AdminScooterModelPayload) =>
+    api<ApiVehicleModel>('/scooter-models/', { method: 'POST', body, auth: true }),
   scooterAvailability: (id: number | string, params: { year?: number; month?: number; start_date?: string; end_date?: string }) =>
     api<ApiAvailabilityCalendar | { vehicle_id: number; start_date: string; end_date: string; is_available: boolean }>(`/scooters/${id}/availability/`, { query: params }),
 
@@ -404,6 +489,17 @@ export const endpoints = {
   profile: () => api<ApiUser>('/profile/', { auth: true }),
   updateProfile: (body: Partial<Pick<ApiUser, 'full_name' | 'phone' | 'country' | 'language' | 'currency'>>) =>
     api<ApiUser>('/profile/', { method: 'PATCH', body, auth: true }),
+  chatThreads: (params?: { page?: number; status?: string; page_size?: number }) =>
+    api<Paginated<ApiChatThread> | ApiChatThread[]>('/chat/threads/', { auth: true, query: params }),
+  ensureSupportChatThread: (body?: { title?: string }) =>
+    api<ApiChatThread>('/chat/threads/ensure-support/', { method: 'POST', body, auth: true }),
+  chatMessages: (threadId: number | string, params?: { page_size?: number }) =>
+    api<Paginated<ApiChatMessage> | ApiChatMessage[]>('/chat/messages/', {
+      auth: true,
+      query: { thread: threadId, ordering: 'created_at', ...(params || {}) },
+    }),
+  sendChatMessage: (body: { thread_id: number; text: string }) =>
+    api<ApiChatMessage>('/chat/messages/', { method: 'POST', body, auth: true }),
 
   adminScooters: (params?: { page?: number; search?: string; status?: string }) =>
     api<Paginated<ApiScooterDetail> | ApiScooterDetail[]>('/admin/scooters/', { auth: true, query: params }),
@@ -442,12 +538,59 @@ export const endpoints = {
     api<Paginated<ApiChatThread> | ApiChatThread[]>('/admin/chat/threads/', { auth: true, query: params }),
   adminAddons: (params?: { page?: number; page_size?: number }) =>
     api<Paginated<ApiAddon> | ApiAddon[]>('/add-ons/', { auth: true, query: params }),
-  adminCreateAddon: (body: Partial<ApiAddon>) =>
+  adminCreateAddon: (body: Partial<AdminAddonPayload>) =>
     api<ApiAddon>('/add-ons/', { method: 'POST', body, auth: true }),
-  adminUpdateAddon: (id: number | string, body: Partial<ApiAddon>) =>
+  adminUpdateAddon: (id: number | string, body: Partial<AdminAddonPayload>) =>
     api<ApiAddon>(`/add-ons/${id}/`, { method: 'PATCH', body, auth: true }),
   adminDeleteAddon: (id: number | string) =>
     api<void>(`/add-ons/${id}/`, { method: 'DELETE', auth: true }),
+  adminUploadScooterImage: (
+    scooterId: number | string,
+    file: File,
+    options?: { alt_text?: string; sort_order?: number; is_main?: boolean },
+  ) => {
+    const form = new FormData();
+    form.append('image', file);
+    if (options?.alt_text) form.append('alt_text', options.alt_text);
+    if (typeof options?.sort_order === 'number') form.append('sort_order', String(options.sort_order));
+    if (typeof options?.is_main === 'boolean') form.append('is_main', String(options.is_main));
+    return api<ApiScooterImage>(`/admin/scooters/${scooterId}/images/`, {
+      method: 'POST',
+      body: form,
+      auth: true,
+    });
+  },
+  adminDeleteScooterImage: (imageId: number | string) =>
+    api<void>(`/admin/scooter-images/${imageId}/`, { method: 'DELETE', auth: true }),
+
+  adminChatMessages: (threadId: number | string, params?: { page_size?: number }) =>
+    api<Paginated<ApiChatMessage> | ApiChatMessage[]>('/admin/chat/messages/', {
+      auth: true,
+      query: { thread: threadId, ordering: 'created_at', ...(params || {}) },
+    }),
+  adminSendChatMessage: (body: { thread_id: number; text: string }) =>
+    api<ApiChatMessage>('/admin/chat/messages/', { method: 'POST', body, auth: true }),
+  adminAddChatParticipant: (body: { thread_id: number; user_id: number; role?: string }) =>
+    api<unknown>('/admin/chat/participants/', { method: 'POST', body, auth: true }),
+  adminUpdateChatThread: (id: number | string, body: { status?: string; title?: string }) =>
+    api<ApiChatThread>(`/admin/chat/threads/${id}/`, { method: 'PATCH', body, auth: true }),
+  adminQuickReplies: (params?: { is_active?: boolean | string; page_size?: number }) =>
+    api<Paginated<ApiQuickReply> | ApiQuickReply[]>('/admin/chat/quick-replies/', {
+      auth: true,
+      query: {
+        page_size: params?.page_size,
+        is_active: params?.is_active === undefined ? undefined : String(params.is_active),
+      },
+    }),
+
+  adminAuditLogs: (params?: { page_size?: number; ordering?: string }) =>
+    api<Paginated<ApiAuditLog> | ApiAuditLog[]>('/admin/audit/', { auth: true, query: params }),
+  adminLoginLogs: (params?: { page_size?: number; ordering?: string }) =>
+    api<Paginated<ApiLoginLog> | ApiLoginLog[]>('/admin/security/logins/', { auth: true, query: params }),
+  adminWebhookLogs: (params?: { page_size?: number; ordering?: string }) =>
+    api<Paginated<ApiWebhookLog> | ApiWebhookLog[]>('/admin/security/webhooks/', { auth: true, query: params }),
+  adminPayments: (params?: { page_size?: number; ordering?: string }) =>
+    api<Paginated<ApiPayment> | ApiPayment[]>('/payments/', { auth: true, query: params }),
 };
 
 export type BookingCreatePayload = {

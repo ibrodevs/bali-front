@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { BRChip, BRPrimary, BROutline } from '@/components/BR';
 import SiteFooter from '@/components/SiteFooter';
 import SiteHeader from '@/components/SiteHeader';
-import { endpoints } from '@/lib/endpoints';
+import { ApiError } from '@/lib/api';
+import { ApiChatMessage, ApiChatThread, endpoints, unwrapList } from '@/lib/endpoints';
 import { useAuth } from '@/lib/i18n/AuthProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 
@@ -27,12 +28,12 @@ const PROFILE_LANGUAGES = [
 ] as const;
 
 const PROFILE_COPY = {
-  en: { signInRequired: 'SIGN IN REQUIRED', signInHint: 'Sign in first to open your profile and bookings.', account: 'ACCOUNT', riderProfile: 'Your rider profile.', riderFallback: 'Bali Rent Rider', language: 'Language', currency: 'Currency', country: 'Country', role: 'Role', editProfile: 'EDIT PROFILE', keepUpdated: 'Keep your rider details up to date.', saveSuccess: 'Profile saved.', saveFailed: 'Unable to save profile.', fullNamePlaceholder: 'Your full name', saveChanges: 'Save changes', saving: 'Saving…', bookings: 'Bookings', active: 'Active', completed: 'Completed', quickActions: 'QUICK ACTIONS', planNextRide: 'Plan the next ride.', quickActionsHint: 'Browse the fleet or jump straight to checkout — your details are saved.', myBookings: 'MY BOOKINGS', bookingHistory: 'Booking history.', noBookings: 'No bookings yet. Open the catalog and we will deliver the scooter the same day.', total: 'Total', payment: 'Payment', days: 'Days' },
-  ru: { signInRequired: 'ТРЕБУЕТСЯ ВХОД', signInHint: 'Чтобы открыть профиль и список бронирований, сначала войдите в аккаунт.', account: 'АККАУНТ', riderProfile: 'Ваш профиль райдера.', riderFallback: 'Rider Bali Rent', language: 'Язык', currency: 'Валюта', country: 'Страна', role: 'Роль', editProfile: 'РЕДАКТИРОВАТЬ ПРОФИЛЬ', keepUpdated: 'Держите данные райдера в актуальном состоянии.', saveSuccess: 'Профиль сохранён.', saveFailed: 'Не удалось сохранить профиль.', fullNamePlaceholder: 'Ваше полное имя', saveChanges: 'Сохранить изменения', saving: 'Сохраняем…', bookings: 'Брони', active: 'Активные', completed: 'Завершённые', quickActions: 'БЫСТРЫЕ ДЕЙСТВИЯ', planNextRide: 'Запланируйте следующую поездку.', quickActionsHint: 'Откройте каталог или сразу переходите к оформлению — ваши данные уже сохранены.', myBookings: 'МОИ БРОНИ', bookingHistory: 'История бронирований.', noBookings: 'У вас пока нет бронирований. Откройте каталог, и мы доставим скутер в тот же день.', total: 'Итого', payment: 'Оплата', days: 'Дни' },
-  zh: { signInRequired: '需要登录', signInHint: '请先登录以打开个人资料和预订列表。', account: '账户', riderProfile: '您的骑手资料。', riderFallback: 'Bali Rent 骑手', language: '语言', currency: '货币', country: '国家', role: '角色', editProfile: '编辑资料', keepUpdated: '请保持您的骑手信息为最新。', saveSuccess: '资料已保存。', saveFailed: '无法保存资料。', fullNamePlaceholder: '您的全名', saveChanges: '保存更改', saving: '保存中…', bookings: '预订', active: '进行中', completed: '已完成', quickActions: '快捷操作', planNextRide: '规划下一次出行。', quickActionsHint: '浏览车队或直接结账，您的信息已保存。', myBookings: '我的预订', bookingHistory: '预订历史。', noBookings: '您还没有预订。打开车型页，我们可以当天送车。', total: '总计', payment: '支付', days: '天数' },
-  id: { signInRequired: 'PERLU MASUK', signInHint: 'Masuk terlebih dahulu untuk membuka profil dan daftar pesanan.', account: 'AKUN', riderProfile: 'Profil pengendara Anda.', riderFallback: 'Rider Bali Rent', language: 'Bahasa', currency: 'Mata uang', country: 'Negara', role: 'Peran', editProfile: 'EDIT PROFIL', keepUpdated: 'Pastikan detail pengendara Anda selalu terbaru.', saveSuccess: 'Profil disimpan.', saveFailed: 'Tidak dapat menyimpan profil.', fullNamePlaceholder: 'Nama lengkap Anda', saveChanges: 'Simpan perubahan', saving: 'Menyimpan…', bookings: 'Pesanan', active: 'Aktif', completed: 'Selesai', quickActions: 'AKSI CEPAT', planNextRide: 'Rencanakan perjalanan berikutnya.', quickActionsHint: 'Jelajahi armada atau langsung ke checkout — detail Anda sudah tersimpan.', myBookings: 'PESANAN SAYA', bookingHistory: 'Riwayat pesanan.', noBookings: 'Belum ada pesanan. Buka katalog dan kami bisa kirim skuter di hari yang sama.', total: 'Total', payment: 'Pembayaran', days: 'Hari' },
-  de: { signInRequired: 'ANMELDUNG ERFORDERLICH', signInHint: 'Bitte zuerst anmelden, um Profil und Buchungen zu öffnen.', account: 'KONTO', riderProfile: 'Dein Fahrerprofil.', riderFallback: 'Bali Rent Rider', language: 'Sprache', currency: 'Währung', country: 'Land', role: 'Rolle', editProfile: 'PROFIL BEARBEITEN', keepUpdated: 'Halte deine Fahrerdaten aktuell.', saveSuccess: 'Profil gespeichert.', saveFailed: 'Profil konnte nicht gespeichert werden.', fullNamePlaceholder: 'Dein vollständiger Name', saveChanges: 'Änderungen speichern', saving: 'Speichern…', bookings: 'Buchungen', active: 'Aktiv', completed: 'Abgeschlossen', quickActions: 'SCHNELLAKTIONEN', planNextRide: 'Plane die nächste Fahrt.', quickActionsHint: 'Sieh dir die Flotte an oder gehe direkt zum Checkout — deine Daten sind gespeichert.', myBookings: 'MEINE BUCHUNGEN', bookingHistory: 'Buchungsverlauf.', noBookings: 'Noch keine Buchungen. Öffne den Katalog und wir liefern den Roller noch am selben Tag.', total: 'Gesamt', payment: 'Zahlung', days: 'Tage' },
-  fr: { signInRequired: 'CONNEXION REQUISE', signInHint: 'Connectez-vous d’abord pour ouvrir votre profil et vos réservations.', account: 'COMPTE', riderProfile: 'Votre profil pilote.', riderFallback: 'Pilote Bali Rent', language: 'Langue', currency: 'Devise', country: 'Pays', role: 'Rôle', editProfile: 'MODIFIER LE PROFIL', keepUpdated: 'Gardez vos informations pilote à jour.', saveSuccess: 'Profil enregistré.', saveFailed: 'Impossible d’enregistrer le profil.', fullNamePlaceholder: 'Votre nom complet', saveChanges: 'Enregistrer les modifications', saving: 'Enregistrement…', bookings: 'Réservations', active: 'Actives', completed: 'Terminées', quickActions: 'ACTIONS RAPIDES', planNextRide: 'Préparez votre prochaine sortie.', quickActionsHint: 'Parcourez la flotte ou passez directement au paiement — vos informations sont enregistrées.', myBookings: 'MES RÉSERVATIONS', bookingHistory: 'Historique des réservations.', noBookings: 'Vous n’avez pas encore de réservation. Ouvrez le catalogue et nous livrerons le scooter le jour même.', total: 'Total', payment: 'Paiement', days: 'Jours' },
+  en: { signInRequired: 'SIGN IN REQUIRED', signInHint: 'Sign in first to open your profile and bookings.', account: 'ACCOUNT', riderProfile: 'Your rider profile.', riderFallback: 'Bali Rent Rider', language: 'Language', currency: 'Currency', country: 'Country', role: 'Role', editProfile: 'EDIT PROFILE', keepUpdated: 'Keep your rider details up to date.', saveSuccess: 'Profile saved.', saveFailed: 'Unable to save profile.', fullNamePlaceholder: 'Your full name', saveChanges: 'Save changes', saving: 'Saving…', bookings: 'Bookings', active: 'Active', completed: 'Completed', quickActions: 'QUICK ACTIONS', planNextRide: 'Plan the next ride.', quickActionsHint: 'Browse the fleet or jump straight to checkout — your details are saved.', myBookings: 'MY BOOKINGS', bookingHistory: 'Booking history.', noBookings: 'No bookings yet. Open the catalog and we will deliver the scooter the same day.', total: 'Total', payment: 'Payment', days: 'Days', support: 'SUPPORT CHAT', supportTitle: 'Talk to support in real time.', supportHint: 'Ask about booking, payment, delivery, or documents. Messages from the site appear in the admin panel instantly.', supportEmpty: 'No messages yet. Start the chat and our team will reply here.', supportPlaceholder: 'Type your message...', supportCreate: 'Start support chat', supportSend: 'Send', supportSending: 'Sending…', supportStatusOpen: 'Open', supportStatusClosed: 'Closed', supportError: 'Unable to load support chat.' },
+  ru: { signInRequired: 'ТРЕБУЕТСЯ ВХОД', signInHint: 'Чтобы открыть профиль и список бронирований, сначала войдите в аккаунт.', account: 'АККАУНТ', riderProfile: 'Ваш профиль райдера.', riderFallback: 'Rider Bali Rent', language: 'Язык', currency: 'Валюта', country: 'Страна', role: 'Роль', editProfile: 'РЕДАКТИРОВАТЬ ПРОФИЛЬ', keepUpdated: 'Держите данные райдера в актуальном состоянии.', saveSuccess: 'Профиль сохранён.', saveFailed: 'Не удалось сохранить профиль.', fullNamePlaceholder: 'Ваше полное имя', saveChanges: 'Сохранить изменения', saving: 'Сохраняем…', bookings: 'Брони', active: 'Активные', completed: 'Завершённые', quickActions: 'БЫСТРЫЕ ДЕЙСТВИЯ', planNextRide: 'Запланируйте следующую поездку.', quickActionsHint: 'Откройте каталог или сразу переходите к оформлению — ваши данные уже сохранены.', myBookings: 'МОИ БРОНИ', bookingHistory: 'История бронирований.', noBookings: 'У вас пока нет бронирований. Откройте каталог, и мы доставим скутер в тот же день.', total: 'Итого', payment: 'Оплата', days: 'Дни', support: 'ЧАТ ПОДДЕРЖКИ', supportTitle: 'Напишите поддержке прямо на сайте.', supportHint: 'Можно писать по бронированию, оплате, доставке и документам. Сообщения с сайта сразу появляются в админке.', supportEmpty: 'Сообщений пока нет. Начните диалог, и команда ответит здесь.', supportPlaceholder: 'Введите сообщение...', supportCreate: 'Начать чат с поддержкой', supportSend: 'Отправить', supportSending: 'Отправляем…', supportStatusOpen: 'Открыт', supportStatusClosed: 'Закрыт', supportError: 'Не удалось загрузить чат поддержки.' },
+  zh: { signInRequired: '需要登录', signInHint: '请先登录以打开个人资料和预订列表。', account: '账户', riderProfile: '您的骑手资料。', riderFallback: 'Bali Rent 骑手', language: '语言', currency: '货币', country: '国家', role: '角色', editProfile: '编辑资料', keepUpdated: '请保持您的骑手信息为最新。', saveSuccess: '资料已保存。', saveFailed: '无法保存资料。', fullNamePlaceholder: '您的全名', saveChanges: '保存更改', saving: '保存中…', bookings: '预订', active: '进行中', completed: '已完成', quickActions: '快捷操作', planNextRide: '规划下一次出行。', quickActionsHint: '浏览车队或直接结账，您的信息已保存。', myBookings: '我的预订', bookingHistory: '预订历史。', noBookings: '您还没有预订。打开车型页，我们可以当天送车。', total: '总计', payment: '支付', days: '天数', support: '客服聊天', supportTitle: '直接在网站上联系支持。', supportHint: '可咨询预订、付款、配送或文件问题。网站消息会立即出现在管理后台。', supportEmpty: '还没有消息。开始聊天后，我们会在这里回复。', supportPlaceholder: '输入消息...', supportCreate: '开始支持聊天', supportSend: '发送', supportSending: '发送中…', supportStatusOpen: '开启', supportStatusClosed: '关闭', supportError: '无法加载支持聊天。' },
+  id: { signInRequired: 'PERLU MASUK', signInHint: 'Masuk terlebih dahulu untuk membuka profil dan daftar pesanan.', account: 'AKUN', riderProfile: 'Profil pengendara Anda.', riderFallback: 'Rider Bali Rent', language: 'Bahasa', currency: 'Mata uang', country: 'Negara', role: 'Peran', editProfile: 'EDIT PROFIL', keepUpdated: 'Pastikan detail pengendara Anda selalu terbaru.', saveSuccess: 'Profil disimpan.', saveFailed: 'Tidak dapat menyimpan profil.', fullNamePlaceholder: 'Nama lengkap Anda', saveChanges: 'Simpan perubahan', saving: 'Menyimpan…', bookings: 'Pesanan', active: 'Aktif', completed: 'Selesai', quickActions: 'AKSI CEPAT', planNextRide: 'Rencanakan perjalanan berikutnya.', quickActionsHint: 'Jelajahi armada atau langsung ke checkout — detail Anda sudah tersimpan.', myBookings: 'PESANAN SAYA', bookingHistory: 'Riwayat pesanan.', noBookings: 'Belum ada pesanan. Buka katalog dan kami bisa kirim skuter di hari yang sama.', total: 'Total', payment: 'Pembayaran', days: 'Hari', support: 'CHAT SUPPORT', supportTitle: 'Hubungi support langsung dari situs.', supportHint: 'Tanyakan soal booking, pembayaran, pengantaran, atau dokumen. Pesan dari situs langsung muncul di panel admin.', supportEmpty: 'Belum ada pesan. Mulai chat dan tim kami akan membalas di sini.', supportPlaceholder: 'Tulis pesan Anda...', supportCreate: 'Mulai chat support', supportSend: 'Kirim', supportSending: 'Mengirim…', supportStatusOpen: 'Terbuka', supportStatusClosed: 'Ditutup', supportError: 'Tidak dapat memuat chat support.' },
+  de: { signInRequired: 'ANMELDUNG ERFORDERLICH', signInHint: 'Bitte zuerst anmelden, um Profil und Buchungen zu öffnen.', account: 'KONTO', riderProfile: 'Dein Fahrerprofil.', riderFallback: 'Bali Rent Rider', language: 'Sprache', currency: 'Währung', country: 'Land', role: 'Rolle', editProfile: 'PROFIL BEARBEITEN', keepUpdated: 'Halte deine Fahrerdaten aktuell.', saveSuccess: 'Profil gespeichert.', saveFailed: 'Profil konnte nicht gespeichert werden.', fullNamePlaceholder: 'Dein vollständiger Name', saveChanges: 'Änderungen speichern', saving: 'Speichern…', bookings: 'Buchungen', active: 'Aktiv', completed: 'Abgeschlossen', quickActions: 'SCHNELLAKTIONEN', planNextRide: 'Plane die nächste Fahrt.', quickActionsHint: 'Sieh dir die Flotte an oder gehe direkt zum Checkout — deine Daten sind gespeichert.', myBookings: 'MEINE BUCHUNGEN', bookingHistory: 'Buchungsverlauf.', noBookings: 'Noch keine Buchungen. Öffne den Katalog und wir liefern den Roller noch am selben Tag.', total: 'Gesamt', payment: 'Zahlung', days: 'Tage', support: 'SUPPORT-CHAT', supportTitle: 'Schreibe dem Support direkt auf der Website.', supportHint: 'Fragen zu Buchung, Zahlung, Lieferung oder Dokumenten. Nachrichten von der Website erscheinen sofort im Adminbereich.', supportEmpty: 'Noch keine Nachrichten. Starte den Chat und unser Team antwortet hier.', supportPlaceholder: 'Nachricht eingeben...', supportCreate: 'Support-Chat starten', supportSend: 'Senden', supportSending: 'Wird gesendet…', supportStatusOpen: 'Offen', supportStatusClosed: 'Geschlossen', supportError: 'Support-Chat konnte nicht geladen werden.' },
+  fr: { signInRequired: 'CONNEXION REQUISE', signInHint: 'Connectez-vous d’abord pour ouvrir votre profil et vos réservations.', account: 'COMPTE', riderProfile: 'Votre profil pilote.', riderFallback: 'Pilote Bali Rent', language: 'Langue', currency: 'Devise', country: 'Pays', role: 'Rôle', editProfile: 'MODIFIER LE PROFIL', keepUpdated: 'Gardez vos informations pilote à jour.', saveSuccess: 'Profil enregistré.', saveFailed: 'Impossible d’enregistrer le profil.', fullNamePlaceholder: 'Votre nom complet', saveChanges: 'Enregistrer les modifications', saving: 'Enregistrement…', bookings: 'Réservations', active: 'Actives', completed: 'Terminées', quickActions: 'ACTIONS RAPIDES', planNextRide: 'Préparez votre prochaine sortie.', quickActionsHint: 'Parcourez la flotte ou passez directement au paiement — vos informations sont enregistrées.', myBookings: 'MES RÉSERVATIONS', bookingHistory: 'Historique des réservations.', noBookings: 'Vous n’avez pas encore de réservation. Ouvrez le catalogue et nous livrerons le scooter le jour même.', total: 'Total', payment: 'Paiement', days: 'Jours', support: 'CHAT SUPPORT', supportTitle: 'Parlez au support directement sur le site.', supportHint: 'Posez vos questions sur la réservation, le paiement, la livraison ou les documents. Les messages du site apparaissent immédiatement dans l’admin.', supportEmpty: 'Aucun message pour le moment. Démarrez la conversation et notre équipe répondra ici.', supportPlaceholder: 'Écrivez votre message...', supportCreate: 'Démarrer le chat support', supportSend: 'Envoyer', supportSending: 'Envoi…', supportStatusOpen: 'Ouvert', supportStatusClosed: 'Fermé', supportError: 'Impossible de charger le chat support.' },
 } as const;
 
 export default function ProfilePage() {
@@ -49,6 +50,13 @@ export default function ProfilePage() {
   });
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [saveMessage, setSaveMessage] = useState('');
+  const [supportThreads, setSupportThreads] = useState<ApiChatThread[]>([]);
+  const [supportMessages, setSupportMessages] = useState<ApiChatMessage[]>([]);
+  const [activeSupportThreadId, setActiveSupportThreadId] = useState<number | null>(null);
+  const [supportDraft, setSupportDraft] = useState('');
+  const [supportLoading, setSupportLoading] = useState(false);
+  const [supportSending, setSupportSending] = useState(false);
+  const [supportError, setSupportError] = useState('');
 
   const totals = useMemo(() => {
     const active = bookings.filter((item) =>
@@ -77,6 +85,76 @@ export default function ProfilePage() {
     setSaveMessage('');
   }, [locale, user]);
 
+  async function loadSupportThreads() {
+    const res = await endpoints.chatThreads({ page_size: 100 });
+    const threads = unwrapList(res);
+    setSupportThreads(threads);
+    setActiveSupportThreadId((current) => current || threads[0]?.id || null);
+    return threads;
+  }
+
+  async function loadSupportMessages(threadId: number) {
+    const res = await endpoints.chatMessages(threadId, { page_size: 100 });
+    setSupportMessages(unwrapList(res));
+  }
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+
+    async function loadSupport() {
+      setSupportLoading(true);
+      setSupportError('');
+      try {
+        const threads = await endpoints.chatThreads({ page_size: 100 });
+        if (cancelled) return;
+        const nextThreads = unwrapList(threads);
+        setSupportThreads(nextThreads);
+        const nextThreadId = nextThreads[0]?.id || null;
+        setActiveSupportThreadId(nextThreadId);
+        if (nextThreadId) {
+          const messages = await endpoints.chatMessages(nextThreadId, { page_size: 100 });
+          if (cancelled) return;
+          setSupportMessages(unwrapList(messages));
+        } else {
+          setSupportMessages([]);
+        }
+      } catch (error) {
+        if (cancelled) return;
+        setSupportError(error instanceof ApiError ? error.message : copy.supportError);
+      } finally {
+        if (!cancelled) setSupportLoading(false);
+      }
+    }
+
+    loadSupport();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, copy.supportError]);
+
+  useEffect(() => {
+    if (!user || !activeSupportThreadId) return;
+    const intervalId = window.setInterval(async () => {
+      try {
+        await loadSupportThreads();
+        await loadSupportMessages(activeSupportThreadId);
+      } catch {}
+    }, 10000);
+
+    return () => window.clearInterval(intervalId);
+  }, [user, activeSupportThreadId]);
+
+  useEffect(() => {
+    if (!activeSupportThreadId) {
+      setSupportMessages([]);
+      return;
+    }
+    loadSupportMessages(activeSupportThreadId).catch((error) => {
+      setSupportError(error instanceof ApiError ? error.message : copy.supportError);
+    });
+  }, [activeSupportThreadId, copy.supportError]);
+
   async function handleSaveProfile(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaveState('saving');
@@ -98,6 +176,48 @@ export default function ProfilePage() {
       setSaveMessage(error instanceof Error ? error.message : copy.saveFailed);
     }
   }
+
+  async function handleCreateSupportThread() {
+    setSupportLoading(true);
+    setSupportError('');
+    try {
+      const thread = await endpoints.ensureSupportChatThread({ title: 'Support Chat' });
+      const threads = await loadSupportThreads();
+      const resolvedThread = threads.find((item) => item.id === thread.id) || thread;
+      setActiveSupportThreadId(resolvedThread.id);
+      await loadSupportMessages(resolvedThread.id);
+    } catch (error) {
+      setSupportError(error instanceof ApiError ? error.message : copy.supportError);
+    } finally {
+      setSupportLoading(false);
+    }
+  }
+
+  async function handleSendSupportMessage(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!supportDraft.trim()) return;
+
+    let threadId = activeSupportThreadId;
+    setSupportSending(true);
+    setSupportError('');
+    try {
+      if (!threadId) {
+        const thread = await endpoints.ensureSupportChatThread({ title: 'Support Chat' });
+        threadId = thread.id;
+        setActiveSupportThreadId(thread.id);
+      }
+      await endpoints.sendChatMessage({ thread_id: threadId, text: supportDraft.trim() });
+      setSupportDraft('');
+      await loadSupportThreads();
+      await loadSupportMessages(threadId);
+    } catch (error) {
+      setSupportError(error instanceof ApiError ? error.message : copy.supportError);
+    } finally {
+      setSupportSending(false);
+    }
+  }
+
+  const activeSupportThread = supportThreads.find((thread) => thread.id === activeSupportThreadId) || null;
 
   return (
     <div style={{ width: '100%', background: bg, color: fg, fontFamily: 'var(--br-body)' }}>
@@ -487,6 +607,202 @@ export default function ProfilePage() {
                       </Link>
                     </div>
                   </div>
+
+                  <div
+                    className="br-profile-panel"
+                    style={{
+                      padding: '28px 28px 26px',
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.10)',
+                      borderRadius: 16,
+                    }}
+                  >
+                    <div
+                      className="br-mono"
+                      style={{ fontSize: 11, letterSpacing: '0.18em', color: '#FFD700' }}
+                    >
+                      {copy.support}
+                    </div>
+                    <div
+                      className="br-display"
+                      style={{
+                        marginTop: 10,
+                        fontSize: 28,
+                        lineHeight: 1.05,
+                        letterSpacing: '-0.02em',
+                      }}
+                    >
+                      {copy.supportTitle}
+                    </div>
+                    <p
+                      style={{
+                        margin: '12px 0 22px',
+                        color: 'rgba(255,255,255,0.6)',
+                        fontSize: 14,
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      {copy.supportHint}
+                    </p>
+
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'minmax(0, 240px) minmax(0, 1fr)',
+                        gap: 16,
+                      }}
+                      className="br-profile-support-grid"
+                    >
+                      <div
+                        style={{
+                          borderRadius: 14,
+                          border: '1px solid rgba(255,255,255,0.10)',
+                          background: 'rgba(255,255,255,0.03)',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <div
+                          style={{
+                            padding: '14px 16px',
+                            borderBottom: '1px solid rgba(255,255,255,0.08)',
+                            color: '#fff',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {copy.support}
+                        </div>
+                        {supportThreads.length === 0 ? (
+                          <div style={{ padding: 16 }}>
+                            <button
+                              type="button"
+                              onClick={handleCreateSupportThread}
+                              className="br-btn br-btn-primary"
+                              disabled={supportLoading}
+                              style={{ width: '100%' }}
+                            >
+                              {copy.supportCreate}
+                            </button>
+                          </div>
+                        ) : (
+                          supportThreads.map((thread) => (
+                            <button
+                              key={thread.id}
+                              type="button"
+                              onClick={() => setActiveSupportThreadId(thread.id)}
+                              style={{
+                                width: '100%',
+                                textAlign: 'left',
+                                padding: '14px 16px',
+                                background: activeSupportThreadId === thread.id ? 'rgba(255,215,0,0.12)' : 'transparent',
+                                color: '#fff',
+                                border: 'none',
+                                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                                <span style={{ fontWeight: 600 }}>{thread.title || 'Support Chat'}</span>
+                                <span style={{ color: '#FFD700', fontSize: 12 }}>
+                                  {thread.status === 'closed' ? copy.supportStatusClosed : copy.supportStatusOpen}
+                                </span>
+                              </div>
+                              <div style={{ marginTop: 6, color: 'rgba(255,255,255,0.58)', fontSize: 12 }}>
+                                {thread.last_message?.text || copy.supportEmpty}
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+
+                      <div
+                        style={{
+                          borderRadius: 14,
+                          border: '1px solid rgba(255,255,255,0.10)',
+                          background: 'rgba(255,255,255,0.03)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          minHeight: 420,
+                        }}
+                      >
+                        <div
+                          style={{
+                            padding: '14px 16px',
+                            borderBottom: '1px solid rgba(255,255,255,0.08)',
+                            color: '#fff',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {activeSupportThread?.title || 'Support Chat'}
+                        </div>
+                        <div style={{ flex: 1, padding: 16, display: 'flex', flexDirection: 'column', gap: 12, minHeight: 220 }}>
+                          {supportLoading && supportThreads.length === 0 ? (
+                            <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }}>{t.common.loading}</div>
+                          ) : supportMessages.length === 0 ? (
+                            <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }}>{copy.supportEmpty}</div>
+                          ) : (
+                            supportMessages.map((message) => {
+                              const isSupport = ['admin', 'manager', 'staff'].includes(message.sender?.role || '');
+                              return (
+                                <div
+                                  key={message.id}
+                                  style={{
+                                    display: 'flex',
+                                    justifyContent: isSupport ? 'flex-start' : 'flex-end',
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      maxWidth: '78%',
+                                      borderRadius: isSupport ? '4px 16px 16px 16px' : '16px 4px 16px 16px',
+                                      padding: '12px 14px',
+                                      background: isSupport ? 'rgba(255,255,255,0.08)' : '#FFD700',
+                                      color: isSupport ? '#fff' : '#000',
+                                    }}
+                                  >
+                                    <div style={{ fontSize: 14, lineHeight: 1.6 }}>{message.text}</div>
+                                    <div
+                                      style={{
+                                        marginTop: 6,
+                                        fontSize: 11,
+                                        opacity: 0.7,
+                                      }}
+                                    >
+                                      {formatDateTime(message.created_at, locale)}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                        <form onSubmit={handleSendSupportMessage} style={{ padding: 16, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                          <div style={{ display: 'grid', gap: 10 }}>
+                            <textarea
+                              value={supportDraft}
+                              onChange={(e) => setSupportDraft(e.target.value)}
+                              placeholder={copy.supportPlaceholder}
+                              rows={4}
+                              style={{ ...darkInputStyle, resize: 'vertical', minHeight: 96 }}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                              {supportError ? (
+                                <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.12em', color: '#FCA5A5' }}>
+                                  {supportError}
+                                </div>
+                              ) : (
+                                <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>
+                                  {activeSupportThread?.status === 'closed' ? copy.supportStatusClosed : copy.supportStatusOpen}
+                                </div>
+                              )}
+                              <button type="submit" className="br-btn br-btn-primary" disabled={supportSending}>
+                                {supportSending ? copy.supportSending : copy.supportSend}
+                              </button>
+                            </div>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -831,4 +1147,14 @@ function formatDateRange(start: string, end: string, locale: string) {
   const startText = new Date(start).toLocaleDateString(locale, { day: 'numeric', month: 'short' });
   const endText = new Date(end).toLocaleDateString(locale, { day: 'numeric', month: 'short' });
   return `${startText} — ${endText}`;
+}
+
+function formatDateTime(value?: string, locale?: string) {
+  if (!value) return '';
+  return new Date(value).toLocaleString(locale || 'en', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
