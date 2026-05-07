@@ -1,6 +1,6 @@
 'use client';
 
-import { CSSProperties, ReactNode, useEffect, useMemo, useState } from 'react';
+import { CSSProperties, ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ApiError, mediaUrl } from '@/lib/api';
 import {
@@ -24,6 +24,16 @@ import {
 } from '@/lib/endpoints';
 import { useAuth } from '@/lib/i18n/AuthProvider';
 import { useRouter, useSearchParams } from 'next/navigation';
+
+function useWindowWidth() {
+  const [width, setWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1280));
+  useEffect(() => {
+    const handler = () => setWidth(window.innerWidth);
+    window.addEventListener('resize', handler, { passive: true });
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return width;
+}
 
 const A = {
   bg: '#f7f7f8',
@@ -442,6 +452,8 @@ export default function AdminPage() {
   const { user, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 768;
 
   const requestedView = searchParams.get('view');
   const initialView = NAV.some((item) => item.id === requestedView) ? (requestedView as AdminView) : 'overview';
@@ -450,6 +462,9 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [forbidden, setForbidden] = useState(false);
   const [data, setData] = useState<AdminData>(EMPTY_DATA);
+
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
   const [busyBookingId, setBusyBookingId] = useState<number | null>(null);
   const [savingScooterId, setSavingScooterId] = useState<number | null>(null);
@@ -699,7 +714,7 @@ export default function AdminPage() {
   }
 
   const viewMap: Record<AdminView, ReactNode> = {
-    overview: <OverviewView data={data} onOpenView={setView} />,
+    overview: <OverviewView data={data} onOpenView={setView} isMobile={isMobile} />,
     fleet: (
       <FleetView
         scooters={data.scooters}
@@ -708,12 +723,13 @@ export default function AdminPage() {
         savingFleetForm={savingFleetForm}
         onPatchScooter={handlePatchScooter}
         onCreateScooter={handleSaveScooter}
+        isMobile={isMobile}
       />
     ),
-    bookings: <BookingsView bookings={data.bookings} busyBookingId={busyBookingId} onBookingAction={handleBookingAction} />,
-    crm: <CRMView profiles={data.profiles} users={data.users} bookings={data.bookings} />,
-    calendar: <CalendarView bookings={data.bookings} scooters={data.scooters} />,
-    analytics: <AnalyticsView revenue={data.revenue} funnel={data.funnel} bookings={data.bookings} />,
+    bookings: <BookingsView bookings={data.bookings} busyBookingId={busyBookingId} onBookingAction={handleBookingAction} isMobile={isMobile} />,
+    crm: <CRMView profiles={data.profiles} users={data.users} bookings={data.bookings} isMobile={isMobile} />,
+    calendar: <CalendarView bookings={data.bookings} scooters={data.scooters} isMobile={isMobile} />,
+    analytics: <AnalyticsView revenue={data.revenue} funnel={data.funnel} bookings={data.bookings} isMobile={isMobile} />,
     support: (
       <SupportView
         threads={data.threads}
@@ -724,194 +740,184 @@ export default function AdminPage() {
         onSendReply={handleSendReply}
         onUpdateThreadStatus={handleThreadStatus}
         sendingReply={sendingReply}
+        isMobile={isMobile}
       />
     ),
   };
 
-  return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '220px 1fr',
-        height: '100vh',
-        overflow: 'hidden',
-        fontFamily: 'Inter, sans-serif',
-        background: A.bg,
-        color: A.black,
-      }}
-    >
-      <div style={{ background: A.sidebar, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ padding: '24px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div
-              style={{
-                width: 30,
-                height: 30,
-                background: A.gold,
-                borderRadius: 8,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <span style={{ fontFamily: 'Sora, sans-serif', fontWeight: 900, fontSize: 15, color: A.black }}>S</span>
+  const sidebarContent = (
+    <>
+      <div style={{ padding: '24px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 30, height: 30, background: A.gold, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontFamily: 'Sora, sans-serif', fontWeight: 900, fontSize: 15, color: A.black }}>S</span>
+          </div>
+          <div>
+            <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 16, letterSpacing: '-0.03em', color: A.white }}>
+              SCOOT <span style={{ color: A.gold }}>BALI</span>
             </div>
-            <div>
-              <div
-                style={{
-                  fontFamily: 'Sora, sans-serif',
-                  fontWeight: 700,
-                  fontSize: 16,
-                  letterSpacing: '-0.03em',
-                  color: A.white,
-                }}
-              >
-                SCOOT <span style={{ color: A.gold }}>BALI</span>
-              </div>
-              <div
-                style={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: 10,
-                  color: 'rgba(255,255,255,0.3)',
-                  letterSpacing: '0.06em',
-                  marginTop: 1,
-                }}
-              >
-                ADMIN PANEL
-              </div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.06em', marginTop: 1 }}>
+              ADMIN PANEL
             </div>
           </div>
         </div>
-        <nav style={{ flex: 1, overflowY: 'auto', padding: '16px 10px' }}>
+      </div>
+      <nav style={{ flex: 1, overflowY: 'auto', padding: '16px 10px' }}>
+        {NAV.map((item) => (
+          <div
+            key={item.id}
+            onClick={() => { setView(item.id); closeSidebar(); }}
+            style={{
+              padding: '11px 14px',
+              borderRadius: 10,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              cursor: 'pointer',
+              marginBottom: 3,
+              background: view === item.id ? 'rgba(255,215,0,0.12)' : 'transparent',
+            }}
+          >
+            <span style={{ fontSize: 16, filter: view === item.id ? 'none' : 'grayscale(0.5) opacity(0.6)' }}>{item.icon}</span>
+            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: view === item.id ? 700 : 400, color: view === item.id ? A.white : 'rgba(255,255,255,0.5)' }}>
+              {item.label}
+            </span>
+          </div>
+        ))}
+      </nav>
+      <div style={{ padding: '16px 14px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <div style={{ width: 36, height: 36, background: 'rgba(255,215,0,0.15)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Sora, sans-serif', fontWeight: 800, fontSize: 14, color: A.gold }}>
+            {initials(user.full_name || user.email)}
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600, color: A.white, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {user.full_name || 'Admin'}
+            </div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {user.email}
+            </div>
+          </div>
+        </div>
+        <Button variant="outline" onClick={handleLogout} style={{ width: '100%', color: A.white, borderColor: 'rgba(255,255,255,0.16)' }}>
+          Sign out
+        </Button>
+      </div>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', fontFamily: 'Inter, sans-serif', background: A.bg, color: A.black }}>
+        {/* Mobile top bar */}
+        <div style={{ height: 52, background: A.sidebar, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0, zIndex: 10 }}>
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            style={{ background: 'transparent', border: 'none', color: A.white, cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '4px 6px' }}
+            aria-label="Menu"
+          >
+            ☰
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 22, height: 22, background: A.gold, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontFamily: 'Sora, sans-serif', fontWeight: 900, fontSize: 11, color: A.black }}>S</span>
+            </div>
+            <span style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 14, color: A.white }}>
+              SCOOT <span style={{ color: A.gold }}>BALI</span>
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={loadAdminData}
+            disabled={loading}
+            style={{ background: 'transparent', border: 'none', color: loading ? 'rgba(255,255,255,0.4)' : A.gold, cursor: loading ? 'not-allowed' : 'pointer', fontSize: 18, padding: '4px 6px' }}
+            aria-label="Refresh"
+          >
+            ↻
+          </button>
+        </div>
+
+        <ErrorBanner error={error} onClose={() => setError(null)} />
+
+        {/* Main content */}
+        <div style={{ flex: 1, overflow: 'hidden', paddingBottom: 0 }}>
+          {loading && data.bookings.length === 0 && view !== 'support' ? (
+            <div style={{ padding: 16 }}>
+              <EmptyState label="Loading admin data…" />
+            </div>
+          ) : (
+            viewMap[view]
+          )}
+        </div>
+
+        {/* Bottom tab bar */}
+        <div style={{ height: 60, background: A.white, borderTop: `1px solid ${A.g200}`, display: 'flex', alignItems: 'stretch', flexShrink: 0, zIndex: 10 }}>
           {NAV.map((item) => (
-            <div
+            <button
               key={item.id}
+              type="button"
               onClick={() => setView(item.id)}
               style={{
-                padding: '11px 14px',
-                borderRadius: 10,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
+                flex: 1,
+                background: 'transparent',
+                border: 'none',
                 cursor: 'pointer',
-                marginBottom: 3,
-                background: view === item.id ? 'rgba(255,215,0,0.12)' : 'transparent',
-              }}
-            >
-              <span style={{ fontSize: 16, filter: view === item.id ? 'none' : 'grayscale(0.5) opacity(0.6)' }}>
-                {item.icon}
-              </span>
-              <span
-                style={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: 14,
-                  fontWeight: view === item.id ? 700 : 400,
-                  color: view === item.id ? A.white : 'rgba(255,255,255,0.5)',
-                }}
-              >
-                {item.label}
-              </span>
-            </div>
-          ))}
-        </nav>
-        <div style={{ padding: '16px 14px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                background: 'rgba(255,215,0,0.15)',
-                borderRadius: 10,
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontFamily: 'Sora, sans-serif',
-                fontWeight: 800,
-                fontSize: 14,
-                color: A.gold,
+                gap: 2,
+                padding: '6px 2px',
+                borderTop: view === item.id ? `2px solid ${A.gold}` : '2px solid transparent',
               }}
             >
-              {initials(user.full_name || user.email)}
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <div
-                style={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: A.white,
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {user.full_name || 'Admin'}
-              </div>
-              <div
-                style={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: 11,
-                  color: 'rgba(255,255,255,0.35)',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {user.email}
-              </div>
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            onClick={handleLogout}
-            style={{ width: '100%', color: A.white, borderColor: 'rgba(255,255,255,0.16)' }}
-          >
-            Sign out
-          </Button>
+              <span style={{ fontSize: 18, filter: view === item.id ? 'none' : 'grayscale(0.4) opacity(0.5)' }}>{item.icon}</span>
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 9, fontWeight: view === item.id ? 700 : 400, color: view === item.id ? A.black : A.g500 }}>
+                {item.label}
+              </span>
+            </button>
+          ))}
         </div>
+
+        {/* Slide-in drawer overlay */}
+        {sidebarOpen ? (
+          <>
+            <div
+              onClick={closeSidebar}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 40 }}
+            />
+            <div style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: 260, background: A.sidebar, zIndex: 50, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {sidebarContent}
+            </div>
+          </>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', height: '100vh', overflow: 'hidden', fontFamily: 'Inter, sans-serif', background: A.bg, color: A.black }}>
+      <div style={{ background: A.sidebar, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {sidebarContent}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', background: A.bg }}>
-        <div
-          style={{
-            height: 56,
-            background: A.white,
-            borderBottom: `1px solid ${A.g200}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0 32px',
-            flexShrink: 0,
-          }}
-        >
-          <div
-            style={{
-              fontFamily: 'Sora, sans-serif',
-              fontWeight: 700,
-              fontSize: 16,
-              color: A.black,
-              textTransform: 'capitalize',
-            }}
-          >
-            {view}
-          </div>
+        <div style={{ height: 56, background: A.white, borderBottom: `1px solid ${A.g200}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', flexShrink: 0 }}>
+          <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 16, color: A.black, textTransform: 'capitalize' }}>{view}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Button variant="outline" onClick={loadAdminData} disabled={loading}>
               {loading ? 'Refreshing…' : 'Refresh'}
             </Button>
             <a href="/" target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
-              <Button variant="primary" size="md">
-                ↗ View Website
-              </Button>
+              <Button variant="primary" size="md">↗ View Website</Button>
             </a>
           </div>
         </div>
         <ErrorBanner error={error} onClose={() => setError(null)} />
         <div style={{ flex: 1, overflow: 'hidden' }}>
           {loading && data.bookings.length === 0 && view !== 'support' ? (
-            <div style={{ padding: 28 }}>
-              <EmptyState label="Loading admin data…" />
-            </div>
+            <div style={{ padding: 28 }}><EmptyState label="Loading admin data…" /></div>
           ) : (
             viewMap[view]
           )}
@@ -974,7 +980,7 @@ function FullScreenMessage({ title, subtitle, action }: { title: string; subtitl
   );
 }
 
-function OverviewView({ data, onOpenView }: { data: AdminData; onOpenView: (view: AdminView) => void }) {
+function OverviewView({ data, onOpenView, isMobile }: { data: AdminData; onOpenView: (view: AdminView) => void; isMobile: boolean }) {
   const { bookings, scooters, users, revenue, payments } = data;
 
   const paidBookings = bookings.filter(
@@ -1018,16 +1024,18 @@ function OverviewView({ data, onOpenView }: { data: AdminData; onOpenView: (view
   const loginLogs = data.loginLogs.slice(0, 3);
   const webhookLogs = data.webhookLogs.slice(0, 2);
 
+  const pad = isMobile ? '16px' : '28px 32px';
+
   return (
-    <div style={{ overflowY: 'auto', height: '100%', padding: '28px 32px' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
+    <div style={{ overflowY: 'auto', height: '100%', padding: pad }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isMobile ? 10 : 16, marginBottom: isMobile ? 16 : 28 }}>
         <StatCard label="Revenue" value={formatMoney(revenue.revenue)} helper={`${revenue.bookings_count} paid bookings`} icon="💰" />
         <StatCard label="Active Bookings" value={String(activeBookings.length)} helper="Current pipeline" icon="📋" />
         <StatCard label="Fleet Utilization" value={`${utilization}%`} helper={`${scooters.length} vehicles`} icon="🛵" />
         <StatCard label="Average Booking" value={formatMoney(averageBookingValue)} helper={`${payments.length} payments tracked`} icon="⭐" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 16, marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.6fr 1fr', gap: isMobile ? 12 : 16, marginBottom: isMobile ? 12 : 28 }}>
         <Panel style={{ padding: 24 }}>
           <SectionHeader
             title="Revenue"
@@ -1076,9 +1084,9 @@ function OverviewView({ data, onOpenView }: { data: AdminData; onOpenView: (view
         </Panel>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 16, marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.5fr 1fr', gap: isMobile ? 12 : 16, marginBottom: isMobile ? 12 : 28 }}>
         <Panel style={{ overflow: 'hidden' }}>
-          <div style={{ padding: '18px 20px', borderBottom: `1px solid ${A.g200}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ padding: '14px 16px', borderBottom: `1px solid ${A.g200}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 16, color: A.black }}>Recent Bookings</div>
               <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>Live orders from backend</div>
@@ -1086,30 +1094,46 @@ function OverviewView({ data, onOpenView }: { data: AdminData; onOpenView: (view
             <Button variant="dark" onClick={() => onOpenView('bookings')}>View All</Button>
           </div>
           <div>
-            {bookings.slice(0, 6).map((item) => (
+            {bookings.slice(0, isMobile ? 4 : 6).map((item) => (
               <div
                 key={item.id}
                 style={{
-                  padding: '14px 20px',
+                  padding: isMobile ? '12px 14px' : '14px 20px',
                   borderBottom: `1px solid ${A.g200}`,
                   display: 'grid',
-                  gridTemplateColumns: '1.1fr 1.3fr 0.9fr 0.9fr',
-                  gap: 12,
+                  gridTemplateColumns: isMobile ? '1fr auto' : '1.1fr 1.3fr 0.9fr 0.9fr',
+                  gap: isMobile ? 8 : 12,
                   alignItems: 'center',
                 }}
               >
                 <div>
-                  <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 13, color: A.black }}>#{item.order_number}</div>
-                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>{formatShortDate(item.created_at)}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 13, color: A.black }}>#{item.order_number}</span>
+                    {!isMobile ? null : <Badge color={bookingBadgeColor(item.status)}>{item.status}</Badge>}
+                  </div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
+                    {item.user || 'Guest'} · {item.scooter?.title || 'Scooter'}
+                  </div>
+                  {!isMobile ? null : (
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>{formatShortDate(item.created_at)}</div>
+                  )}
                 </div>
-                <div>
-                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.black }}>{item.user || 'Guest'}</div>
-                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>{item.scooter?.title || 'Scooter'}</div>
-                </div>
-                <Badge color={bookingBadgeColor(item.status)}>{item.status}</Badge>
-                <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 14, color: A.black, textAlign: 'right' }}>
-                  {formatMoney(item.total_price)}
-                </div>
+                {isMobile ? (
+                  <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 14, color: A.black, textAlign: 'right' }}>
+                    {formatMoney(item.total_price)}
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.black }}>{item.user || 'Guest'}</div>
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>{item.scooter?.title || 'Scooter'}</div>
+                    </div>
+                    <Badge color={bookingBadgeColor(item.status)}>{item.status}</Badge>
+                    <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 14, color: A.black, textAlign: 'right' }}>
+                      {formatMoney(item.total_price)}
+                    </div>
+                  </>
+                )}
               </div>
             ))}
             {bookings.length === 0 ? (
@@ -1177,6 +1201,7 @@ function FleetView({
   savingFleetForm,
   onPatchScooter,
   onCreateScooter,
+  isMobile,
 }: {
   scooters: ApiScooterDetail[];
   scooterModels: ApiVehicleModel[];
@@ -1184,6 +1209,7 @@ function FleetView({
   savingFleetForm: boolean;
   onPatchScooter: (id: number, payload: Record<string, unknown>) => void;
   onCreateScooter: (payload: AdminScooterPayload) => Promise<void>;
+  isMobile: boolean;
 }) {
   const emptyDraft = useMemo(
     () => ({
@@ -1232,7 +1258,7 @@ function FleetView({
   const selectedModel = scooterModels.find((item) => String(item.id) === draft.model);
 
   return (
-    <div style={{ overflowY: 'auto', height: '100%', padding: '28px 32px' }}>
+    <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? '16px' : '28px 32px' }}>
       <SectionHeader
         title="Fleet Management"
         subtitle={`${scooters.length} vehicles from backend`}
@@ -1242,12 +1268,12 @@ function FleetView({
           </Link>
         }
       />
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.7fr) minmax(320px, 0.9fr)', gap: 16, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.7fr) minmax(320px, 0.9fr)', gap: 16, alignItems: 'start' }}>
         <div>
           {scooters.length === 0 ? (
             <EmptyState label="No scooters found." />
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: isMobile ? 12 : 16 }}>
               {scooters.map((item) => {
                 const busy = savingScooterId === item.id;
                 const image = item.main_image ? mediaUrl(item.main_image) : '';
@@ -1346,7 +1372,7 @@ function FleetView({
           )}
         </div>
 
-        <Panel style={{ padding: 22, position: 'sticky', top: 28 }}>
+        <Panel style={{ padding: 22, position: isMobile ? 'static' : 'sticky', top: 28 }}>
           <SectionHeader title="New Scooter" subtitle="Create a new product for catalog" />
           <div style={{ display: 'grid', gap: 14 }}>
             <Field label="Model">
@@ -1445,6 +1471,7 @@ function BookingsView({
   bookings,
   busyBookingId,
   onBookingAction,
+  isMobile,
 }: {
   bookings: ApiBooking[];
   busyBookingId: number | null;
@@ -1452,6 +1479,7 @@ function BookingsView({
     id: number,
     action: 'confirm' | 'mark-delivery' | 'mark-active' | 'complete' | 'cancel',
   ) => void;
+  isMobile: boolean;
 }) {
   const [filter, setFilter] = useState('all');
   const filtered = filter === 'all' ? bookings : bookings.filter((item) => item.status === filter);
@@ -1490,23 +1518,25 @@ function BookingsView({
   }
 
   return (
-    <div style={{ overflowY: 'auto', height: '100%', padding: '28px 32px' }}>
+    <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? '16px' : '28px 32px' }}>
       <SectionHeader title="Bookings" subtitle={`${bookings.length} bookings loaded from backend`} />
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflowX: 'auto', paddingBottom: 4 }}>
         {['all', 'created', 'pending_payment', 'confirmed', 'delivery', 'active', 'completed', 'cancelled'].map((value) => (
           <div
             key={value}
             onClick={() => setFilter(value)}
             style={{
-              padding: '8px 16px',
+              padding: isMobile ? '6px 12px' : '8px 16px',
               borderRadius: 8,
               background: filter === value ? A.black : A.white,
               border: `1px solid ${filter === value ? A.black : A.g200}`,
               color: filter === value ? A.white : A.g700,
               fontFamily: 'Inter, sans-serif',
-              fontSize: 13,
+              fontSize: isMobile ? 12 : 13,
               fontWeight: 600,
               cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
             }}
           >
             {value}
@@ -1516,10 +1546,10 @@ function BookingsView({
       {filtered.length === 0 ? (
         <EmptyState label="No bookings for this filter." />
       ) : (
-        <div style={{ display: 'grid', gap: 14 }}>
+        <div style={{ display: 'grid', gap: isMobile ? 10 : 14 }}>
           {filtered.map((item) => (
-            <Panel key={item.id} style={{ padding: 20 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 16, alignItems: 'start' }}>
+            <Panel key={item.id} style={{ padding: isMobile ? 14 : 20 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr 1fr', gap: isMobile ? 10 : 16, alignItems: 'start' }}>
                 <div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
                     <Badge color={bookingBadgeColor(item.status)}>{item.status}</Badge>
@@ -1585,10 +1615,12 @@ function CRMView({
   profiles,
   users,
   bookings,
+  isMobile,
 }: {
   profiles: ApiCustomerProfile[];
   users: ApiAdminUser[];
   bookings: ApiBooking[];
+  isMobile: boolean;
 }) {
   const bookingStats = new Map<string, { bookings: number; total: number; last: string | null }>();
   for (const booking of bookings) {
@@ -1631,15 +1663,42 @@ function CRMView({
     : 0;
 
   return (
-    <div style={{ overflowY: 'auto', height: '100%', padding: '28px 32px' }}>
+    <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? '16px' : '28px 32px' }}>
       <SectionHeader title="CRM" subtitle="Customer profiles, segments and booking history" />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
         <StatCard label="Customers" value={String(customerRows.length)} helper="Client accounts with CRM data or bookings" icon="👥" />
         <StatCard label="Segmented" value={String(vipCount)} helper="Profiles assigned to a segment" icon="🏷️" />
         <StatCard label="Average LTV" value={formatMoney(averageLtv)} helper="Derived from bookings" icon="💎" />
       </div>
       {customerRows.length === 0 ? (
         <EmptyState label="No customer records available." />
+      ) : isMobile ? (
+        <div style={{ display: 'grid', gap: 10 }}>
+          {customerRows.map((item) => (
+            <Panel key={item.id} style={{ padding: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+                <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 14, color: A.black }}>{item.name}</div>
+                <Badge color={item.segment === 'Unassigned' ? 'default' : 'gold'}>{item.segment}</Badge>
+              </div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginBottom: 2 }}>{item.email}</div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginBottom: 8 }}>{item.phone}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, color: A.g500, marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Bookings</div>
+                  <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 14, color: A.black }}>{item.bookings}</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, color: A.g500, marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.06em' }}>LTV</div>
+                  <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 14, color: A.black }}>{formatMoney(item.total)}</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, color: A.g500, marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Last</div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: A.g700 }}>{formatShortDate(item.last)}</div>
+                </div>
+              </div>
+            </Panel>
+          ))}
+        </div>
       ) : (
         <Panel style={{ overflow: 'hidden' }}>
           <div
@@ -1712,7 +1771,7 @@ function CRMView({
   );
 }
 
-function CalendarView({ bookings, scooters }: { bookings: ApiBooking[]; scooters: ApiScooterDetail[] }) {
+function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]; scooters: ApiScooterDetail[]; isMobile: boolean }) {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
@@ -1725,22 +1784,23 @@ function CalendarView({ bookings, scooters }: { bookings: ApiBooking[]; scooters
     }));
 
   return (
-    <div style={{ overflowY: 'auto', height: '100%', padding: '28px 32px' }}>
+    <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? '16px' : '28px 32px' }}>
       <SectionHeader
         title="Occupancy Calendar"
         subtitle={`${formatShortDate(weekStart)} – ${formatShortDate(addDays(weekStart, 6))}`}
         action={
           <div style={{ display: 'flex', gap: 8 }}>
-            <Button variant="outline" onClick={() => setWeekStart((current) => addDays(current, -7))}>‹ Prev</Button>
+            <Button variant="outline" onClick={() => setWeekStart((current) => addDays(current, -7))}>‹</Button>
             <Button variant="dark" onClick={() => setWeekStart(startOfWeek(new Date()))}>Today</Button>
-            <Button variant="outline" onClick={() => setWeekStart((current) => addDays(current, 7))}>Next ›</Button>
+            <Button variant="outline" onClick={() => setWeekStart((current) => addDays(current, 7))}>›</Button>
           </div>
         }
       />
       {scooters.length === 0 ? (
         <EmptyState label="No fleet records available." />
       ) : (
-        <Panel style={{ overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+        <Panel style={{ overflow: 'hidden', minWidth: isMobile ? 700 : undefined }}>
           <div style={{ display: 'grid', gridTemplateColumns: '240px repeat(7, 1fr)', borderBottom: `1px solid ${A.g200}` }}>
             <div
               style={{
@@ -1853,6 +1913,7 @@ function CalendarView({ bookings, scooters }: { bookings: ApiBooking[]; scooters
             </div>
           ))}
         </Panel>
+        </div>
       )}
     </div>
   );
@@ -1862,10 +1923,12 @@ function AnalyticsView({
   revenue,
   funnel,
   bookings,
+  isMobile,
 }: {
   revenue: ApiAnalyticsRevenue;
   funnel: ApiAnalyticsFunnel;
   bookings: ApiBooking[];
+  isMobile: boolean;
 }) {
   const vehicleTotals = new Map<string, number>();
   const zoneTotals = new Map<string, number>();
@@ -1891,9 +1954,9 @@ function AnalyticsView({
   const maxZone = Math.max(...topZones.map((item) => item.count), 1);
 
   return (
-    <div style={{ overflowY: 'auto', height: '100%', padding: '28px 32px' }}>
+    <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? '16px' : '28px 32px' }}>
       <SectionHeader title="Analytics" subtitle={revenue.period || 'Live backend analytics'} />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isMobile ? 10 : 14, marginBottom: isMobile ? 16 : 24 }}>
         <StatCard label="Gross Revenue" value={formatMoney(revenue.revenue)} helper={`${revenue.bookings_count} paid bookings`} icon="💰" />
         <StatCard label="Visitors" value={String(funnel.visitors || 0)} helper="Analytics events" icon="👀" />
         <StatCard
@@ -1909,7 +1972,7 @@ function AnalyticsView({
           icon="📈"
         />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.4fr 1fr', gap: 16 }}>
         <Panel style={{ padding: 24 }}>
           <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 16, color: A.black, marginBottom: 4 }}>
             Vehicle Performance
@@ -2025,6 +2088,7 @@ function SupportView({
   onSendReply,
   onUpdateThreadStatus,
   sendingReply,
+  isMobile,
 }: {
   threads: ApiChatThread[];
   messages: ApiChatMessage[];
@@ -2034,9 +2098,11 @@ function SupportView({
   onSendReply: (threadId: number, text: string) => void;
   onUpdateThreadStatus: (threadId: number, status: 'open' | 'closed') => void;
   sendingReply: boolean;
+  isMobile: boolean;
 }) {
   const activeThread = threads.find((t) => t.id === activeThreadId) || threads[0] || null;
   const [draft, setDraft] = useState('');
+  const [showChat, setShowChat] = useState(false);
 
   useEffect(() => {
     setDraft('');
@@ -2048,9 +2114,8 @@ function SupportView({
     setDraft('');
   }
 
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', height: '100%' }}>
-      <div style={{ borderRight: `1px solid ${A.g200}`, background: A.white, overflowY: 'auto' }}>
+  const threadList = (
+    <div style={{ borderRight: isMobile ? 'none' : `1px solid ${A.g200}`, background: A.white, overflowY: 'auto', display: 'flex', flexDirection: 'column', height: '100%' }}>
         <div style={{ padding: '20px 16px', borderBottom: `1px solid ${A.g200}` }}>
           <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 16, color: A.black, marginBottom: 6 }}>
             Support Threads
@@ -2071,7 +2136,7 @@ function SupportView({
             return (
               <div
                 key={thread.id}
-                onClick={() => onSelectThread(thread.id)}
+                onClick={() => { onSelectThread(thread.id); if (isMobile) setShowChat(true); }}
                 style={{
                   padding: '14px 16px',
                   borderBottom: `1px solid ${A.g200}`,
@@ -2105,160 +2170,192 @@ function SupportView({
             );
           })
         )}
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', background: A.g100, minHeight: 0 }}>
-        {!activeThread ? (
+    </div>
+  );
+
+  const chatPane = (
+    <div style={{ display: 'flex', flexDirection: 'column', background: A.g100, minHeight: 0, height: '100%' }}>
+      {!activeThread ? (
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontFamily: 'Inter, sans-serif',
+            fontSize: 14,
+            color: A.g500,
+          }}
+        >
+          Pick a conversation to start.
+        </div>
+      ) : (
+        <>
           <div
             style={{
-              flex: 1,
+              padding: isMobile ? '12px 16px' : '16px 24px',
+              background: A.white,
+              borderBottom: `1px solid ${A.g200}`,
               display: 'flex',
+              justifyContent: 'space-between',
               alignItems: 'center',
-              justifyContent: 'center',
-              fontFamily: 'Inter, sans-serif',
-              fontSize: 14,
-              color: A.g500,
+              gap: 12,
             }}
           >
-            Pick a conversation to start.
-          </div>
-        ) : (
-          <>
-            <div
-              style={{
-                padding: '16px 24px',
-                background: A.white,
-                borderBottom: `1px solid ${A.g200}`,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: 12,
-              }}
-            >
-              <div>
-                <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 16, color: A.black }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+              {isMobile ? (
+                <button
+                  type="button"
+                  onClick={() => setShowChat(false)}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 20, color: A.black, lineHeight: 1, padding: '2px 6px 2px 0', flexShrink: 0 }}
+                >
+                  ‹
+                </button>
+              ) : null}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: isMobile ? 14 : 16, color: A.black, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {activeThread.title || 'Support Thread'}
                 </div>
-                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
-                  {(activeThread.participants || [])
-                    .map((item) => item.user?.email)
-                    .filter(Boolean)
-                    .join(', ')}
-                </div>
+                {!isMobile ? (
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
+                    {(activeThread.participants || [])
+                      .map((item) => item.user?.email)
+                      .filter(Boolean)
+                      .join(', ')}
+                  </div>
+                ) : null}
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              {isMobile ? null : (
                 <Button variant="outline" onClick={() => onUpdateThreadStatus(activeThread.id, 'open')}>
                   Reopen
                 </Button>
-                <Button variant="dark" onClick={() => onUpdateThreadStatus(activeThread.id, 'closed')}>
-                  Close Thread
-                </Button>
-              </div>
+              )}
+              <Button variant="dark" onClick={() => onUpdateThreadStatus(activeThread.id, 'closed')}>
+                {isMobile ? 'Close' : 'Close Thread'}
+              </Button>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {messages.length === 0 ? (
-                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: A.g500 }}>
-                  No messages in this thread.
-                </div>
-              ) : (
-                messages.map((message) => {
-                  const sender = message.sender;
-                  const role = sender?.role || '';
-                  const isAdmin = ['admin', 'manager', 'staff'].includes(role);
-                  return (
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '14px 12px' : '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {messages.length === 0 ? (
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: A.g500 }}>
+                No messages in this thread.
+              </div>
+            ) : (
+              messages.map((message) => {
+                const sender = message.sender;
+                const role = sender?.role || '';
+                const isAdmin = ['admin', 'manager', 'staff'].includes(role);
+                return (
+                  <div
+                    key={message.id}
+                    style={{
+                      display: 'flex',
+                      flexDirection: isAdmin ? 'row-reverse' : 'row',
+                      gap: 10,
+                      alignItems: 'flex-end',
+                    }}
+                  >
                     <div
-                      key={message.id}
                       style={{
+                        width: 32,
+                        height: 32,
+                        background: isAdmin ? A.black : A.gold,
+                        borderRadius: 10,
                         display: 'flex',
-                        flexDirection: isAdmin ? 'row-reverse' : 'row',
-                        gap: 10,
-                        alignItems: 'flex-end',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontFamily: 'Sora, sans-serif',
+                        fontWeight: 800,
+                        fontSize: 12,
+                        color: isAdmin ? A.white : A.black,
+                        flexShrink: 0,
                       }}
                     >
+                      {initials(sender?.full_name || sender?.email)}
+                    </div>
+                    <div style={{ maxWidth: isMobile ? '85%' : '74%' }}>
                       <div
                         style={{
-                          width: 32,
-                          height: 32,
-                          background: isAdmin ? A.black : A.gold,
-                          borderRadius: 10,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontFamily: 'Sora, sans-serif',
-                          fontWeight: 800,
-                          fontSize: 12,
-                          color: isAdmin ? A.white : A.black,
-                          flexShrink: 0,
+                          background: isAdmin ? A.black : A.white,
+                          borderRadius: isAdmin ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
+                          padding: '12px 16px',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
                         }}
                       >
-                        {initials(sender?.full_name || sender?.email)}
-                      </div>
-                      <div style={{ maxWidth: '74%' }}>
-                        <div
-                          style={{
-                            background: isAdmin ? A.black : A.white,
-                            borderRadius: isAdmin ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
-                            padding: '12px 16px',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                          }}
-                        >
-                          <div
-                            style={{
-                              fontFamily: 'Inter, sans-serif',
-                              fontSize: 14,
-                              lineHeight: 1.6,
-                              color: isAdmin ? A.white : A.black,
-                            }}
-                          >
-                            {message.text}
-                          </div>
-                        </div>
                         <div
                           style={{
                             fontFamily: 'Inter, sans-serif',
-                            fontSize: 10,
-                            color: A.g400,
-                            marginTop: 4,
-                            textAlign: isAdmin ? 'right' : 'left',
+                            fontSize: 14,
+                            lineHeight: 1.6,
+                            color: isAdmin ? A.white : A.black,
                           }}
                         >
-                          {formatDateTime(message.created_at)}
+                          {message.text}
                         </div>
                       </div>
+                      <div
+                        style={{
+                          fontFamily: 'Inter, sans-serif',
+                          fontSize: 10,
+                          color: A.g400,
+                          marginTop: 4,
+                          textAlign: isAdmin ? 'right' : 'left',
+                        }}
+                      >
+                        {formatDateTime(message.created_at)}
+                      </div>
                     </div>
-                  );
-                })
-              )}
-            </div>
-            <div style={{ padding: '16px 24px', background: A.white, borderTop: `1px solid ${A.g200}` }}>
-              {quickReplies.length > 0 ? (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-                  {quickReplies.slice(0, 4).map((reply) => (
-                    <Button key={reply.id} variant="ghost" onClick={() => setDraft(reply.text)}>
-                      {reply.title}
-                    </Button>
-                  ))}
-                </div>
-              ) : null}
-              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
-                <textarea
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  placeholder="Type a message..."
-                  style={{ ...inputStyle, minHeight: 90, resize: 'vertical' }}
-                />
-                <Button
-                  variant="primary"
-                  onClick={submit}
-                  disabled={sendingReply || !draft.trim()}
-                  style={{ height: 46 }}
-                >
-                  {sendingReply ? 'Sending…' : 'Send'}
-                </Button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          <div style={{ padding: isMobile ? '12px' : '16px 24px', background: A.white, borderTop: `1px solid ${A.g200}` }}>
+            {quickReplies.length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12, overflowX: 'auto' }}>
+                {quickReplies.slice(0, isMobile ? 3 : 4).map((reply) => (
+                  <Button key={reply.id} variant="ghost" onClick={() => setDraft(reply.text)}>
+                    {reply.title}
+                  </Button>
+                ))}
               </div>
+            ) : null}
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="Type a message..."
+                style={{ ...inputStyle, minHeight: isMobile ? 64 : 90, resize: 'vertical' }}
+              />
+              <Button
+                variant="primary"
+                onClick={submit}
+                disabled={sendingReply || !draft.trim()}
+                style={{ height: 46 }}
+              >
+                {sendingReply ? '…' : 'Send'}
+              </Button>
             </div>
-          </>
-        )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <div style={{ height: '100%', overflow: 'hidden' }}>
+        {showChat ? chatPane : threadList}
       </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', height: '100%' }}>
+      {threadList}
+      {chatPane}
     </div>
   );
 }
