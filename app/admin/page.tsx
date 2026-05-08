@@ -1348,6 +1348,11 @@ function FleetView({
                             {busy ? 'Saving…' : item.is_featured ? 'Disable' : 'Enable'}
                           </Button>
                         </div>
+                        <Link href={`/admin/scooters/${item.id}/edit`} style={{ textDecoration: 'none' }}>
+                          <Button variant="outline" style={{ width: '100%' }}>
+                            Edit scooter
+                          </Button>
+                        </Link>
                       </div>
                     </div>
                   </Panel>

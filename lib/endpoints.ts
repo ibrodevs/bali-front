@@ -416,7 +416,7 @@ export type AdminScooterPayload = {
   model: number;
   title: string;
   slug: string;
-  sku: string;
+  sku?: string;
   color: string;
   base_price_usd: string | number;
   status: string;

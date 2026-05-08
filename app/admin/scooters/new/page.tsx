@@ -357,10 +357,9 @@ export default function AdminNewScooterPage() {
       if (
         !scooterDraft.title.trim() ||
         !scooterDraft.slug.trim() ||
-        !scooterDraft.sku.trim() ||
         !scooterDraft.base_price_usd
       ) {
-        throw new Error('Fill in scooter title, slug, SKU and price.');
+        throw new Error('Fill in scooter title, slug and price.');
       }
 
       const createdScooter = await endpoints.adminCreateScooter({
