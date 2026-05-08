@@ -28,6 +28,16 @@ const A = {
   greenBg: '#f0fdf4',
 };
 
+function useWindowWidth() {
+  const [width, setWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1280));
+  useEffect(() => {
+    const handler = () => setWidth(window.innerWidth);
+    window.addEventListener('resize', handler, { passive: true });
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return width;
+}
+
 function slugify(value?: string | null) {
   return (value || '')
     .toLowerCase()
@@ -167,6 +177,9 @@ export default function AdminEditScooterPage() {
   const { user, loading: authLoading } = useAuth();
   const params = useParams();
   const scooterId = params.id as string;
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 768;
+  const isNarrow = windowWidth < 1100;
 
   const canOpenAdmin = isAdminLike(user);
 
@@ -355,7 +368,7 @@ export default function AdminEditScooterPage() {
 
   if (authLoading || pageLoading) {
     return (
-      <div style={{ minHeight: '100vh', background: A.bg, padding: 32, fontFamily: 'Inter, sans-serif' }}>
+      <div style={{ minHeight: '100vh', background: A.bg, padding: isMobile ? 16 : 32, fontFamily: 'Inter, sans-serif' }}>
         Loading…
       </div>
     );
@@ -363,7 +376,7 @@ export default function AdminEditScooterPage() {
 
   if (!user || !canOpenAdmin) {
     return (
-      <div style={{ minHeight: '100vh', background: A.bg, padding: 32, fontFamily: 'Inter, sans-serif' }}>
+      <div style={{ minHeight: '100vh', background: A.bg, padding: isMobile ? 16 : 32, fontFamily: 'Inter, sans-serif' }}>
         <Panel style={{ maxWidth: 520, margin: '80px auto', padding: 28, textAlign: 'center' }}>
           <div style={{ width: 52, height: 52, margin: '0 auto 16px', borderRadius: 14, background: A.gold, display: 'grid', placeItems: 'center', fontWeight: 800 }}>
             {initials(user?.full_name || user?.email)}
@@ -378,23 +391,36 @@ export default function AdminEditScooterPage() {
     );
   }
 
+  const pad = isMobile ? 16 : 22;
+
   return (
-    <div style={{ minHeight: '100vh', background: A.bg, padding: 28, fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: A.bg, padding: isMobile ? '16px' : '28px', fontFamily: 'Inter, sans-serif' }}>
       <div style={{ maxWidth: 1320, margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+
+        {/* Header */}
+        <div style={{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          justifyContent: 'space-between',
+          alignItems: isMobile ? 'flex-start' : 'center',
+          gap: isMobile ? 12 : 16,
+          marginBottom: 20,
+        }}>
           <div>
             <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 700, color: A.g500, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
               Admin / Fleet / Edit
             </div>
-            <h1 style={{ fontFamily: 'Sora, sans-serif', fontSize: 34, letterSpacing: '-0.04em', color: A.black }}>
+            <h1 style={{ fontFamily: 'Sora, sans-serif', fontSize: isMobile ? 26 : 34, letterSpacing: '-0.04em', color: A.black, margin: 0 }}>
               {scooter?.title || 'Edit Scooter'}
             </h1>
-            <p style={{ color: A.g500, marginTop: 8 }}>
-              Edit scooter details, status and gallery. Changes are saved immediately to the site.
-            </p>
+            {!isMobile && (
+              <p style={{ color: A.g500, marginTop: 8, marginBottom: 0 }}>
+                Edit scooter details, status and gallery. Changes are saved immediately to the site.
+              </p>
+            )}
           </div>
-          <Link href="/admin?view=fleet" style={{ textDecoration: 'none' }}>
-            <Button variant="outline">Back to fleet</Button>
+          <Link href="/admin?view=fleet" style={{ textDecoration: 'none', flexShrink: 0 }}>
+            <Button variant="outline">← Back to fleet</Button>
           </Link>
         </div>
 
@@ -405,11 +431,27 @@ export default function AdminEditScooterPage() {
           </div>
         ) : null}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.15fr) minmax(340px, 0.85fr)', gap: 16, alignItems: 'start' }}>
+        {/* Save button pinned at top on mobile */}
+        {isMobile && (
+          <div style={{ marginBottom: 16 }}>
+            <Button variant="dark" onClick={handleSubmit} disabled={saving} style={{ width: '100%' }}>
+              {saving ? 'Saving…' : 'Save changes'}
+            </Button>
+          </div>
+        )}
+
+        {/* Main layout */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isNarrow ? '1fr' : 'minmax(0, 1.15fr) minmax(320px, 0.85fr)',
+          gap: 16,
+          alignItems: 'start',
+        }}>
+          {/* Left column — forms */}
           <div style={{ display: 'grid', gap: 16 }}>
 
             {/* Model */}
-            <Panel style={{ padding: 22 }}>
+            <Panel style={{ padding: pad }}>
               <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18, color: A.black, marginBottom: 16 }}>
                 Model
               </div>
@@ -428,7 +470,18 @@ export default function AdminEditScooterPage() {
                 </select>
               </Field>
               {selectedModel ? (
-                <div style={{ marginTop: 14, padding: 14, borderRadius: 12, background: A.g100, display: 'grid', gap: 6, fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700 }}>
+                <div style={{
+                  marginTop: 14,
+                  padding: 14,
+                  borderRadius: 12,
+                  background: A.g100,
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                  gap: 6,
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: 13,
+                  color: A.g700,
+                }}>
                   <div>Transmission: <strong style={{ color: A.black }}>{selectedModel.transmission}</strong></div>
                   <div>Engine: <strong style={{ color: A.black }}>{selectedModel.engine_cc}cc</strong></div>
                   <div>Year: <strong style={{ color: A.black }}>{selectedModel.year}</strong></div>
@@ -438,12 +491,13 @@ export default function AdminEditScooterPage() {
             </Panel>
 
             {/* Scooter fields */}
-            <Panel style={{ padding: 22 }}>
+            <Panel style={{ padding: pad }}>
               <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18, color: A.black, marginBottom: 16 }}>
                 Scooter Details
               </div>
               <div style={{ display: 'grid', gap: 14 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {/* Title + SKU */}
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
                   <Field label="Title">
                     <input
                       value={draft.title}
@@ -452,7 +506,7 @@ export default function AdminEditScooterPage() {
                       placeholder="Honda PCX 160"
                     />
                   </Field>
-                  <Field label="SKU">
+                  <Field label="SKU (optional)">
                     <input
                       value={draft.sku}
                       onChange={(e) => updateDraft('sku', e.target.value)}
@@ -461,6 +515,8 @@ export default function AdminEditScooterPage() {
                     />
                   </Field>
                 </div>
+
+                {/* Slug */}
                 <Field label="Slug">
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10 }}>
                     <input
@@ -477,7 +533,9 @@ export default function AdminEditScooterPage() {
                     </Button>
                   </div>
                 </Field>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
+
+                {/* Color / Price / Mileage / Status */}
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
                   <Field label="Color">
                     <input
                       value={draft.color}
@@ -517,6 +575,7 @@ export default function AdminEditScooterPage() {
                     </select>
                   </Field>
                 </div>
+
                 <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14 }}>
                   <input
                     type="checkbox"
@@ -529,7 +588,7 @@ export default function AdminEditScooterPage() {
             </Panel>
 
             {/* Gallery */}
-            <Panel style={{ padding: 22 }}>
+            <Panel style={{ padding: pad }}>
               <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18, color: A.black, marginBottom: 16 }}>
                 Gallery
               </div>
@@ -539,7 +598,7 @@ export default function AdminEditScooterPage() {
                   <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12 }}>
                     Existing photos
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? '120px' : '160px'}, 1fr))`, gap: isMobile ? 8 : 12 }}>
                     {existingImages.map((img) => {
                       const deleting = deletingIds.has(img.id);
                       return (
@@ -579,7 +638,7 @@ export default function AdminEditScooterPage() {
                           >
                             {deleting ? '…' : '×'}
                           </button>
-                          {img.alt_text ? (
+                          {img.alt_text && !isMobile ? (
                             <div style={{ padding: '6px 10px', fontFamily: 'Inter, sans-serif', fontSize: 11, color: A.g500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {img.alt_text}
                             </div>
@@ -593,7 +652,7 @@ export default function AdminEditScooterPage() {
 
               <Field
                 label="Upload new photos"
-                hint="New photos are appended to the gallery. If there are no existing photos, the first uploaded photo can be set as main."
+                hint="New photos are appended to the gallery."
               >
                 <input type="file" accept="image/*" multiple onChange={handleNewPhotoPick} style={inputStyle} />
               </Field>
@@ -603,7 +662,12 @@ export default function AdminEditScooterPage() {
                   {newPhotos.map((item, index) => (
                     <div
                       key={`${item.file.name}-${index}`}
-                      style={{ display: 'grid', gridTemplateColumns: '140px 1fr auto', gap: 14, alignItems: 'center' }}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: isMobile ? '80px 1fr' : '140px 1fr auto',
+                        gap: isMobile ? 10 : 14,
+                        alignItems: 'center',
+                      }}
                     >
                       <div style={{ borderRadius: 12, overflow: 'hidden', border: `1px solid ${A.g200}`, background: A.g100, aspectRatio: '4/3' }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -613,7 +677,7 @@ export default function AdminEditScooterPage() {
                           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                         />
                       </div>
-                      <div style={{ display: 'grid', gap: 10 }}>
+                      <div style={{ display: 'grid', gap: 8 }}>
                         <Field label={`Alt text ${index + 1}`}>
                           <input
                             value={item.alt_text}
@@ -622,7 +686,7 @@ export default function AdminEditScooterPage() {
                           />
                         </Field>
                         {existingImages.length === 0 ? (
-                          <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14 }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
                             <input
                               type="radio"
                               checked={newMainIndex === index}
@@ -631,10 +695,17 @@ export default function AdminEditScooterPage() {
                             <span>Main photo</span>
                           </label>
                         ) : null}
+                        {isMobile && (
+                          <Button variant="outline" onClick={() => removeNewPhoto(index)} style={{ justifySelf: 'start' }}>
+                            Remove
+                          </Button>
+                        )}
                       </div>
-                      <Button variant="outline" onClick={() => removeNewPhoto(index)}>
-                        Remove
-                      </Button>
+                      {!isMobile && (
+                        <Button variant="outline" onClick={() => removeNewPhoto(index)}>
+                          Remove
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -648,15 +719,15 @@ export default function AdminEditScooterPage() {
             </Panel>
           </div>
 
-          {/* Sidebar preview */}
-          <Panel style={{ padding: 22, position: 'sticky', top: 28 }}>
+          {/* Right column — preview + actions */}
+          <Panel style={{ padding: pad, position: isNarrow ? 'static' : 'sticky', top: 28 }}>
             <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18, color: A.black, marginBottom: 14 }}>
               Preview
             </div>
             <div style={{ borderRadius: 16, overflow: 'hidden', border: `1px solid ${A.g200}`, marginBottom: 16 }}>
               <div
                 style={{
-                  height: 220,
+                  height: isMobile ? 180 : 220,
                   background: mainPreviewUrl
                     ? `center / cover no-repeat url(${mainPreviewUrl})`
                     : 'linear-gradient(145deg,#111 0%,#2a2a2a 100%)',
@@ -666,24 +737,24 @@ export default function AdminEditScooterPage() {
                   color: 'rgba(255,255,255,0.8)',
                   fontFamily: 'Sora, sans-serif',
                   fontWeight: 700,
-                  fontSize: 22,
+                  fontSize: isMobile ? 18 : 22,
                   textAlign: 'center',
                   padding: 18,
                 }}
               >
                 {!mainPreviewUrl ? draft.title || 'Scooter' : null}
               </div>
-              <div style={{ padding: 18 }}>
+              <div style={{ padding: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
                   <div>
-                    <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18 }}>
+                    <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 16 }}>
                       {draft.title || 'Title'}
                     </div>
                     <div style={{ fontSize: 12, color: A.g500 }}>
                       {selectedModel?.type_name || 'Type'} · {selectedModel?.engine_cc || 0}cc
                     </div>
                   </div>
-                  <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 800, fontSize: 22 }}>
+                  <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 800, fontSize: 20 }}>
                     {draft.base_price_usd ? `$${draft.base_price_usd}` : '$0'}
                   </div>
                 </div>
@@ -701,9 +772,11 @@ export default function AdminEditScooterPage() {
             </div>
 
             <div style={{ display: 'grid', gap: 10 }}>
-              <Button variant="dark" onClick={handleSubmit} disabled={saving}>
-                {saving ? 'Saving…' : 'Save changes'}
-              </Button>
+              {!isMobile && (
+                <Button variant="dark" onClick={handleSubmit} disabled={saving} style={{ width: '100%' }}>
+                  {saving ? 'Saving…' : 'Save changes'}
+                </Button>
+              )}
               <Link
                 href={draft.slug ? `/scooter/${draft.slug}` : '#'}
                 style={{ textDecoration: 'none', pointerEvents: draft.slug ? 'auto' : 'none' }}
@@ -719,7 +792,7 @@ export default function AdminEditScooterPage() {
               </Link>
             </div>
 
-            <div style={{ marginTop: 18, padding: 14, borderRadius: 12, background: A.g100, fontSize: 13, color: A.g700, lineHeight: 1.6 }}>
+            <div style={{ marginTop: 16, padding: 12, borderRadius: 12, background: A.g100, fontSize: 13, color: A.g700, lineHeight: 1.6 }}>
               Scooter #{scooterId} · {existingImages.length} photo{existingImages.length !== 1 ? 's' : ''} in gallery
             </div>
           </Panel>
