@@ -412,6 +412,23 @@ export type ApiWebhookLog = {
   created_at?: string;
 };
 
+export type ApiAdminFaqTranslation = {
+  id?: number;
+  language: string;
+  question: string;
+  answer: string;
+};
+
+export type ApiAdminFaqItem = {
+  id: number;
+  code: string;
+  is_active: boolean;
+  sort_order: number;
+  translations: ApiAdminFaqTranslation[];
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type AdminScooterPayload = {
   model: number;
   title: string;
@@ -591,6 +608,15 @@ export const endpoints = {
     api<Paginated<ApiWebhookLog> | ApiWebhookLog[]>('/admin/security/webhooks/', { auth: true, query: params }),
   adminPayments: (params?: { page_size?: number; ordering?: string }) =>
     api<Paginated<ApiPayment> | ApiPayment[]>('/payments/', { auth: true, query: params }),
+
+  adminFaqs: () =>
+    api<Paginated<ApiAdminFaqItem> | ApiAdminFaqItem[]>('/admin/content/faq/', { auth: true }),
+  adminCreateFaq: (body: Omit<ApiAdminFaqItem, 'id' | 'created_at' | 'updated_at'>) =>
+    api<ApiAdminFaqItem>('/admin/content/faq/', { method: 'POST', body, auth: true }),
+  adminUpdateFaq: (id: number, body: Partial<Omit<ApiAdminFaqItem, 'id' | 'created_at' | 'updated_at'>>) =>
+    api<ApiAdminFaqItem>(`/admin/content/faq/${id}/`, { method: 'PATCH', body, auth: true }),
+  adminDeleteFaq: (id: number) =>
+    api(`/admin/content/faq/${id}/`, { method: 'DELETE', auth: true }),
 };
 
 export type BookingCreatePayload = {
