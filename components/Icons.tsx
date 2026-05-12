@@ -274,6 +274,48 @@ export function CryptoIcon(props: IconProps) {
   );
 }
 
+export function ArrowRightIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M5 12h14" />
+      <path d="m12 5 7 7-7 7" />
+    </SvgIcon>
+  );
+}
+
+export function ArrowDownIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M12 5v14" />
+      <path d="m5 12 7 7 7-7" />
+    </SvgIcon>
+  );
+}
+
+export function MapPinIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M12 2a6 6 0 0 1 6 6c0 5-6 12-6 12S6 13 6 8a6 6 0 0 1 6-6Z" />
+      <circle cx="12" cy="8" r="2" />
+    </SvgIcon>
+  );
+}
+
+export function WhatsAppIcon({ size = 20, color = 'currentColor', style }: IconProps) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill={color}
+      style={{ display: 'block', flexShrink: 0, ...style }}
+    >
+      <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.978-1.413A9.953 9.953 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2Zm5.22 13.71c-.22.62-1.3 1.19-1.78 1.22-.46.03-.9.22-3.03-.63-2.57-1.03-4.2-3.66-4.33-3.83-.13-.17-1.04-1.38-1.04-2.64 0-1.26.66-1.88.9-2.14.23-.26.5-.32.67-.32l.48.01c.16 0 .38-.06.59.45.22.52.74 1.81.81 1.94.07.13.12.28.02.45-.09.17-.14.28-.27.43l-.4.47c-.13.14-.27.29-.12.56.15.28.68 1.12 1.46 1.81.99.88 1.84 1.16 2.1 1.29.27.13.43.11.59-.07.16-.18.68-.79.86-1.06.18-.27.36-.23.61-.14.25.09 1.58.75 1.85.88.27.13.45.2.52.3.07.1.07.57-.15 1.19Z" />
+    </svg>
+  );
+}
+
 export function MenuIcon(props: IconProps) {
   return (
     <SvgIcon {...props}>

@@ -2135,6 +2135,10 @@ input[type="time"]:hover::-webkit-calendar-picker-indicator {
   .br-sticky-mobile-cta {
     display: flex !important;
   }
+  /* Отступ снизу чтобы контент не прятался за sticky CTA */
+  body {
+    padding-bottom: 72px;
+  }
 }
 
 /* Book button hover */
@@ -2232,5 +2236,93 @@ input[type="time"]:hover::-webkit-calendar-picker-indicator {
 @media (max-width: 600px) {
   .br-home-delivery-zones {
     grid-template-columns: 1fr !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   HERO CTA block — desktop/mobile switch
+   ───────────────────────────────────────────────────────────── */
+.br-hero-cta-desktop {
+  display: flex;
+}
+.br-hero-mobile-btn {
+  display: none;
+}
+@media (max-width: 760px) {
+  .br-hero-cta-desktop {
+    display: none !important;
+  }
+  .br-hero-mobile-btn {
+    display: flex !important;
+    flex-direction: column;
+    width: 100%;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Hero bottom row — на мобильном раскладываем вертикально
+   ───────────────────────────────────────────────────────────── */
+.br-hero-primary-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 20px 52px -10px rgba(255,215,0,0.72) !important;
+}
+.br-hero-wa-btn:hover {
+  color: #fff !important;
+}
+@media (max-width: 760px) {
+  .br-hero-bottom-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 14px !important;
+  }
+  .br-hero-divider {
+    display: none !important;
+  }
+  .br-hero-primary-btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Process step arrows — desktop only
+   ───────────────────────────────────────────────────────────── */
+.br-process-step-arrow {
+  display: flex;
+}
+@media (max-width: 900px) {
+  .br-process-step-arrow {
+    display: none !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Stats bar — 2 columns on mobile
+   ───────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .br-home-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .br-home-stats > div:nth-child(2) {
+    border-right: none !important;
+  }
+  .br-home-stats > div:nth-child(1),
+  .br-home-stats > div:nth-child(2) {
+    border-bottom: 1px solid rgba(255,255,255,0.07) !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Final CTA buttons — full width on mobile
+   ───────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .br-cta-btns {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  .br-cta-btns > a {
+    width: 100% !important;
+    justify-content: center !important;
   }
 }

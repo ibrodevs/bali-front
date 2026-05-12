@@ -3,9 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BR_LOCATIONS } from '@/lib/data';
-import { BRPhoto, BRPrice } from '@/components/BR';
+import { BRPhoto } from '@/components/BR';
 import {
-  DeliveryIcon, LightningIcon, PriceTagIcon, StarIcon, SupportIcon,
+  ArrowRightIcon, CheckIcon,
+  DeliveryIcon, LightningIcon,
+  PriceTagIcon, ScooterIcon, StarIcon, SupportIcon,
+  UsersIcon, WhatsAppIcon,
   renderAddonIcon,
 } from '@/components/Icons';
 import ScooterCard from '@/components/ScooterCard';
@@ -55,7 +58,7 @@ function FAQItem({ q, a }: { q: string; a: string }) {
           cursor: 'pointer', textAlign: 'left', gap: 16,
         }}
       >
-        <span style={{ fontFamily: 'var(--br-display)', fontSize: 'clamp(16px, 2vw, 20px)', fontWeight: 600, letterSpacing: '-0.01em', color: '#0A0A0F', lineHeight: 1.3 }}>{q}</span>
+        <span style={{ fontFamily: 'var(--br-display)', fontSize: 'clamp(15px, 1.8vw, 19px)', fontWeight: 600, letterSpacing: '-0.01em', color: '#0A0A0F', lineHeight: 1.3 }}>{q}</span>
         <span style={{
           width: 32, height: 32, borderRadius: 999, flexShrink: 0,
           background: open ? '#0A0A0F' : 'rgba(0,0,0,0.07)',
@@ -77,7 +80,7 @@ function FAQItem({ q, a }: { q: string; a: string }) {
             transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
             style={{ overflow: 'hidden' }}
           >
-            <p style={{ margin: '0 0 24px', fontSize: 15, lineHeight: 1.7, color: 'rgba(0,0,0,0.58)', maxWidth: 680, paddingRight: 48 }}>
+            <p style={{ margin: '0 0 24px', fontSize: 15, lineHeight: 1.7, color: 'rgba(0,0,0,0.55)', maxWidth: 680, paddingRight: 48 }}>
               {a}
             </p>
           </motion.div>
@@ -87,17 +90,13 @@ function FAQItem({ q, a }: { q: string; a: string }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Animation variants
-// ---------------------------------------------------------------------------
-
 const fadeUp = {
-  hidden: { opacity: 0, y: 36 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.75, ease: [0.16, 1, 0.3, 1] as const } },
+  hidden: { opacity: 0, y: 32 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] as const } },
 };
 const stagger = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.1 } },
+  visible: { transition: { staggerChildren: 0.09 } },
 };
 
 const WA_LINK = 'https://wa.me/6281234567890?text=Hi%2C%20I%E2%80%99d%20like%20to%20rent%20a%20scooter%20in%20Bali!';
@@ -108,9 +107,6 @@ const WA_LINK = 'https://wa.me/6281234567890?text=Hi%2C%20I%E2%80%99d%20like%20t
 
 export default function LandingPage() {
   const { t, locale, tr } = useLocale();
-  const [pickup] = useState('Canggu');
-  const [start] = useState('Aug 14');
-  const [end] = useState('Aug 21');
   const [featured, setFeatured] = useState<DisplayScooter[]>(fallbackScooters().slice(0, 3));
   const [addonCards, setAddonCards] = useState<Array<{ id: number; name: string; description?: string; priceUSD?: number; icon?: string }>>([]);
   const [zones, setZones] = useState<Array<{ id: number; name: string; freeDelivery?: boolean }>>([]);
@@ -119,7 +115,6 @@ export default function LandingPage() {
 
   const statsRef = useRef<HTMLDivElement>(null);
   const [statsRevealed, setStatsRevealed] = useState(false);
-  const [stickyVisible, setStickyVisible] = useState(false);
 
   const count340 = useCountUp(340, statsRevealed, 1400);
   const count12 = useCountUp(12, statsRevealed, 1100);
@@ -136,20 +131,12 @@ export default function LandingPage() {
   }, []);
 
   useEffect(() => {
-    const onScroll = () => setStickyVisible(window.scrollY > 500);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  useEffect(() => {
     let cancelled = false;
     endpoints.bootstrap(locale)
       .then((bootstrap) => {
         if (cancelled) return;
         const nextFeatured = (bootstrap.fleet?.featured || []).map((item) => ({
-          id: item.slug,
-          apiId: item.id,
-          name: item.name,
+          id: item.slug, apiId: item.id, name: item.name,
           cc: Number(String(item.engine || '').replace(/[^\d]/g, '')) || 0,
           type: item.typeLabel || item.type || 'Scooter',
           price: Number(item.priceUSD) || 0,
@@ -162,89 +149,66 @@ export default function LandingPage() {
         }));
         if (nextFeatured.length) setFeatured(nextFeatured);
         setAddonCards(bootstrap.addons || []);
-        setZones((bootstrap.deliveryZones || []).map((zone) => ({ id: zone.id, name: zone.name, freeDelivery: zone.freeDelivery })));
+        setZones((bootstrap.deliveryZones || []).map((z) => ({ id: z.id, name: z.name, freeDelivery: z.freeDelivery })));
         const faqData = (bootstrap.content as Record<string, unknown> | undefined);
         const faqItems = (faqData?.home as Record<string, unknown> | undefined)?.faq;
         const items = (faqItems as Record<string, unknown> | undefined)?.items;
-        if (Array.isArray(items) && items.length) {
-          setApiFaqs(items as Array<{ q: string; a: string }>);
-        }
+        if (Array.isArray(items) && items.length) setApiFaqs(items as Array<{ q: string; a: string }>);
       })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [locale]);
 
   const activeZones = useMemo(() => {
-    const zoneNames = zones.map((z) => z.name);
-    return zoneNames.length ? zoneNames : BR_LOCATIONS;
+    const names = zones.map((z) => z.name);
+    return names.length ? names : BR_LOCATIONS;
   }, [zones]);
 
   const addons = addonCards.length ? addonCards : [
     { id: 1, icon: 'shield', name: t.home.addonsFallback[0].name, priceUSD: 5, description: t.home.addonsFallback[0].description },
-    { id: 2, icon: 'wifi', name: t.home.addonsFallback[1].name, priceUSD: 4, description: t.home.addonsFallback[1].description },
+    { id: 2, icon: 'wifi',   name: t.home.addonsFallback[1].name, priceUSD: 4, description: t.home.addonsFallback[1].description },
     { id: 3, icon: 'helmet', name: t.home.addonsFallback[2].name, priceUSD: 2, description: t.home.addonsFallback[2].description },
-    { id: 4, icon: 'phone', name: t.home.addonsFallback[3].name, priceUSD: 2, description: t.home.addonsFallback[3].description },
+    { id: 4, icon: 'phone',  name: t.home.addonsFallback[3].name, priceUSD: 2, description: t.home.addonsFallback[3].description },
   ];
 
   const faqs = apiFaqs.length ? apiFaqs : t.home.faqs;
   const homeReviews = t.home.reviews;
+  const minPrice = featured[0]?.price || 8;
 
   return (
     <div style={{ width: '100%', background: '#FAFAF5', color: '#0A0A0F', fontFamily: 'var(--br-body)', WebkitFontSmoothing: 'antialiased' }}>
       <SiteHeader transparent />
 
       {/* ═══════════════════════════════════════════════════════════════
-          01  HERO — cinematic full-screen
+          01  HERO
           ═══════════════════════════════════════════════════════════════ */}
-      <section style={{ position: 'relative', height: '100vh', minHeight: 700, overflow: 'hidden' }}>
-        {/* Background video */}
-        <video
-          autoPlay muted loop playsInline aria-hidden="true"
+      <section style={{ position: 'relative', height: '100vh', minHeight: 620, overflow: 'hidden' }}>
+
+        <video autoPlay muted loop playsInline aria-hidden="true"
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
         >
           <source src="/hero.mp4" type="video/mp4" />
         </video>
 
-        {/* Gradient overlays — cinematic depth */}
-        <div aria-hidden style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.0) 55%, rgba(0,0,0,0.86) 100%)' }} />
-        <div aria-hidden style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 130% 100% at 50% 105%, rgba(0,0,0,0) 30%, rgba(0,0,0,0.38) 100%)' }} />
+        {/* Один градиент снизу — чисто и ясно */}
+        <div aria-hidden style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.15) 100%)' }} />
 
-        {/* Content pinned to bottom */}
+        {/* Контент прибит к низу */}
         <div style={{
           position: 'absolute', inset: 0,
           display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-          padding: 'clamp(24px, 5vw, 60px) clamp(20px, 5vw, 56px) clamp(44px, 7vw, 80px)',
+          padding: 'clamp(16px, 5vw, 56px) clamp(16px, 5vw, 56px) clamp(40px, 7vw, 80px)',
         }}>
 
-          {/* Status pill */}
-          <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              background: 'rgba(255,255,255,0.10)',
-              backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-              border: '1px solid rgba(255,255,255,0.18)',
-              borderRadius: 999, padding: '8px 16px', marginBottom: 28,
-            }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E', boxShadow: '0 0 8px rgba(34,197,94,0.9)' }} />
-              <span style={{ fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.18em', color: '#fff' }}>
-                {t.home.status} · {t.home.location}
-              </span>
-            </div>
-          </motion.div>
-
-          {/* Headline */}
+          {/* Заголовок */}
           <motion.h1
-            initial={{ opacity: 0, y: 64 }}
+            initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.14, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             style={{
               fontFamily: 'var(--br-display)',
-              fontSize: 'clamp(54px, 9.5vw, 120px)',
-              lineHeight: 0.91, letterSpacing: '-0.04em',
+              fontSize: 'clamp(54px, 10vw, 124px)',
+              lineHeight: 0.9, letterSpacing: '-0.04em',
               color: '#fff', margin: '0 0 20px', fontWeight: 800,
             }}
           >
@@ -252,171 +216,237 @@ export default function LandingPage() {
             <span style={{ color: '#FFD700' }}>{t.home.title2}</span>
           </motion.h1>
 
-          {/* Subheadline */}
-          <motion.p
-            initial={{ opacity: 0, y: 32 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.65, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            style={{
-              fontSize: 'clamp(14px, 1.8vw, 19px)',
-              color: 'rgba(255,255,255,0.78)',
-              margin: '0 0 36px', maxWidth: 540, lineHeight: 1.55,
-            }}
-          >
-            {t.home.subtitle}{' '}
-            <span style={{ color: '#FFD700', fontWeight: 600 }}>{t.home.priceFrom} ${featured[0]?.price || 8}/{t.common.day}.</span>
-          </motion.p>
-
-          {/* Glassmorphism booking widget */}
+          {/* Цена + кнопка в одну строку */}
           <motion.div
-            initial={{ opacity: 0, y: 40 }}
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.65, delay: 0.46, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.65, delay: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            className="br-hero-bottom-row"
+            style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}
           >
-            {/* Desktop bar */}
-            <div className="br-hero-search-wrap">
-              <div style={{
-                background: 'rgba(255,255,255,0.09)',
-                backdropFilter: 'blur(28px) saturate(160%)', WebkitBackdropFilter: 'blur(28px) saturate(160%)',
-                border: '1px solid rgba(255,255,255,0.18)',
-                borderRadius: 20, padding: 8,
-                display: 'flex', alignItems: 'stretch',
-                maxWidth: 860,
-                boxShadow: '0 32px 80px -20px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.10)',
-              }}>
-                {[
-                  { label: t.hero.pickup, value: pickup, sub: t.hero.locations },
-                  { label: t.hero.pickupDate, value: start, sub: '08:00' },
-                  { label: t.hero.returnDate, value: end, sub: '20:00' },
-                ].map((f, i) => (
-                  <a key={i} href="/catalog" style={{
-                    padding: '14px 22px',
-                    borderRight: '1px solid rgba(255,255,255,0.12)',
-                    flex: 1, cursor: 'pointer', textDecoration: 'none', display: 'block',
-                  }}>
-                    <div style={{ fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.50)', marginBottom: 5 }}>{f.label}</div>
-                    <div style={{ fontFamily: 'var(--br-display)', fontSize: 18, color: '#fff', lineHeight: 1.1, fontWeight: 700, letterSpacing: '-0.02em' }}>{f.value}</div>
-                    <div style={{ fontFamily: 'var(--br-mono)', fontSize: 11, color: 'rgba(255,255,255,0.40)', marginTop: 3 }}>{f.sub}</div>
-                  </a>
-                ))}
-                <div style={{ padding: '8px 8px 8px 10px', display: 'flex', alignItems: 'center' }}>
-                  <a href="/catalog" className="br-hero-book-btn" style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 8,
-                    background: '#FFD700', color: '#0A0A0F',
-                    fontFamily: 'var(--br-body)', fontSize: 15, fontWeight: 700,
-                    padding: '0 28px', height: 64, borderRadius: 14,
-                    textDecoration: 'none', whiteSpace: 'nowrap', letterSpacing: '-0.01em',
-                  }}>
-                    {t.hero.cta} →
-                  </a>
-                </div>
-              </div>
+            {/* Цена — просто и крупно */}
+            <div style={{ color: 'rgba(255,255,255,0.72)', fontSize: 'clamp(15px, 1.6vw, 18px)', lineHeight: 1.4 }}>
+              {t.home.subtitle}<br />
+              <span style={{ color: '#FFD700', fontWeight: 700, fontSize: 'clamp(17px, 1.8vw, 20px)' }}>
+                {t.home.priceFrom} ${minPrice}/{t.common.day}
+              </span>
             </div>
 
-            {/* Mobile CTA */}
-            <div className="br-hero-mobile-btn">
-              <a href="/catalog" style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                background: '#FFD700', color: '#0A0A0F',
-                fontFamily: 'var(--br-body)', fontSize: 17, fontWeight: 700,
-                height: 60, borderRadius: 14, textDecoration: 'none', letterSpacing: '-0.01em',
-                width: '100%',
-              }}>
-                {t.hero.cta} →
-              </a>
-            </div>
+            {/* Разделитель */}
+            <div className="br-hero-divider" style={{ width: 1, height: 44, background: 'rgba(255,255,255,0.2)' }} />
+
+            {/* Главная CTA */}
+            <a href="/catalog" className="br-hero-primary-btn" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 12,
+              background: '#FFD700', color: '#0A0A0F',
+              fontFamily: 'var(--br-display)', fontSize: 'clamp(16px, 1.6vw, 20px)', fontWeight: 800,
+              padding: '0 clamp(24px, 3vw, 36px)', height: 'clamp(58px, 6vw, 68px)', borderRadius: 16,
+              textDecoration: 'none', letterSpacing: '-0.02em', whiteSpace: 'nowrap',
+              boxShadow: '0 12px 40px -8px rgba(255,215,0,0.6)',
+              transition: 'transform 200ms, box-shadow 200ms',
+            }}>
+              <ScooterIcon size={20} color="#0A0A0F" strokeWidth={2.2} />
+              {t.hero.cta}
+              <ArrowRightIcon size={17} color="#0A0A0F" strokeWidth={2.5} />
+            </a>
+
+            {/* WhatsApp — вторичная */}
+            <a href={WA_LINK} target="_blank" rel="noopener noreferrer" className="br-hero-wa-btn" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 9,
+              color: 'rgba(255,255,255,0.75)', fontFamily: 'var(--br-body)', fontSize: 15, fontWeight: 500,
+              textDecoration: 'none', whiteSpace: 'nowrap',
+              transition: 'color 200ms',
+            }}>
+              <WhatsAppIcon size={18} color="#25D366" />
+              WhatsApp
+            </a>
           </motion.div>
 
-          {/* Trust badges */}
+          {/* Три факта — минимально */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.7 }}
-            style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 24px', marginTop: 20 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            style={{ display: 'flex', gap: 20, marginTop: 22, flexWrap: 'wrap' }}
           >
-            {t.home.trustBadges.map((badge) => (
-              <span key={badge} style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                color: 'rgba(255,255,255,0.60)',
-                fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.14em',
-              }}>
-                <span style={{ color: '#22C55E', fontSize: 12 }}>✓</span>
-                {badge.toUpperCase()}
+            {[
+              { icon: <StarIcon size={12} color="#FFD700" />, text: '4.97 · 12k riders' },
+              { icon: <DeliveryIcon size={12} color="rgba(255,255,255,0.45)" />, text: t.home.trustBadges[0] },
+              { icon: <CheckIcon size={12} color="rgba(255,255,255,0.45)" strokeWidth={2.5} />, text: t.home.trustBadges[1] },
+            ].map(({ icon, text }, i) => (
+              <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>
+                {icon}{text}
               </span>
             ))}
           </motion.div>
         </div>
+      </section>
 
-        {/* Scroll indicator */}
+      {/* ═══════════════════════════════════════════════════════════════
+          02  КАК ЭТО РАБОТАЕТ — 3 шага
+          ═══════════════════════════════════════════════════════════════ */}
+      <section style={{ padding: 'clamp(52px, 7vw, 96px) clamp(16px, 5vw, 56px)', background: '#fff' }}>
         <motion.div
-          animate={{ y: [0, 10, 0] }}
-          transition={{ repeat: Infinity, duration: 2.6, ease: 'easeInOut' }}
-          style={{
-            position: 'absolute', bottom: 28, left: '50%', transform: 'translateX(-50%)',
-            color: 'rgba(255,255,255,0.35)', pointerEvents: 'none',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-          }}
+          variants={stagger} initial="hidden" whileInView="visible"
+          viewport={{ once: true, margin: '-60px' }}
+          style={{ marginBottom: 48, textAlign: 'center' }}
         >
-          <span style={{ fontFamily: 'var(--br-mono)', fontSize: 9, letterSpacing: '0.18em' }}>{t.home.scroll.toUpperCase()}</span>
-          <svg width="16" height="26" viewBox="0 0 16 26" fill="none">
-            <rect x="0.75" y="0.75" width="14.5" height="24.5" rx="7.25" stroke="currentColor" strokeWidth="1.5" />
-            <motion.circle cx="8" cy="7" r="2.5" fill="currentColor"
-              animate={{ opacity: [1, 0.2, 1], y: [0, 4, 0] }}
-              transition={{ repeat: Infinity, duration: 2.2 }}
-            />
-          </svg>
+          <motion.div variants={fadeUp} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 18,
+            background: '#FFD700', color: '#0A0A0F',
+            borderRadius: 999, padding: '7px 18px',
+            fontFamily: 'var(--br-mono)', fontSize: 11, letterSpacing: '0.16em', fontWeight: 700,
+          }}>
+            {t.home.processLabel}
+          </motion.div>
+          <motion.h2 variants={fadeUp} className="br-display" style={{
+            margin: 0, fontSize: 'clamp(30px, 5vw, 62px)',
+            lineHeight: 0.97, letterSpacing: '-0.035em', color: '#0A0A0F',
+          }}>
+            {t.process.title}
+          </motion.h2>
+          <motion.p variants={fadeUp} style={{
+            marginTop: 14, fontSize: 'clamp(14px, 1.4vw, 16px)',
+            color: 'rgba(0,0,0,0.48)', margin: '14px auto 0', lineHeight: 1.55, maxWidth: 440,
+          }}>
+            Всё просто — от выбора до поездки за несколько минут
+          </motion.p>
+        </motion.div>
+
+        <motion.div
+          variants={stagger} initial="hidden" whileInView="visible"
+          viewport={{ once: true, margin: '-40px' }}
+          className="br-home-process-grid"
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, position: 'relative' }}
+        >
+          <div aria-hidden className="br-process-connector" style={{
+            position: 'absolute', top: 43, left: '18%', right: '18%', height: 2,
+            background: 'linear-gradient(90deg, #FFD700 0%, rgba(255,215,0,0.12) 100%)', zIndex: 0,
+          }} />
+
+          {(t.process.steps as [string, string][]).map(([title, desc], i) => (
+            <motion.div key={i} variants={fadeUp} style={{
+              position: 'relative', zIndex: 1,
+              padding: 'clamp(24px, 3vw, 38px) clamp(18px, 2.5vw, 30px)',
+              background: i === 0
+                ? 'linear-gradient(145deg, rgba(255,215,0,0.09) 0%, rgba(255,215,0,0.02) 100%)'
+                : '#FAFAF5',
+              border: i === 0 ? '2px solid rgba(255,215,0,0.45)' : '1.5px solid rgba(0,0,0,0.07)',
+              borderRadius: 24,
+              boxShadow: i === 0 ? '0 16px 48px -20px rgba(255,215,0,0.22)' : '0 8px 28px -14px rgba(0,0,0,0.07)',
+            }}>
+              <div style={{
+                width: 54, height: 54, borderRadius: '50%',
+                background: i === 0 ? '#FFD700' : '#0A0A0F',
+                color: i === 0 ? '#0A0A0F' : '#FFD700',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: 'var(--br-mono)', fontSize: 15, fontWeight: 800,
+                marginBottom: 22,
+                boxShadow: i === 0 ? '0 8px 28px -8px rgba(255,215,0,0.7)' : '0 8px 24px -8px rgba(0,0,0,0.42)',
+              }}>
+                0{i + 1}
+              </div>
+              <div className="br-display" style={{ fontSize: 'clamp(17px, 1.9vw, 22px)', lineHeight: 1.1, letterSpacing: '-0.02em', color: '#0A0A0F', marginBottom: 10 }}>
+                {title}
+              </div>
+              <p style={{ fontSize: 'clamp(13px, 1.2vw, 14px)', lineHeight: 1.65, color: 'rgba(0,0,0,0.52)', margin: 0 }}>
+                {desc}
+              </p>
+              {i < 2 && (
+                <div className="br-process-step-arrow" style={{
+                  position: 'absolute', right: -19, top: '50%', transform: 'translateY(-50%)',
+                  width: 38, height: 38, borderRadius: '50%',
+                  background: '#FFD700', color: '#0A0A0F',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  zIndex: 2, boxShadow: '0 4px 14px -4px rgba(255,215,0,0.55)',
+                }}>
+                  <ArrowRightIcon size={16} color="#0A0A0F" strokeWidth={2.5} />
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }} transition={{ delay: 0.3, duration: 0.6 }}
+          style={{ textAlign: 'center', marginTop: 44 }}
+        >
+          <a href="/catalog" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 12,
+            background: '#0A0A0F', color: '#FFD700',
+            fontFamily: 'var(--br-display)', fontSize: 'clamp(14px, 1.4vw, 17px)', fontWeight: 700,
+            padding: '0 clamp(28px, 4vw, 44px)', height: 'clamp(54px, 5.5vw, 64px)', borderRadius: 999,
+            textDecoration: 'none', letterSpacing: '-0.02em',
+            boxShadow: '0 14px 44px -14px rgba(0,0,0,0.38)',
+          }}>
+            <ScooterIcon size={18} color="#FFD700" strokeWidth={2} />
+            Начать — выбрать скутер
+            <ArrowRightIcon size={16} color="#FFD700" strokeWidth={2.5} />
+          </a>
+          <p style={{ marginTop: 14, fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.35)', textTransform: 'uppercase' }}>
+            Без регистрации · Ответим за 5 минут · Доставка в отель
+          </p>
         </motion.div>
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
-          02  STATS — animated counters
+          03  STATS
           ═══════════════════════════════════════════════════════════════ */}
       <div ref={statsRef} className="br-home-stats" style={{
         display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
-        background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.07)',
+        background: '#0A0A0F', borderTop: '1px solid rgba(255,255,255,0.06)',
       }}>
         {([
-          [`${count340}+`, t.stats.fleet],
-          [`${count12}k`, t.stats.riders],
-          [count497.toFixed(2), t.stats.rating],
-          ['24/7', t.stats.support],
-        ] as const).map(([n, l], i) => (
+          { n: `${count340}+`, l: t.stats.fleet,   Icon: ScooterIcon },
+          { n: `${count12}k`,  l: t.stats.riders,  Icon: UsersIcon },
+          { n: count497.toFixed(2), l: t.stats.rating, Icon: StarIcon },
+          { n: '24/7',         l: t.stats.support, Icon: SupportIcon },
+        ]).map(({ n, l, Icon }, i) => (
           <div key={i} style={{
-            padding: 'clamp(22px, 4vw, 44px) clamp(18px, 3vw, 40px)',
-            borderRight: i < 3 ? '1px solid rgba(0,0,0,0.07)' : 'none',
+            padding: 'clamp(20px, 3.5vw, 40px) clamp(12px, 2vw, 32px)',
+            borderRight: i < 3 ? '1px solid rgba(255,255,255,0.07)' : 'none',
+            textAlign: 'center',
           }}>
-            <div className="br-display" style={{ fontSize: 'clamp(40px, 5.5vw, 62px)', lineHeight: 1, letterSpacing: '-0.04em', color: '#0A0A0F' }}>{n}</div>
-            <div style={{ fontFamily: 'var(--br-mono)', fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.38)', marginTop: 8, textTransform: 'uppercase' }}>{l}</div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+              <Icon size={22} color="rgba(255,215,0,0.5)" strokeWidth={1.6} />
+            </div>
+            <div className="br-display" style={{ fontSize: 'clamp(30px, 4.5vw, 54px)', lineHeight: 1, letterSpacing: '-0.04em', color: '#FFD700' }}>{n}</div>
+            <div style={{ fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.14em', color: 'rgba(255,255,255,0.32)', marginTop: 6, textTransform: 'uppercase' }}>{l}</div>
           </div>
         ))}
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════
-          03  FLEET — popular scooters
+          04  FLEET
           ═══════════════════════════════════════════════════════════════ */}
-      <section id="fleet" style={{ padding: 'clamp(64px, 8vw, 112px) clamp(20px, 5vw, 56px)', background: '#FAFAF5' }}>
+      <section id="fleet" style={{ padding: 'clamp(52px, 7vw, 100px) clamp(16px, 5vw, 56px)', background: '#FAFAF5' }}>
         <motion.div
           variants={stagger} initial="hidden" whileInView="visible"
           viewport={{ once: true, margin: '-80px' }}
-          style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 24, marginBottom: 48 }}
+          style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20, marginBottom: 40 }}
         >
           <motion.div variants={fadeUp}>
-            <div style={{ fontFamily: 'var(--br-mono)', fontSize: 11, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.35)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ width: 24, height: 1, background: 'rgba(0,0,0,0.25)' }} />01 / FLEET
+            <div style={{ fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.32)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10, textTransform: 'uppercase' }}>
+              <span style={{ width: 20, height: 1, background: 'rgba(0,0,0,0.22)' }} />01 / Fleet
             </div>
-            <h2 className="br-display" style={{ margin: 0, fontSize: 'clamp(38px, 6vw, 72px)', lineHeight: 0.96, letterSpacing: '-0.035em', color: '#0A0A0F' }}>
+            <h2 className="br-display" style={{ margin: 0, fontSize: 'clamp(30px, 5.5vw, 68px)', lineHeight: 0.97, letterSpacing: '-0.035em', color: '#0A0A0F' }}>
               {t.fleet.title}
             </h2>
+            <p style={{ marginTop: 12, fontSize: 'clamp(13px, 1.3vw, 15px)', color: 'rgba(0,0,0,0.48)', maxWidth: 340, lineHeight: 1.55 }}>
+              Выбери модель и нажми «Забронировать»
+            </p>
           </motion.div>
           <motion.div variants={fadeUp}>
-            <a href="/catalog" className="br-outline-link" style={{
+            <a href="/catalog" style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               fontFamily: 'var(--br-body)', fontSize: 14, fontWeight: 600,
               color: '#0A0A0F', textDecoration: 'none',
-              padding: '12px 22px', border: '1.5px solid rgba(0,0,0,0.12)',
-              borderRadius: 999,
+              padding: '11px 20px', border: '1.5px solid rgba(0,0,0,0.14)',
+              borderRadius: 999, transition: 'background 200ms, border-color 200ms',
             }}>
-              {t.fleet.viewAll} →
+              {t.fleet.viewAll}
+              <ArrowRightIcon size={14} color="#0A0A0F" strokeWidth={2.5} />
             </a>
           </motion.div>
         </motion.div>
@@ -425,7 +455,7 @@ export default function LandingPage() {
           variants={stagger} initial="hidden" whileInView="visible"
           viewport={{ once: true, margin: '-60px' }}
           className="br-home-fleet-grid"
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}
         >
           {featured.slice(0, 3).map((s) => (
             <motion.div key={s.id} variants={fadeUp}>
@@ -436,38 +466,39 @@ export default function LandingPage() {
 
         <motion.div
           initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }} transition={{ delay: 0.35 }}
-          style={{ textAlign: 'center', marginTop: 52 }}
+          viewport={{ once: true }} transition={{ delay: 0.3 }}
+          style={{ textAlign: 'center', marginTop: 44 }}
         >
           <a href="/catalog" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 10,
-            background: '#0A0A0F', color: '#FFD700',
-            fontFamily: 'var(--br-body)', fontSize: 16, fontWeight: 700,
-            padding: '16px 40px', borderRadius: 999,
-            textDecoration: 'none', letterSpacing: '-0.01em',
+            display: 'inline-flex', alignItems: 'center', gap: 12,
+            background: '#FFD700', color: '#0A0A0F',
+            fontFamily: 'var(--br-display)', fontSize: 'clamp(14px, 1.4vw, 17px)', fontWeight: 800,
+            padding: '0 clamp(28px, 4vw, 44px)', height: 'clamp(54px, 5.5vw, 64px)', borderRadius: 999,
+            textDecoration: 'none', letterSpacing: '-0.02em',
+            boxShadow: '0 12px 36px -12px rgba(255,215,0,0.5)',
           }}>
-            {t.home.viewFullFleet} →
+            <ScooterIcon size={18} color="#0A0A0F" strokeWidth={2} />
+            {t.home.viewFullFleet} — {t.home.priceFrom.toLowerCase()} ${minPrice}/{t.common.day}
+            <ArrowRightIcon size={15} color="#0A0A0F" strokeWidth={2.5} />
           </a>
         </motion.div>
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
-          04  WHY CHOOSE US — dark premium section
+          05  WHY CHOOSE US
           ═══════════════════════════════════════════════════════════════ */}
-      <section style={{ padding: 'clamp(64px, 8vw, 112px) clamp(20px, 5vw, 56px)', background: '#0C0C12', color: '#fff', position: 'relative', overflow: 'hidden' }}>
-        {/* Ambient glows */}
-        <div aria-hidden style={{ position: 'absolute', top: -60, right: -60, width: 560, height: 560, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,215,0,0.07) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div aria-hidden style={{ position: 'absolute', bottom: -80, left: -40, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,215,0,0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />
+      <section style={{ padding: 'clamp(52px, 7vw, 100px) clamp(16px, 5vw, 56px)', background: '#0C0C12', color: '#fff', position: 'relative', overflow: 'hidden' }}>
+        <div aria-hidden style={{ position: 'absolute', top: -80, right: -80, width: 520, height: 520, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,215,0,0.07) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
         <motion.div
           variants={stagger} initial="hidden" whileInView="visible"
           viewport={{ once: true, margin: '-80px' }}
-          style={{ marginBottom: 56, position: 'relative' }}
+          style={{ marginBottom: 48, position: 'relative' }}
         >
-          <motion.div variants={fadeUp} style={{ fontFamily: 'var(--br-mono)', fontSize: 11, letterSpacing: '0.18em', color: '#FFD700', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ width: 24, height: 1, background: '#FFD700' }} />{t.home.whyLabel}
+          <motion.div variants={fadeUp} style={{ fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.18em', color: '#FFD700', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10, textTransform: 'uppercase' }}>
+            <span style={{ width: 20, height: 1, background: '#FFD700' }} />{t.home.whyLabel}
           </motion.div>
-          <motion.h2 variants={fadeUp} className="br-display" style={{ margin: 0, fontSize: 'clamp(38px, 6vw, 72px)', lineHeight: 0.96, letterSpacing: '-0.035em' }}>
+          <motion.h2 variants={fadeUp} className="br-display" style={{ margin: 0, fontSize: 'clamp(30px, 5.5vw, 68px)', lineHeight: 0.97, letterSpacing: '-0.035em' }}>
             {t.why.title}
           </motion.h2>
         </motion.div>
@@ -476,35 +507,33 @@ export default function LandingPage() {
           variants={stagger} initial="hidden" whileInView="visible"
           viewport={{ once: true, margin: '-60px' }}
           className="br-home-why-grid"
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, position: 'relative' }}
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}
         >
           {(t.why.items as [string, string][]).map(([title, desc], k) => {
             const Icon = whyIcons[k] || SupportIcon;
             return (
-              <motion.div
-                key={k}
-                variants={fadeUp}
+              <motion.div key={k} variants={fadeUp}
                 whileHover={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,215,0,0.28)' }}
                 style={{
-                  position: 'relative', padding: '32px 24px 28px',
-                  background: 'rgba(255,255,255,0.035)',
-                  border: '1px solid rgba(255,255,255,0.08)',
+                  position: 'relative', padding: 'clamp(20px, 2.5vw, 32px) clamp(16px, 2vw, 24px)',
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.09)',
                   borderRadius: 20, overflow: 'hidden',
                   transition: 'background 300ms, border-color 300ms',
                 }}
               >
-                <div style={{ position: 'absolute', top: 20, right: 20, fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.18)' }}>0{k + 1}</div>
+                <div style={{ position: 'absolute', top: 16, right: 16, fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.14em', color: 'rgba(255,255,255,0.12)' }}>0{k + 1}</div>
                 <div style={{
-                  width: 52, height: 52, borderRadius: 14,
+                  width: 48, height: 48, borderRadius: 12,
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                   background: 'rgba(255,215,0,0.10)', border: '1px solid rgba(255,215,0,0.22)',
-                  marginBottom: 24,
+                  marginBottom: 20,
                 }}>
-                  <Icon size={24} color="#FFD700" />
+                  <Icon size={22} color="#FFD700" />
                 </div>
-                <div className="br-display" style={{ fontSize: 21, letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: 12 }}>{title}</div>
-                <p style={{ fontSize: 14, lineHeight: 1.65, color: 'rgba(255,255,255,0.50)', margin: '0 0 20px' }}>{desc}</p>
-                <div style={{ height: 2, width: 28, background: '#FFD700', borderRadius: 1 }} />
+                <div className="br-display" style={{ fontSize: 'clamp(16px, 1.7vw, 21px)', letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: 10 }}>{title}</div>
+                <p style={{ fontSize: 'clamp(12px, 1.1vw, 14px)', lineHeight: 1.65, color: 'rgba(255,255,255,0.46)', margin: '0 0 18px' }}>{desc}</p>
+                <div style={{ height: 2, width: 24, background: '#FFD700', borderRadius: 1 }} />
               </motion.div>
             );
           })}
@@ -512,81 +541,24 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
-          05  HOW IT WORKS — 3 steps
+          06  ADD-ONS
           ═══════════════════════════════════════════════════════════════ */}
-      <section style={{ padding: 'clamp(64px, 8vw, 112px) clamp(20px, 5vw, 56px)', background: '#fff' }}>
+      <section style={{ padding: 'clamp(52px, 7vw, 96px) clamp(16px, 5vw, 56px)', background: '#FAFAF5' }}>
         <motion.div
           variants={stagger} initial="hidden" whileInView="visible"
           viewport={{ once: true, margin: '-80px' }}
-          style={{ marginBottom: 56 }}
-        >
-          <motion.div variants={fadeUp} style={{ fontFamily: 'var(--br-mono)', fontSize: 11, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.35)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ width: 24, height: 1, background: 'rgba(0,0,0,0.25)' }} />{t.home.processLabel}
-          </motion.div>
-          <motion.h2 variants={fadeUp} className="br-display" style={{ margin: 0, fontSize: 'clamp(38px, 6vw, 72px)', lineHeight: 0.96, letterSpacing: '-0.035em', color: '#0A0A0F' }}>
-            {t.process.title}
-          </motion.h2>
-        </motion.div>
-
-        <motion.div
-          variants={stagger} initial="hidden" whileInView="visible"
-          viewport={{ once: true, margin: '-60px' }}
-          className="br-home-process-grid"
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, position: 'relative' }}
-        >
-          {/* Connecting line (desktop) */}
-          <div aria-hidden className="br-process-connector" style={{ position: 'absolute', top: 50, left: '17%', right: '17%', height: 1, background: 'linear-gradient(90deg, rgba(255,215,0,0.9), rgba(255,215,0,0.2))', zIndex: 0 }} />
-
-          {(t.process.steps as [string, string][]).map(([title, desc], i) => (
-            <motion.div
-              key={i}
-              variants={fadeUp}
-              style={{
-                position: 'relative', zIndex: 1,
-                padding: '36px 28px 32px',
-                background: i === 0 ? 'linear-gradient(160deg, rgba(255,215,0,0.07) 0%, transparent 60%)' : '#fff',
-                border: i === 0 ? '1.5px solid rgba(255,215,0,0.38)' : '1px solid rgba(0,0,0,0.07)',
-                borderRadius: 20,
-              }}
-            >
-              <div style={{
-                width: 52, height: 52, borderRadius: '50%',
-                background: i === 0 ? '#FFD700' : '#0A0A0F',
-                color: i === 0 ? '#0A0A0F' : '#FFD700',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontFamily: 'var(--br-mono)', fontSize: 14, fontWeight: 700, letterSpacing: '0.06em',
-                marginBottom: 24,
-                boxShadow: i === 0 ? '0 8px 24px -8px rgba(255,215,0,0.65)' : '0 8px 24px -8px rgba(0,0,0,0.35)',
-              }}>
-                0{i + 1}
-              </div>
-              <div style={{ fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.35)', marginBottom: 10 }}>{tr(t.home.stepLabel, { n: i + 1 })}</div>
-              <div className="br-display" style={{ fontSize: 23, lineHeight: 1.1, letterSpacing: '-0.02em', color: '#0A0A0F', marginBottom: 14 }}>{title}</div>
-              <p style={{ fontSize: 15, lineHeight: 1.65, color: 'rgba(0,0,0,0.52)', margin: 0 }}>{desc}</p>
-            </motion.div>
-          ))}
-        </motion.div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════════════
-          06  ADD-ONS — upgrade your ride
-          ═══════════════════════════════════════════════════════════════ */}
-      <section style={{ padding: 'clamp(64px, 8vw, 100px) clamp(20px, 5vw, 56px)', background: '#FAFAF5' }}>
-        <motion.div
-          variants={stagger} initial="hidden" whileInView="visible"
-          viewport={{ once: true, margin: '-80px' }}
-          style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 24, marginBottom: 48 }}
+          style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20, marginBottom: 40 }}
         >
           <motion.div variants={fadeUp}>
-            <div style={{ fontFamily: 'var(--br-mono)', fontSize: 11, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.35)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ width: 24, height: 1, background: 'rgba(0,0,0,0.25)' }} />{t.home.addonsLabel}
+            <div style={{ fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.32)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10, textTransform: 'uppercase' }}>
+              <span style={{ width: 20, height: 1, background: 'rgba(0,0,0,0.22)' }} />{t.home.addonsLabel}
             </div>
-            <h2 className="br-display" style={{ margin: 0, fontSize: 'clamp(38px, 6vw, 72px)', lineHeight: 0.96, letterSpacing: '-0.035em', color: '#0A0A0F' }}>
+            <h2 className="br-display" style={{ margin: 0, fontSize: 'clamp(30px, 5.5vw, 68px)', lineHeight: 0.97, letterSpacing: '-0.035em', color: '#0A0A0F' }}>
               {t.addons.title}
             </h2>
           </motion.div>
           <motion.div variants={fadeUp}>
-            <span style={{ fontFamily: 'var(--br-mono)', fontSize: 11, color: 'rgba(0,0,0,0.45)', letterSpacing: '0.14em', padding: '10px 16px', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 999 }}>
+            <span style={{ fontFamily: 'var(--br-mono)', fontSize: 10, color: 'rgba(0,0,0,0.42)', letterSpacing: '0.14em', padding: '10px 16px', border: '1px solid rgba(0,0,0,0.09)', borderRadius: 999 }}>
               {t.addons.note}
             </span>
           </motion.div>
@@ -596,54 +568,53 @@ export default function LandingPage() {
           variants={stagger} initial="hidden" whileInView="visible"
           viewport={{ once: true, margin: '-60px' }}
           className="br-home-addons-grid"
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}
         >
-          {addons.slice(0, 4).map((item, i) => (
-            <motion.div
-              key={item.id}
-              variants={fadeUp}
-              whileHover={{ y: -6, boxShadow: '0 24px 48px -16px rgba(0,0,0,0.12)' }}
+          {addons.slice(0, 4).map((item) => (
+            <motion.div key={item.id} variants={fadeUp}
+              whileHover={{ y: -5, boxShadow: '0 20px 48px -16px rgba(0,0,0,0.12)' }}
               style={{
-                padding: '28px 24px', background: '#fff',
-                borderRadius: 20, border: '1px solid rgba(0,0,0,0.07)',
-                transition: 'box-shadow 300ms',
+                padding: 'clamp(20px, 2.5vw, 28px) clamp(16px, 2vw, 24px)',
+                background: '#fff', borderRadius: 20,
+                border: '1px solid rgba(0,0,0,0.07)',
+                transition: 'box-shadow 300ms, transform 300ms',
               }}
             >
               <div style={{
-                width: 52, height: 52, borderRadius: 14,
+                width: 48, height: 48, borderRadius: 12,
                 background: 'rgba(255,215,0,0.10)', border: '1px solid rgba(255,215,0,0.28)',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                {renderAddonIcon(item.name, item.icon, { size: 26, color: '#0A0A0F' })}
+                {renderAddonIcon(item.name, item.icon, { size: 22, color: '#0A0A0F' })}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 20, gap: 8 }}>
-                <span className="br-display" style={{ fontSize: 20, letterSpacing: '-0.02em', color: '#0A0A0F' }}>{item.name}</span>
-                <span style={{ fontFamily: 'var(--br-mono)', fontSize: 13, fontWeight: 700, color: '#0A0A0F', background: '#FFD700', padding: '4px 8px', borderRadius: 6, flexShrink: 0 }}>+${item.priceUSD || 0}/d</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 18, gap: 8 }}>
+                <span className="br-display" style={{ fontSize: 'clamp(15px, 1.5vw, 19px)', letterSpacing: '-0.02em', color: '#0A0A0F' }}>{item.name}</span>
+                <span style={{ fontFamily: 'var(--br-mono)', fontSize: 11, fontWeight: 700, color: '#0A0A0F', background: '#FFD700', padding: '4px 8px', borderRadius: 6, flexShrink: 0 }}>+${item.priceUSD || 0}/d</span>
               </div>
-              <p style={{ fontSize: 13, color: 'rgba(0,0,0,0.50)', marginTop: 10, marginBottom: 0, lineHeight: 1.6 }}>{item.description}</p>
+              <p style={{ fontSize: 13, color: 'rgba(0,0,0,0.48)', marginTop: 10, marginBottom: 0, lineHeight: 1.6 }}>{item.description}</p>
             </motion.div>
           ))}
         </motion.div>
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
-          07  REVIEWS — social proof
+          07  REVIEWS
           ═══════════════════════════════════════════════════════════════ */}
-      <section style={{ padding: 'clamp(64px, 8vw, 112px) clamp(20px, 5vw, 56px)', background: '#F4F2ED' }}>
+      <section style={{ padding: 'clamp(52px, 7vw, 100px) clamp(16px, 5vw, 56px)', background: '#F4F2ED' }}>
         <motion.div
           variants={stagger} initial="hidden" whileInView="visible"
           viewport={{ once: true, margin: '-80px' }}
-          style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 24, marginBottom: 52 }}
+          style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20, marginBottom: 44 }}
         >
           <motion.div variants={fadeUp}>
-            <div style={{ fontFamily: 'var(--br-mono)', fontSize: 11, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.35)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ width: 24, height: 1, background: 'rgba(0,0,0,0.25)' }} />05 / REVIEWS
+            <div style={{ fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.32)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10, textTransform: 'uppercase' }}>
+              <span style={{ width: 20, height: 1, background: 'rgba(0,0,0,0.22)' }} />Reviews
             </div>
-            <h2 className="br-display" style={{ margin: 0, fontSize: 'clamp(38px, 6vw, 72px)', lineHeight: 0.96, letterSpacing: '-0.035em', color: '#0A0A0F' }}>
+            <h2 className="br-display" style={{ margin: 0, fontSize: 'clamp(30px, 5.5vw, 68px)', lineHeight: 0.97, letterSpacing: '-0.035em', color: '#0A0A0F' }}>
               {t.reviews.title}
             </h2>
           </motion.div>
-          <motion.div variants={fadeUp} style={{ fontFamily: 'var(--br-mono)', fontSize: 11, color: 'rgba(0,0,0,0.40)', letterSpacing: '0.12em' }}>
+          <motion.div variants={fadeUp} style={{ fontFamily: 'var(--br-mono)', fontSize: 10, color: 'rgba(0,0,0,0.38)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
             {t.reviews.verified}
           </motion.div>
         </motion.div>
@@ -652,45 +623,37 @@ export default function LandingPage() {
           variants={stagger} initial="hidden" whileInView="visible"
           viewport={{ once: true, margin: '-60px' }}
           className="br-home-reviews-grid"
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18 }}
         >
           {([
             { ...homeReviews[0], tone: 'sand' as const },
             { ...homeReviews[1], tone: 'sunset' as const },
             { ...homeReviews[2], tone: 'mist' as const },
           ]).map((rev, i) => (
-            <motion.div
-              key={i}
-              variants={fadeUp}
-              whileHover={{ y: -4, boxShadow: '0 24px 48px -16px rgba(0,0,0,0.11)' }}
+            <motion.div key={i} variants={fadeUp}
+              whileHover={{ y: -4, boxShadow: '0 24px 48px -16px rgba(0,0,0,0.10)' }}
               style={{
-                background: '#fff', borderRadius: 20, padding: '32px 28px',
+                background: '#fff', borderRadius: 20, padding: 'clamp(20px, 2.5vw, 32px) clamp(16px, 2vw, 28px)',
                 border: '1px solid rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden',
                 transition: 'box-shadow 300ms, transform 300ms',
               }}
             >
-              {/* Decorative quote */}
-              <div aria-hidden style={{ position: 'absolute', top: 14, right: 20, fontFamily: 'var(--br-display)', fontSize: 80, lineHeight: 1, color: 'rgba(255,215,0,0.13)', fontWeight: 800, userSelect: 'none', pointerEvents: 'none' }}>"</div>
-
-              {/* Stars */}
-              <div style={{ display: 'flex', gap: 3, marginBottom: 18 }}>
-                {Array.from({ length: 5 }).map((_, si) => <StarIcon key={si} size={14} color="#FFD700" />)}
+              <div aria-hidden style={{ position: 'absolute', top: 10, right: 18, fontFamily: 'var(--br-display)', fontSize: 80, lineHeight: 1, color: 'rgba(255,215,0,0.11)', fontWeight: 800, userSelect: 'none', pointerEvents: 'none' }}>"</div>
+              <div style={{ display: 'flex', gap: 3, marginBottom: 16 }}>
+                {Array.from({ length: 5 }).map((_, si) => <StarIcon key={si} size={13} color="#FFD700" />)}
               </div>
-
-              {/* Quote */}
-              <p style={{ fontSize: 16, lineHeight: 1.62, color: '#0A0A0F', margin: '0 0 28px', letterSpacing: '-0.01em', position: 'relative' }}>
+              <p style={{ fontSize: 'clamp(13px, 1.3vw, 16px)', lineHeight: 1.62, color: '#0A0A0F', margin: '0 0 24px', position: 'relative' }}>
                 "{rev.quote}"
               </p>
-
-              {/* User */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 20, borderTop: '1px solid rgba(0,0,0,0.07)' }}>
-                <BRPhoto tone={rev.tone} style={{ width: 44, height: 44, borderRadius: 999, flexShrink: 0 }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 18, borderTop: '1px solid rgba(0,0,0,0.07)' }}>
+                <BRPhoto tone={rev.tone} style={{ width: 42, height: 42, borderRadius: 999, flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: '#0A0A0F' }}>{rev.name}</div>
-                  <div style={{ fontFamily: 'var(--br-mono)', fontSize: 11, color: 'rgba(0,0,0,0.40)', marginTop: 2 }}>{rev.meta}</div>
+                  <div style={{ fontFamily: 'var(--br-mono)', fontSize: 10, color: 'rgba(0,0,0,0.38)', marginTop: 2 }}>{rev.meta}</div>
                 </div>
-                <div style={{ background: 'rgba(34,197,94,0.09)', color: '#16A34A', fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.1em', padding: '4px 8px', borderRadius: 999, border: '1px solid rgba(34,197,94,0.18)', flexShrink: 0 }}>
-                  ✓ {t.home.reviewVerified}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(34,197,94,0.09)', color: '#16A34A', fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.1em', padding: '5px 9px', borderRadius: 999, border: '1px solid rgba(34,197,94,0.18)', flexShrink: 0 }}>
+                  <CheckIcon size={11} color="#16A34A" strokeWidth={2.5} />
+                  {t.home.reviewVerified}
                 </div>
               </div>
             </motion.div>
@@ -702,42 +665,41 @@ export default function LandingPage() {
           08  DELIVERY MAP
           ═══════════════════════════════════════════════════════════════ */}
       <div id="delivery" className="br-home-delivery" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', background: '#0C0C12', color: '#fff' }}>
-        <div className="br-home-delivery-copy" style={{ padding: 'clamp(48px, 6vw, 80px) clamp(24px, 5vw, 60px)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <div className="br-home-delivery-copy" style={{ padding: 'clamp(40px, 6vw, 80px) clamp(16px, 5vw, 60px)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <motion.div variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true }}>
-            <motion.div variants={fadeUp} style={{ fontFamily: 'var(--br-mono)', fontSize: 11, letterSpacing: '0.18em', color: '#FFD700', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ width: 24, height: 1, background: '#FFD700' }} />{t.home.deliveryLabel}
+            <motion.div variants={fadeUp} style={{ fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.18em', color: '#FFD700', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10, textTransform: 'uppercase' }}>
+              <span style={{ width: 20, height: 1, background: '#FFD700' }} />{t.home.deliveryLabel}
             </motion.div>
-            <motion.h2 variants={fadeUp} className="br-display" style={{ margin: '0 0 16px', fontSize: 'clamp(34px, 5vw, 58px)', lineHeight: 0.97, letterSpacing: '-0.03em' }}>
+            <motion.h2 variants={fadeUp} className="br-display" style={{ margin: '0 0 14px', fontSize: 'clamp(26px, 4.5vw, 56px)', lineHeight: 0.97, letterSpacing: '-0.03em' }}>
               {t.delivery.title1}<br /><span style={{ color: '#FFD700' }}>{t.delivery.title2}</span>
             </motion.h2>
-            <motion.p variants={fadeUp} style={{ fontSize: 16, color: 'rgba(255,255,255,0.60)', margin: '0 0 32px', maxWidth: 420, lineHeight: 1.6 }}>
+            <motion.p variants={fadeUp} style={{ fontSize: 'clamp(13px, 1.3vw, 16px)', color: 'rgba(255,255,255,0.58)', margin: '0 0 28px', maxWidth: 400, lineHeight: 1.6 }}>
               {t.delivery.desc}
             </motion.p>
             <motion.div variants={fadeUp} className="br-home-delivery-zones" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {activeZones.slice(0, 8).map((l) => (
-                <div key={l} style={{ padding: '12px 16px', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 10, fontFamily: 'var(--br-mono)', fontSize: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div key={l} style={{ padding: '10px 14px', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 10, fontFamily: 'var(--br-mono)', fontSize: 11, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                   <span>{l}</span>
-                  <span style={{ color: '#22C55E', fontSize: 10, letterSpacing: '0.1em' }}>{t.home.deliveryFree}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <CheckIcon size={10} color="#22C55E" strokeWidth={2.5} />
+                    <span style={{ color: '#22C55E', fontSize: 10, letterSpacing: '0.08em' }}>{t.home.deliveryFree}</span>
+                  </span>
                 </div>
               ))}
             </motion.div>
           </motion.div>
         </div>
-        <div className="br-home-delivery-map" style={{ position: 'relative', minHeight: 500 }}>
+        <div className="br-home-delivery-map" style={{ position: 'relative', minHeight: 460 }}>
           <iframe
             title={t.home.mapTitle}
             src="https://www.openstreetmap.org/export/embed.html?bbox=114.43%2C-8.95%2C115.72%2C-8.03&layer=mapnik"
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0, filter: 'grayscale(0.1) saturate(0.92)' }}
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
+            loading="lazy" referrerPolicy="no-referrer-when-downgrade"
           />
-          <div aria-hidden style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(12,12,18,0.45) 0%, transparent 35%)', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', top: 20, left: 20, background: 'rgba(12,12,18,0.78)', backdropFilter: 'blur(12px)', color: '#fff', padding: '12px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)' }}>
-            <div style={{ fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.16em', color: '#FFD700', marginBottom: 4 }}>{t.home.mapEyebrow}</div>
+          <div aria-hidden style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(12,12,18,0.42) 0%, transparent 35%)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', top: 18, left: 18, background: 'rgba(12,12,18,0.82)', backdropFilter: 'blur(12px)', color: '#fff', padding: '12px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div style={{ fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.16em', color: '#FFD700', marginBottom: 4, textTransform: 'uppercase' }}>{t.home.mapEyebrow}</div>
             <div className="br-display" style={{ fontSize: 16 }}>{t.home.mapRegion}</div>
-          </div>
-          <div style={{ position: 'absolute', right: 20, bottom: 20, background: 'rgba(12,12,18,0.70)', color: 'rgba(255,255,255,0.6)', padding: '8px 14px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.1)', pointerEvents: 'none' }}>
-            <span style={{ fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.14em' }}>{t.home.mapDrag}</span>
           </div>
         </div>
       </div>
@@ -745,25 +707,21 @@ export default function LandingPage() {
       {/* ═══════════════════════════════════════════════════════════════
           09  FAQ
           ═══════════════════════════════════════════════════════════════ */}
-      <section style={{ padding: 'clamp(64px, 8vw, 112px) clamp(20px, 5vw, 56px)', background: '#fff' }}>
-        <div style={{ maxWidth: 820, margin: '0 auto' }}>
+      <section style={{ padding: 'clamp(52px, 7vw, 100px) clamp(16px, 5vw, 56px)', background: '#fff' }}>
+        <div style={{ maxWidth: 800, margin: '0 auto' }}>
           <motion.div
             variants={stagger} initial="hidden" whileInView="visible"
             viewport={{ once: true, margin: '-80px' }}
-            style={{ marginBottom: 48 }}
+            style={{ marginBottom: 40 }}
           >
-            <motion.div variants={fadeUp} style={{ fontFamily: 'var(--br-mono)', fontSize: 11, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.35)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ width: 24, height: 1, background: 'rgba(0,0,0,0.25)' }} />{t.home.faqLabel}
+            <motion.div variants={fadeUp} style={{ fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.32)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10, textTransform: 'uppercase' }}>
+              <span style={{ width: 20, height: 1, background: 'rgba(0,0,0,0.22)' }} />{t.home.faqLabel}
             </motion.div>
-            <motion.h2 variants={fadeUp} className="br-display" style={{ margin: 0, fontSize: 'clamp(36px, 5.5vw, 64px)', lineHeight: 0.96, letterSpacing: '-0.035em', color: '#0A0A0F' }}>
+            <motion.h2 variants={fadeUp} className="br-display" style={{ margin: 0, fontSize: 'clamp(28px, 5vw, 60px)', lineHeight: 0.97, letterSpacing: '-0.035em', color: '#0A0A0F' }}>
               {t.home.faqTitle1}<br />{t.home.faqTitle2}
             </motion.h2>
           </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0 }} whileInView={{ opacity: 1 }}
-            viewport={{ once: true }} transition={{ delay: 0.2 }}
-          >
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
             <div style={{ borderTop: '1px solid rgba(0,0,0,0.08)' }}>
               {faqs.map((item, i) => <FAQItem key={i} q={item.q} a={item.a} />)}
             </div>
@@ -772,46 +730,50 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
-          10  FINAL CTA — gold section
+          10  FINAL CTA
           ═══════════════════════════════════════════════════════════════ */}
-      <section style={{ background: '#FFD700', color: '#0A0A0F', padding: 'clamp(72px, 10vw, 128px) clamp(20px, 5vw, 56px)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-        <div aria-hidden style={{ position: 'absolute', top: -80, right: -60, width: 500, height: 500, borderRadius: '50%', background: 'rgba(0,0,0,0.05)', pointerEvents: 'none' }} />
-        <div aria-hidden style={{ position: 'absolute', bottom: -100, left: -50, width: 360, height: 360, borderRadius: '50%', background: 'rgba(0,0,0,0.04)', pointerEvents: 'none' }} />
+      <section style={{ background: '#FFD700', color: '#0A0A0F', padding: 'clamp(60px, 9vw, 120px) clamp(16px, 5vw, 56px)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+        <div aria-hidden style={{ position: 'absolute', top: -80, right: -60, width: 460, height: 460, borderRadius: '50%', background: 'rgba(0,0,0,0.05)', pointerEvents: 'none' }} />
+        <div aria-hidden style={{ position: 'absolute', bottom: -100, left: -50, width: 340, height: 340, borderRadius: '50%', background: 'rgba(0,0,0,0.04)', pointerEvents: 'none' }} />
 
         <motion.div
           initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }} transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div style={{ fontFamily: 'var(--br-mono)', fontSize: 11, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.45)', marginBottom: 22 }}>
+          <div style={{ fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.48)', marginBottom: 20, textTransform: 'uppercase' }}>
             {t.cta.eyebrow}
           </div>
-          <h2 className="br-display" style={{ fontSize: 'clamp(52px, 10vw, 116px)', lineHeight: 0.91, letterSpacing: '-0.04em', margin: '0 0 22px', color: '#0A0A0F' }}>
+          <h2 className="br-display" style={{ fontSize: 'clamp(42px, 9vw, 108px)', lineHeight: 0.92, letterSpacing: '-0.04em', margin: '0 0 18px', color: '#0A0A0F' }}>
             {t.cta.title}
           </h2>
-          <p style={{ fontSize: 'clamp(15px, 2vw, 19px)', maxWidth: 540, margin: '0 auto 48px', lineHeight: 1.55, color: 'rgba(0,0,0,0.60)' }}>
+          <p style={{ fontSize: 'clamp(14px, 1.7vw, 18px)', maxWidth: 480, margin: '0 auto 44px', lineHeight: 1.55, color: 'rgba(0,0,0,0.58)' }}>
             {t.cta.desc}
           </p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div className="br-cta-btns" style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
             <a href="/catalog" style={{
-              display: 'inline-flex', alignItems: 'center', gap: 10,
+              display: 'inline-flex', alignItems: 'center', gap: 12,
               background: '#0A0A0F', color: '#FFD700',
-              fontFamily: 'var(--br-body)', fontSize: 17, fontWeight: 700,
-              padding: '0 44px', height: 68, borderRadius: 999,
-              textDecoration: 'none', letterSpacing: '-0.01em',
+              fontFamily: 'var(--br-display)', fontSize: 'clamp(15px, 1.5vw, 18px)', fontWeight: 800,
+              padding: '0 clamp(26px, 4vw, 44px)', height: 'clamp(58px, 6.5vw, 70px)', borderRadius: 999,
+              textDecoration: 'none', letterSpacing: '-0.02em',
+              boxShadow: '0 16px 48px -16px rgba(0,0,0,0.42)',
             }}>
-              {t.cta.primary} →
+              <ScooterIcon size={18} color="#FFD700" strokeWidth={2} />
+              {t.cta.primary}
+              <ArrowRightIcon size={15} color="#FFD700" strokeWidth={2.5} />
             </a>
             <a href={WA_LINK} target="_blank" rel="noopener noreferrer" style={{
               display: 'inline-flex', alignItems: 'center', gap: 10,
               background: '#25D366', color: '#fff',
-              fontFamily: 'var(--br-body)', fontSize: 17, fontWeight: 600,
-              padding: '0 36px', height: 68, borderRadius: 999,
+              fontFamily: 'var(--br-body)', fontSize: 'clamp(14px, 1.4vw, 16px)', fontWeight: 700,
+              padding: '0 clamp(20px, 3vw, 32px)', height: 'clamp(58px, 6.5vw, 70px)', borderRadius: 999,
               textDecoration: 'none', letterSpacing: '-0.01em',
             }}>
-              💬 {t.home.whatsappUs}
+              <WhatsAppIcon size={17} color="#fff" />
+              {t.home.whatsappUs}
             </a>
           </div>
-          <div style={{ fontFamily: 'var(--br-mono)', fontSize: 11, marginTop: 36, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.40)' }}>
+          <div style={{ fontFamily: 'var(--br-mono)', fontSize: 10, marginTop: 32, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.40)', textTransform: 'uppercase' }}>
             {t.cta.terms}
           </div>
         </motion.div>
@@ -820,44 +782,39 @@ export default function LandingPage() {
       <SiteFooter />
 
       {/* ═══════════════════════════════════════════════════════════════
-          MOBILE STICKY CTA — fixed bottom bar
+          MOBILE STICKY CTA
           ═══════════════════════════════════════════════════════════════ */}
-      <AnimatePresence>
-        {stickyVisible && (
-          <motion.div
-            key="sticky"
-            initial={{ y: 80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 80, opacity: 0 }}
-            transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
-            className="br-sticky-mobile-cta"
-            style={{
-              position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
-              background: '#0A0A0F',
-              borderTop: '1px solid rgba(255,255,255,0.08)',
-              padding: '12px 16px 20px',
-              display: 'flex', gap: 8,
-            }}
-          >
-            <a href={WA_LINK} target="_blank" rel="noopener noreferrer" style={{
-              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              background: '#25D366', color: '#fff',
-              fontFamily: 'var(--br-body)', fontSize: 14, fontWeight: 600,
-              borderRadius: 12, padding: '13px', textDecoration: 'none',
-            }}>
-              💬 {t.home.whatsapp}
-            </a>
-            <a href="/catalog" style={{
-              flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              background: '#FFD700', color: '#0A0A0F',
-              fontFamily: 'var(--br-body)', fontSize: 15, fontWeight: 700,
-              borderRadius: 12, padding: '13px', textDecoration: 'none', letterSpacing: '-0.01em',
-            }}>
-              {t.home.stickyBookNow} — {t.home.priceFrom.toLowerCase()} ${featured[0]?.price || 8}/{t.common.day} →
-            </a>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className="br-sticky-mobile-cta" style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
+        background: 'rgba(10,10,15,0.97)',
+        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        borderTop: '1px solid rgba(255,255,255,0.09)',
+        padding: '10px 14px calc(10px + env(safe-area-inset-bottom))',
+        display: 'none', gap: 10, alignItems: 'center',
+      }}>
+        {/* WhatsApp — квадратная иконка-кнопка */}
+        <a href={WA_LINK} target="_blank" rel="noopener noreferrer" style={{
+          flexShrink: 0,
+          width: 52, height: 52,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: '#25D366', borderRadius: 12, textDecoration: 'none',
+        }}>
+          <WhatsAppIcon size={22} color="#fff" />
+        </a>
+
+        {/* Основная CTA — занимает всё оставшееся место */}
+        <a href="/catalog" style={{
+          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          background: '#FFD700', color: '#0A0A0F',
+          fontFamily: 'var(--br-display)', fontSize: 16, fontWeight: 800,
+          borderRadius: 12, height: 52, textDecoration: 'none', letterSpacing: '-0.02em',
+          minWidth: 0,
+        }}>
+          <ScooterIcon size={18} color="#0A0A0F" strokeWidth={2} />
+          Выбрать скутер
+          <ArrowRightIcon size={15} color="#0A0A0F" strokeWidth={2.5} />
+        </a>
+      </div>
     </div>
   );
 }
