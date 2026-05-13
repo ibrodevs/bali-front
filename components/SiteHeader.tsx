@@ -9,7 +9,7 @@ import CurrencySwitcher from './CurrencySwitcher';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { useAuth } from '@/lib/i18n/AuthProvider';
 
-const WA_LINK = 'https://wa.me/6281234567890?text=Hi%2C%20I%E2%80%99d%20like%20to%20rent%20a%20scooter%20in%20Bali!';
+const WA_LINK = 'https://wa.me/628135915173?text=Hi%2C%20I%E2%80%99d%20like%20to%20rent%20a%20scooter%20in%20Bali!';
 
 export default function SiteHeader({
   dark = false,
@@ -47,7 +47,7 @@ export default function SiteHeader({
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const media = window.matchMedia('(max-width: 760px)');
+    const media = window.matchMedia('(max-width: 1180px)');
     const syncViewport = () => setIsMobileViewport(media.matches);
 
     syncViewport();
@@ -113,7 +113,7 @@ export default function SiteHeader({
     <>
       <Link href="/catalog" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.catalog}</Link>
       <Link href="/how-it-works" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.how}</Link>
-      <Link href="/#delivery" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.locations}</Link>
+      <Link href="/locations" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.locations}</Link>
       <Link href="/news" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.news}</Link>
       {isAdmin && (
         <Link
@@ -127,11 +127,15 @@ export default function SiteHeader({
     </>
   );
 
-  const headerActions = (
+  const localeControls = (
     <>
       <LanguageSwitcher dark={dark || isTransparent} />
       <CurrencySwitcher dark={dark || isTransparent} />
+    </>
+  );
 
+  const accountActions = (
+    <>
       {user ? (
         <div style={{ position: 'relative' }}>
           <button
@@ -197,6 +201,15 @@ export default function SiteHeader({
     </>
   );
 
+  const headerActions = (
+    <>
+      {localeControls}
+      {accountActions}
+    </>
+  );
+
+  const mobileDrawerActions = accountActions;
+
   return (
     <>
       <div
@@ -216,6 +229,12 @@ export default function SiteHeader({
         }}
       >
         <BRLogo size={22} dark={dark || isTransparent} />
+
+        {isMobileViewport && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+            {localeControls}
+          </div>
+        )}
 
         {/* Hamburger */}
         <button
@@ -260,7 +279,7 @@ export default function SiteHeader({
           {navLinks}
         </nav>
         <div className="br-site-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {headerActions}
+          {mobileDrawerActions}
         </div>
 
         {/* Mobile CTA row */}

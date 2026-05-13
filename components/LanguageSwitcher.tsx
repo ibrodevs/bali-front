@@ -6,7 +6,6 @@ import { LOCALES, Locale } from '@/lib/i18n/dictionaries';
 export default function LanguageSwitcher({ dark = false }: { dark?: boolean }) {
   const { locale, setLocale } = useLocale();
   const [open, setOpen] = useState(false);
-  const [openUpwards, setOpenUpwards] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const current = LOCALES.find((l) => l.code === locale) || LOCALES[0];
 
@@ -16,17 +15,6 @@ export default function LanguageSwitcher({ dark = false }: { dark?: boolean }) {
     };
     document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const media = window.matchMedia('(max-width: 760px)');
-    const syncDirection = () => setOpenUpwards(media.matches);
-
-    syncDirection();
-    media.addEventListener('change', syncDirection);
-    return () => media.removeEventListener('change', syncDirection);
   }, []);
 
   const fg = dark ? '#fff' : '#000';
@@ -50,12 +38,10 @@ export default function LanguageSwitcher({ dark = false }: { dark?: boolean }) {
           borderRadius: 12,
           padding: 6,
           minWidth: 180,
-          boxShadow: openUpwards ? '0 -12px 30px -12px rgba(0,0,0,0.35)' : '0 12px 30px -12px rgba(0,0,0,0.35)',
+          boxShadow: '0 12px 30px -12px rgba(0,0,0,0.35)',
           zIndex: 50,
-          top: openUpwards ? 'auto' : '100%',
-          bottom: openUpwards ? '100%' : 'auto',
-          marginTop: openUpwards ? 0 : 8,
-          marginBottom: openUpwards ? 8 : 0,
+          top: '100%',
+          marginTop: 8,
         }}>
           {LOCALES.map((l) => (
             <button key={l.code} onClick={() => { setLocale(l.code as Locale); setOpen(false); }}

@@ -412,6 +412,30 @@ export type ApiWebhookLog = {
   created_at?: string;
 };
 
+export type ApiAdminFaqTranslation = {
+  id?: number;
+  language: string;
+  question: string;
+  answer: string;
+};
+
+export type ApiAdminFaqItem = {
+  id: number;
+  code: string;
+  is_active: boolean;
+  sort_order: number;
+  translations: ApiAdminFaqTranslation[];
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type AdminFaqPayload = {
+  code: string;
+  is_active: boolean;
+  sort_order: number;
+  translations?: ApiAdminFaqTranslation[];
+};
+
 export type ApiNewsArticle = {
   id: number;
   slug: string;
@@ -610,11 +634,27 @@ export const endpoints = {
   adminPayments: (params?: { page_size?: number; ordering?: string }) =>
     api<Paginated<ApiPayment> | ApiPayment[]>('/payments/', { auth: true, query: params }),
 
+  // FAQ (admin)
+  adminFaqs: (params?: { page?: number; page_size?: number }) =>
+    api<Paginated<ApiAdminFaqItem> | ApiAdminFaqItem[]>('/admin/content/faq/', { auth: true, query: params }),
+  adminCreateFaq: (body: AdminFaqPayload) =>
+    api<ApiAdminFaqItem>('/admin/content/faq/', { method: 'POST', body, auth: true }),
+  adminUpdateFaq: (id: number | string, body: Partial<AdminFaqPayload>) =>
+    api<ApiAdminFaqItem>(`/admin/content/faq/${id}/`, { method: 'PATCH', body, auth: true }),
+  adminDeleteFaq: (id: number | string) =>
+    api<void>(`/admin/content/faq/${id}/`, { method: 'DELETE', auth: true }),
+
   // News (public)
   newsList: (params?: { page?: number; page_size?: number }, lang?: string) =>
-    api<Paginated<ApiNewsArticle> | ApiNewsArticle[]>('/news/', { query: params, lang }),
+    api<Paginated<ApiNewsArticle> | ApiNewsArticle[]>('/news/', {
+      query: { ...params, lang },
+      lang,
+    }),
   newsArticle: (slug: string, lang?: string) =>
-    api<ApiNewsArticle>(`/news/${slug}/`, { lang }),
+    api<ApiNewsArticle>(`/news/${slug}/`, {
+      query: lang ? { lang } : undefined,
+      lang,
+    }),
 
   // News (admin)
   adminNewsList: (params?: { page?: number; page_size?: number }) =>

@@ -10,6 +10,7 @@ export default function SiteFooter() {
     if (item === t.nav.catalog) return '/catalog';
     if (item === t.nav.how) return '/how-it-works';
     if (item === t.nav.locations) return '/#delivery';
+    if (item === t.nav.news) return '/news';
     return '#';
   };
 
@@ -21,8 +22,8 @@ export default function SiteFooter() {
           <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 18, lineHeight: 1.55, maxWidth: 320 }}>
             {t.footer.tagline}
           </p>
-          <a href="https://wa.me/6281234567890" target="_blank" rel="noopener noreferrer" style={{ marginTop: 20, background: '#25D366', color: '#fff', borderRadius: 999, padding: '12px 18px', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-            <span style={{ fontSize: 18 }}>◉</span> WhatsApp · +62 812 3456 7890
+          <a href="https://wa.me/628135915173" target="_blank" rel="noopener noreferrer" style={{ marginTop: 20, background: '#25D366', color: '#fff', borderRadius: 999, padding: '12px 18px', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+            <span style={{ fontSize: 18 }}>◉</span> WhatsApp · +62 813-5915-173
           </a>
         </div>
         {cols.map(([h, items]) => (

@@ -139,7 +139,7 @@ function PaymentInner() {
   const [cardCvc, setCardCvc] = useState('');
 
   // Crypto-specific UI
-  const [cryptoCurrency, setCryptoCurrency] = useState<'USDT' | 'BTC' | 'ETH'>('USDT');
+  const [cryptoCurrency] = useState<'USDT'>('USDT');
 
   // Cash-specific UI
   const [cashConfirmedTerms, setCashConfirmedTerms] = useState(false);
@@ -461,7 +461,6 @@ function PaymentInner() {
                   <CryptoTemplate
                     copy={copy}
                     currency={cryptoCurrency}
-                    setCurrency={setCryptoCurrency}
                     total={summary.total}
                     displayCurrency={summary.currency}
                   />
@@ -670,21 +669,14 @@ function CashTemplate({
 function CryptoTemplate({
   copy,
   currency,
-  setCurrency,
   total,
   displayCurrency,
 }: {
   copy: PaymentCopy;
-  currency: 'USDT' | 'BTC' | 'ETH';
-  setCurrency: (v: 'USDT' | 'BTC' | 'ETH') => void;
+  currency: 'USDT';
   total: number;
   displayCurrency: string;
 }) {
-  const options: Array<{ id: 'USDT' | 'BTC' | 'ETH'; label: string; network: string }> = [
-    { id: 'USDT', label: 'USDT', network: 'TRC-20 / ERC-20' },
-    { id: 'BTC', label: 'Bitcoin', network: 'BTC mainnet' },
-    { id: 'ETH', label: 'Ethereum', network: 'ETH mainnet' },
-  ];
   return (
     <div className="br-payment-card" style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 14, padding: 22, background: '#fff' }}>
       <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.55)' }}>
@@ -696,30 +688,21 @@ function CryptoTemplate({
       <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.55)' }}>
         {copy.selectCurrency}
       </div>
-      <div className="br-payment-crypto-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, marginTop: 12 }}>
-        {options.map((o) => {
-          const selected = currency === o.id;
-          return (
-            <button
-              key={o.id}
-              type="button"
-              onClick={() => setCurrency(o.id)}
-              style={{
-                padding: '14px 12px',
-                borderRadius: 14,
-                border: selected ? '1px solid #FFD700' : '1px solid rgba(0,0,0,0.12)',
-                background: selected ? 'rgba(255,215,0,0.16)' : '#F5F5F5',
-                cursor: 'pointer',
-                textAlign: 'left',
-              }}
-            >
-              <div className="br-display" style={{ fontSize: 18 }}>{o.label}</div>
-              <div className="br-mono" style={{ fontSize: 10, color: 'rgba(0,0,0,0.55)', marginTop: 4 }}>
-                {o.network}
-              </div>
-            </button>
-          );
-        })}
+      <div className="br-payment-crypto-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10, marginTop: 12 }}>
+        <div
+          style={{
+            padding: '14px 12px',
+            borderRadius: 14,
+            border: '1px solid #FFD700',
+            background: 'rgba(255,215,0,0.16)',
+            textAlign: 'left',
+          }}
+        >
+          <div className="br-display" style={{ fontSize: 18 }}>USDT</div>
+          <div className="br-mono" style={{ fontSize: 10, color: 'rgba(0,0,0,0.55)', marginTop: 4 }}>
+            TRC-20 / ERC-20
+          </div>
+        </div>
       </div>
       <div style={{ marginTop: 18, background: '#F5F5F5', borderRadius: 10, padding: '12px 14px', fontSize: 13 }}>
         <div className="br-mono" style={{ fontSize: 10, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>{copy.amount}</div>

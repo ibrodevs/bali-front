@@ -316,6 +316,37 @@ export function WhatsAppIcon({ size = 20, color = 'currentColor', style }: IconP
   );
 }
 
+export function TelegramIcon({ size = 20, color = 'currentColor', style }: IconProps) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill={color}
+      style={{ display: 'block', flexShrink: 0, ...style }}
+    >
+      <path d="M21.4 4.6c.3.2.4.6.3.9l-3 14.1c-.1.6-.8 1-1.4.7l-4.7-2.7-2.4 2.3c-.4.4-1.1.2-1.2-.4l-.7-4.8L4 12.8c-.7-.3-.7-1.2 0-1.5L20.4 4.4c.3-.1.7-.1 1 .2ZM9.3 14.2l.5 3.1 1.5-1.4a1 1 0 0 1 1.2-.1l4.4 2.5 2.5-12-14 5.8 3.4 1.4 7.6-6.2c.3-.3.8.2.5.5l-7.6 6.4Z" />
+    </svg>
+  );
+}
+
+export function WeChatIcon({ size = 20, color = 'currentColor', style }: IconProps) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill={color}
+      style={{ display: 'block', flexShrink: 0, ...style }}
+    >
+      <path d="M9.4 4C5.3 4 2 6.7 2 10c0 1.9 1.1 3.7 2.9 4.9l-.8 2.4c-.1.3.2.6.5.4l3-1.4c.6.1 1.2.2 1.8.2 4.1 0 7.4-2.7 7.4-6S13.5 4 9.4 4Zm-2.7 4.9a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8Zm5.4 0a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8Z" />
+      <path d="M16.2 10.2c-3.2 0-5.8 2.1-5.8 4.8 0 2.6 2.6 4.8 5.8 4.8.5 0 1-.1 1.5-.2l2.5 1.2c.3.2.7-.1.6-.5l-.6-1.9c1.3-.9 2.1-2.3 2.1-3.8 0-2.7-2.6-4.4-6.1-4.4Zm-2.1 4.2a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Zm4.3 0a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Z" />
+    </svg>
+  );
+}
+
 export function MenuIcon(props: IconProps) {
   return (
     <SvgIcon {...props}>

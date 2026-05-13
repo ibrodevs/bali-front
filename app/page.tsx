@@ -7,6 +7,8 @@ import { BRPhoto } from '@/components/BR';
 import {
   ArrowRightIcon, CheckIcon,
   ScooterIcon, StarIcon,
+  TelegramIcon,
+  WeChatIcon,
   WhatsAppIcon,
 } from '@/components/Icons';
 import ScooterCard from '@/components/ScooterCard';
@@ -75,7 +77,7 @@ const stagger = {
   visible: { transition: { staggerChildren: 0.09 } },
 };
 
-const WA_LINK = 'https://wa.me/6281234567890?text=Hi%2C%20I%E2%80%99d%20like%20to%20rent%20a%20scooter%20in%20Bali!';
+const WA_LINK = 'https://wa.me/628135915173?text=Hi%2C%20I%E2%80%99d%20like%20to%20rent%20a%20scooter%20in%20Bali!';
 
 export default function LandingPage() {
   const { t, locale } = useLocale();
@@ -195,6 +197,42 @@ export default function LandingPage() {
               <WhatsAppIcon size={18} color="#25D366" />
               WhatsApp
             </a>
+
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+              <button
+                type="button"
+                aria-label="Telegram"
+                title="Telegram"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  width: 'clamp(58px, 6vw, 68px)', height: 'clamp(58px, 6vw, 68px)',
+                  borderRadius: 16,
+                  background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  color: '#2AABEE',
+                  cursor: 'default',
+                }}
+              >
+                <TelegramIcon size={22} color="#2AABEE" />
+              </button>
+
+              <button
+                type="button"
+                aria-label="WeChat"
+                title="WeChat"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  width: 'clamp(58px, 6vw, 68px)', height: 'clamp(58px, 6vw, 68px)',
+                  borderRadius: 16,
+                  background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  color: '#7BB32E',
+                  cursor: 'default',
+                }}
+              >
+                <WeChatIcon size={22} color="#7BB32E" />
+              </button>
+            </div>
           </motion.div>
 
           <motion.div

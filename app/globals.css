@@ -1340,45 +1340,7 @@ input[type="time"]:hover::-webkit-calendar-picker-indicator {
   }
 }
 
-@media (max-width: 760px) {
-  .br-fleet-bgnum {
-    font-size: 118px !important;
-    top: 8px !important;
-    left: auto !important;
-    right: 0 !important;
-    bottom: auto !important;
-  }
-
-  .br-fleet-head,
-  .br-addons-section > div:first-child {
-    gap: 18px !important;
-  }
-
-  .br-fleet-title,
-  .br-why-section h2,
-  .br-process-section h2,
-  .br-pricing-section h2,
-  .br-addons-section h2 {
-    font-size: clamp(34px, 10vw, 48px) !important;
-    line-height: 0.98 !important;
-  }
-
-  .br-why-card,
-  .br-process-step,
-  .br-pricing-card,
-  .br-addon-card {
-    padding: 22px 18px 20px !important;
-  }
-
-  .br-process-num {
-    font-size: 62px !important;
-  }
-
-  .br-btn {
-    white-space: normal;
-    line-height: 1.2;
-  }
-
+@media (max-width: 1180px) {
   .br-site-header {
     padding: 14px 16px !important;
     align-items: center !important;
@@ -1447,7 +1409,10 @@ input[type="time"]:hover::-webkit-calendar-picker-indicator {
     padding-top: 16px;
     border-top: 1px solid var(--br-border);
   }
-  .br-dark .br-site-header-actions { border-top-color: rgba(255,255,255,0.1); }
+
+  .br-dark .br-site-header-actions {
+    border-top-color: rgba(255,255,255,0.1);
+  }
 
   .br-site-header-nav {
     flex-direction: column !important;
@@ -1477,6 +1442,46 @@ input[type="time"]:hover::-webkit-calendar-picker-indicator {
   .br-site-header-actions > div > button {
     width: 100%;
     justify-content: center;
+  }
+}
+
+@media (max-width: 760px) {
+  .br-fleet-bgnum {
+    font-size: 118px !important;
+    top: 8px !important;
+    left: auto !important;
+    right: 0 !important;
+    bottom: auto !important;
+  }
+
+  .br-fleet-head,
+  .br-addons-section > div:first-child {
+    gap: 18px !important;
+  }
+
+  .br-fleet-title,
+  .br-why-section h2,
+  .br-process-section h2,
+  .br-pricing-section h2,
+  .br-addons-section h2 {
+    font-size: clamp(34px, 10vw, 48px) !important;
+    line-height: 0.98 !important;
+  }
+
+  .br-why-card,
+  .br-process-step,
+  .br-pricing-card,
+  .br-addon-card {
+    padding: 22px 18px 20px !important;
+  }
+
+  .br-process-num {
+    font-size: 62px !important;
+  }
+
+  .br-btn {
+    white-space: normal;
+    line-height: 1.2;
   }
 
   .br-section,
