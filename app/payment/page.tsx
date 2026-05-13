@@ -12,6 +12,7 @@ import { ApiError, tokens, userStore } from '@/lib/api';
 import { bookingDraftStore } from '@/lib/bookingDraft';
 import { ApiBooking, ApiBookingQuote, endpoints, toApiPaymentMethod } from '@/lib/endpoints';
 import { useAuth } from '@/lib/i18n/AuthProvider';
+import { convertAmount, formatCurrencyAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 
 type PaymentMethod = 'card' | 'cash' | 'crypto';
@@ -118,6 +119,7 @@ function PaymentInner() {
   const { t, tr, locale } = useLocale();
   const copy = PAYMENT_COPY[locale as keyof typeof PAYMENT_COPY] || PAYMENT_COPY.en;
   const { user, refresh } = useAuth();
+  const { currency: selectedCurrency } = useCurrency();
   const search = useSearchParams();
   const existingBookingId = Number(search.get('booking_id') || '0');
   const [draft, setDraft] = useState(bookingDraftStore.get());
@@ -185,7 +187,7 @@ function PaymentInner() {
           add_on_ids: currentDraft.add_on_ids,
           promo_code: currentDraft.promo_code,
           payment_method: toApiPaymentMethod(pm),
-          currency: currentDraft.currency || 'USD',
+          currency: selectedCurrency,
         });
         if (!cancelled) setQuote(nextQuote);
       } catch (e) {
@@ -199,7 +201,7 @@ function PaymentInner() {
     return () => {
       cancelled = true;
     };
-  }, [copy.missingDetails, existingBookingId, locale, pm, t.auth.error]);
+  }, [copy.missingDetails, existingBookingId, locale, pm, selectedCurrency, t.auth.error]);
 
   useEffect(() => {
     if (paymentUrl && /^https?:/i.test(paymentUrl)) {
@@ -250,7 +252,7 @@ function PaymentInner() {
           add_on_ids: currentDraft.add_on_ids,
           promo_code: currentDraft.promo_code,
           payment_method: toApiPaymentMethod(pm),
-          currency: currentDraft.currency || 'USD',
+          currency: selectedCurrency,
         };
 
         if (user) {
@@ -316,23 +318,27 @@ function PaymentInner() {
       : '—';
   const reserveOnly = booking?.payment_method === 'cash_on_delivery' || pm === 'cash';
   const summary = useMemo(() => {
+    const toSelectedCurrency = (amount: string | number | undefined, fromCurrency?: string | null) =>
+      convertAmount(Number(amount || 0), fromCurrency || 'USD', selectedCurrency);
+
     if (booking) {
       return {
-        base: Number(booking.base_price || 0),
-        addons: Number(booking.add_ons_price || 0),
-        delivery: Number(booking.delivery_price || 0),
-        total: Number(booking.total_price || 0),
-        currency: booking.currency || 'USD',
+        base: toSelectedCurrency(booking.base_price, booking.currency),
+        addons: toSelectedCurrency(booking.add_ons_price, booking.currency),
+        delivery: toSelectedCurrency(booking.delivery_price, booking.currency),
+        total: toSelectedCurrency(booking.total_price, booking.currency),
+        currency: selectedCurrency,
       };
     }
+    const quoteCurrency = quote?.currency || draft?.currency || selectedCurrency;
     return {
-      base: Number(quote?.base_price || 0),
-      addons: Number(quote?.add_ons_price || 0),
-      delivery: Number(quote?.delivery_price || 0),
-      total: Number(quote?.total_price || 0),
-      currency: quote?.currency || draft?.currency || 'USD',
+      base: toSelectedCurrency(quote?.base_price, quoteCurrency),
+      addons: toSelectedCurrency(quote?.add_ons_price, quoteCurrency),
+      delivery: toSelectedCurrency(quote?.delivery_price, quoteCurrency),
+      total: toSelectedCurrency(quote?.total_price, quoteCurrency),
+      currency: selectedCurrency,
     };
-  }, [booking, draft?.currency, quote]);
+  }, [booking, draft?.currency, quote, selectedCurrency]);
 
   const trustMarks = [
     { icon: LockIcon, label: stripLeadingSymbol(t.booking.secure) },
@@ -341,7 +347,7 @@ function PaymentInner() {
   ] as const;
 
   return (
-    <div style={{ background: bg, color: fg, minHeight: '100vh' }}>
+    <div style={{ background: bg, color: fg, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <SiteHeader />
       <div className="br-payment-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', borderBottom: `1px solid ${border}` }}>
         <span className="br-mono" style={{ fontSize: 11, color: sub, letterSpacing: '0.12em' }}>STEP 3 OF 3 · PAYMENT</span>
@@ -457,6 +463,7 @@ function PaymentInner() {
                     currency={cryptoCurrency}
                     setCurrency={setCryptoCurrency}
                     total={summary.total}
+                    displayCurrency={summary.currency}
                   />
                 )}
 
@@ -477,7 +484,7 @@ function PaymentInner() {
                         ? copy.reserveCash
                         : pm === 'crypto'
                           ? copy.payCrypto.replace('{currency}', cryptoCurrency)
-                          : tr(t.payment.pay, { amount: `$${summary.total.toFixed(2)}` })}
+                          : tr(t.payment.pay, { amount: formatCurrencyAmount(summary.total, summary.currency) })}
                   </BRPrimary>
                 </div>
               </>
@@ -498,9 +505,9 @@ function PaymentInner() {
             <BREyebrow>{t.payment.breakdown}</BREyebrow>
             <div style={{ marginTop: 14, fontFamily: 'var(--br-mono)', fontSize: 13 }}>
               {[
-                [copy.base, `$${summary.base.toFixed(2)}`],
-                [copy.addons, `$${summary.addons.toFixed(2)}`],
-                [t.payment.delivery, summary.delivery === 0 ? t.payment.free : `$${summary.delivery.toFixed(2)}`],
+                [copy.base, formatCurrencyAmount(summary.base, summary.currency)],
+                [copy.addons, formatCurrencyAmount(summary.addons, summary.currency)],
+                [t.payment.delivery, summary.delivery === 0 ? t.payment.free : formatCurrencyAmount(summary.delivery, summary.currency)],
               ].map(([l, v], i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
                   <span style={{ color: sub }}>{l}</span><span>{v}</span>
@@ -509,7 +516,7 @@ function PaymentInner() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 16, paddingTop: 16, borderTop: `1px solid ${border}` }}>
               <span className="br-display" style={{ fontSize: 18 }}>{t.detail.total}</span>
-              <span style={{ background: '#FFD700', color: '#000', padding: '6px 14px', borderRadius: 999, fontFamily: 'var(--br-mono)', fontSize: 24, fontWeight: 600 }}>${summary.total.toFixed(2)}</span>
+              <span style={{ background: '#FFD700', color: '#000', padding: '6px 14px', borderRadius: 999, fontFamily: 'var(--br-mono)', fontSize: 24, fontWeight: 600 }}>{formatCurrencyAmount(summary.total, summary.currency)}</span>
             </div>
           </div>
           <div style={{ marginTop: 28, padding: 16, background: bg, borderRadius: 10 }}>
@@ -665,11 +672,13 @@ function CryptoTemplate({
   currency,
   setCurrency,
   total,
+  displayCurrency,
 }: {
   copy: PaymentCopy;
   currency: 'USDT' | 'BTC' | 'ETH';
   setCurrency: (v: 'USDT' | 'BTC' | 'ETH') => void;
   total: number;
+  displayCurrency: string;
 }) {
   const options: Array<{ id: 'USDT' | 'BTC' | 'ETH'; label: string; network: string }> = [
     { id: 'USDT', label: 'USDT', network: 'TRC-20 / ERC-20' },
@@ -715,7 +724,7 @@ function CryptoTemplate({
       <div style={{ marginTop: 18, background: '#F5F5F5', borderRadius: 10, padding: '12px 14px', fontSize: 13 }}>
         <div className="br-mono" style={{ fontSize: 10, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>{copy.amount}</div>
         <div style={{ marginTop: 4 }}>
-          ${total.toFixed(2)} → {currency} ({copy.amountHint})
+          {formatCurrencyAmount(total, displayCurrency)} → {currency} ({copy.amountHint})
         </div>
       </div>
     </div>

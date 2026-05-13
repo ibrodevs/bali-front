@@ -13,6 +13,7 @@ import ScooterCard from '@/components/ScooterCard';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import { mediaUrl } from '@/lib/api';
+import { useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { endpoints } from '@/lib/endpoints';
 import {
@@ -78,6 +79,7 @@ const WA_LINK = 'https://wa.me/6281234567890?text=Hi%2C%20I%E2%80%99d%20like%20t
 
 export default function LandingPage() {
   const { t, locale } = useLocale();
+  const { convertPrice, symbol } = useCurrency();
   const [featured, setFeatured] = useState<DisplayScooter[]>(fallbackScooters().slice(0, 3));
   const [zones, setZones] = useState<Array<{ id: number; name: string; freeDelivery?: boolean }>>([]);
   const [apiFaqs, setApiFaqs] = useState<Array<{ q: string; a: string }>>([]);
@@ -118,9 +120,10 @@ export default function LandingPage() {
   const faqs = apiFaqs.length ? apiFaqs : t.home.faqs;
   const homeReviews = t.home.reviews;
   const minPrice = featured[0]?.price || 8;
+  const minPriceLabel = `${symbol}${(Math.round(convertPrice(minPrice) * 100) / 100).toFixed(2)}`;
 
   return (
-    <div style={{ width: '100%', background: '#FAFAF5', color: '#0A0A0F', fontFamily: 'var(--br-body)', WebkitFontSmoothing: 'antialiased' }}>
+    <div style={{ width: '100%', minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#FAFAF5', color: '#0A0A0F', fontFamily: 'var(--br-body)', WebkitFontSmoothing: 'antialiased' }}>
       <SiteHeader transparent />
 
       {/* ── 01 HERO ─────────────────────────────────────────────────── */}
@@ -202,7 +205,7 @@ export default function LandingPage() {
           >
             <StarIcon size={13} color="#FFD700" />
             <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, fontFamily: 'var(--br-mono)' }}>
-              4.97 · 12 000+ riders · {t.home.priceFrom} <strong style={{ color: '#FFD700' }}>${minPrice}/{t.common.day}</strong>
+              4.97 · 12 000+ riders · {t.home.priceFrom} <strong style={{ color: '#FFD700' }}>{minPriceLabel}/{t.common.day}</strong>
             </span>
           </motion.div>
         </div>
@@ -295,7 +298,7 @@ export default function LandingPage() {
               {t.fleet.title}
             </h2>
             <p style={{ marginTop: 10, fontSize: 'clamp(13px, 1.3vw, 15px)', color: 'rgba(0,0,0,0.48)', maxWidth: 340, lineHeight: 1.55 }}>
-              {t.home.priceFrom} ${minPrice}/{t.common.day} · {t.home.trustBadges[1]}
+              {t.home.priceFrom} {minPriceLabel}/{t.common.day} · {t.home.trustBadges[1]}
             </p>
           </motion.div>
           <motion.div variants={fadeUp}>

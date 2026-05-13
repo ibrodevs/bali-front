@@ -14,7 +14,7 @@ export default function SiteFooter() {
   };
 
   return (
-    <div className="br-site-footer" style={{ background: '#000', color: '#fff', padding: '60px 48px 24px' }}>
+    <div className="br-site-footer" style={{ background: '#000', color: '#fff', padding: '60px 48px 24px', marginTop: 'auto', flexShrink: 0 }}>
       <div className="br-site-footer-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: 40, paddingBottom: 40, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
         <div>
           <BRLogo dark size={22} />
