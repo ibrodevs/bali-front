@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { BRLogo } from './BR';
+import LanguageSwitcher from './LanguageSwitcher';
+import CurrencySwitcher from './CurrencySwitcher';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { useAuth } from '@/lib/i18n/AuthProvider';
 
@@ -144,6 +146,9 @@ export default function SiteHeader({
 
   const headerActions = (
     <>
+      <LanguageSwitcher dark={dark || isTransparent} />
+      <CurrencySwitcher dark={dark || isTransparent} />
+
       {user ? (
         <div style={{ position: 'relative' }}>
           <button

@@ -1749,6 +1749,17 @@ input[type="time"]:hover::-webkit-calendar-picker-indicator {
     padding: 0 16px !important;
   }
 
+  /* Auth split layout: stack on mobile, hide left panel */
+  .br-auth-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .br-auth-left {
+    display: none !important;
+  }
+  .br-auth-right {
+    min-height: 100vh;
+  }
+
   .br-site-footer-grid {
     grid-template-columns: 1fr !important;
   }
