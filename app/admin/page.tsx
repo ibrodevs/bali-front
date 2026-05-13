@@ -29,6 +29,7 @@ import {
   ApiCustomerProfile,
   ApiAdminUser,
   ApiLoginLog,
+  ApiNewsArticle,
   ApiPayment,
   ApiQuickReply,
   ApiScooterDetail,
@@ -72,7 +73,7 @@ const A = {
   orangeBg: '#fff7ed',
 };
 
-type AdminView = 'overview' | 'bookings' | 'fleet' | 'calendar' | 'crm' | 'analytics' | 'support';
+type AdminView = 'overview' | 'bookings' | 'fleet' | 'calendar' | 'crm' | 'analytics' | 'support' | 'news';
 
 const NAV: { id: AdminView; icon: ReactNode; label: string }[] = [
   { id: 'overview', icon: <OverviewIcon size={18} />, label: 'Overview' },
@@ -82,6 +83,7 @@ const NAV: { id: AdminView; icon: ReactNode; label: string }[] = [
   { id: 'crm', icon: <UsersIcon size={18} />, label: 'CRM' },
   { id: 'analytics', icon: <OverviewIcon size={18} />, label: 'Analytics' },
   { id: 'support', icon: <MessageIcon size={18} />, label: 'Support' },
+  { id: 'news', icon: <TagIcon size={18} />, label: 'News' },
 ];
 
 type BadgeColor = 'default' | 'gold' | 'green' | 'red' | 'blue' | 'orange';
@@ -462,6 +464,214 @@ const EMPTY_DATA: AdminData = {
   webhookLogs: [],
 };
 
+const LANGUAGES = ['en', 'ru', 'zh', 'id', 'de', 'fr'];
+
+function NewsView({ isMobile }: { isMobile: boolean }) {
+  const [articles, setArticles] = useState<ApiNewsArticle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [editingArticle, setEditingArticle] = useState<ApiNewsArticle | null>(null);
+  const [showForm, setShowForm] = useState(false);
+
+  const emptyForm = () => ({
+    slug: '',
+    published_at: new Date().toISOString().slice(0, 10),
+    is_active: true,
+    sort_order: 0,
+    translations: LANGUAGES.map((lang) => ({ language: lang, title: '', description: '' })),
+    imageFile: null as File | null,
+  });
+
+  const [form, setForm] = useState(emptyForm());
+
+  const load = () => {
+    setLoading(true);
+    endpoints.adminNewsList({ page_size: 100 })
+      .then((res) => setArticles(unwrapList(res)))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const openNew = () => {
+    setEditingArticle(null);
+    setForm(emptyForm());
+    setShowForm(true);
+  };
+
+  const openEdit = (article: ApiNewsArticle) => {
+    setEditingArticle(article);
+    const existingTranslations = article.translations || [];
+    setForm({
+      slug: article.slug,
+      published_at: article.published_at,
+      is_active: true,
+      sort_order: 0,
+      translations: LANGUAGES.map((lang) => {
+        const found = existingTranslations.find((t) => t.language === lang);
+        return { language: lang, title: found?.title || '', description: found?.description || '' };
+      }),
+      imageFile: null,
+    });
+    setShowForm(true);
+  };
+
+  const closeForm = () => { setShowForm(false); setEditingArticle(null); };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const fd = new FormData();
+      fd.append('slug', form.slug);
+      fd.append('published_at', form.published_at);
+      fd.append('is_active', String(form.is_active));
+      fd.append('sort_order', String(form.sort_order));
+      if (form.imageFile) fd.append('image', form.imageFile);
+
+      const translations = form.translations.filter((t) => t.title.trim());
+      fd.append('translations', JSON.stringify(translations));
+
+      if (editingArticle) {
+        await endpoints.adminUpdateNews(editingArticle.id, fd);
+      } else {
+        await endpoints.adminCreateNews(fd);
+      }
+      closeForm();
+      load();
+    } catch {
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Delete this article?')) return;
+    setDeletingId(id);
+    try {
+      await endpoints.adminDeleteNews(id);
+      load();
+    } catch {
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const setTranslation = (lang: string, field: 'title' | 'description', value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      translations: prev.translations.map((t) => t.language === lang ? { ...t, [field]: value } : t),
+    }));
+  };
+
+  const inputStyle: CSSProperties = {
+    width: '100%', padding: '9px 12px', border: `1px solid ${A.g200}`, borderRadius: 8,
+    fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.black, outline: 'none', background: A.white,
+    boxSizing: 'border-box',
+  };
+
+  return (
+    <div style={{ padding: isMobile ? 16 : 28, height: '100%', overflowY: 'auto' }}>
+      <SectionHeader
+        title="News Management"
+        subtitle="Manage multilingual news articles"
+        action={<Button variant="primary" onClick={openNew}>+ Add article</Button>}
+      />
+
+      {loading ? (
+        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: A.g500 }}>Loading…</p>
+      ) : articles.length === 0 ? (
+        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: A.g500 }}>No articles yet. Add the first one.</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {articles.map((article) => {
+            const enTranslation = article.translations?.find((t) => t.language === 'en') || article.translations?.[0];
+            return (
+              <div key={article.id} style={{ background: A.white, border: `1px solid ${A.g200}`, borderRadius: 12, padding: '16px 20px', display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                {article.image && (
+                  <img src={mediaUrl(article.image)} alt="" style={{ width: 80, height: 56, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 15, color: A.black, marginBottom: 4 }}>
+                    {enTranslation?.title || article.slug}
+                  </div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
+                    {article.published_at} · {article.slug}
+                  </div>
+                  {enTranslation?.description && (
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700, marginTop: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {enTranslation.description}
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                  <Button variant="outline" onClick={() => openEdit(article)}>Edit</Button>
+                  <Button variant="danger" disabled={deletingId === article.id} onClick={() => handleDelete(article.id)}>
+                    {deletingId === article.id ? '…' : 'Delete'}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Form Modal */}
+      {showForm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px', overflowY: 'auto' }}>
+          <div style={{ background: A.white, borderRadius: 16, padding: 28, width: '100%', maxWidth: 680, position: 'relative' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <h3 style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18, color: A.black, margin: 0 }}>
+                {editingArticle ? 'Edit article' : 'New article'}
+              </h3>
+              <Button variant="ghost" onClick={closeForm}>✕</Button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 14, marginBottom: 20 }}>
+              <div>
+                <label style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Slug</label>
+                <input style={inputStyle} value={form.slug} onChange={(e) => setForm((p) => ({ ...p, slug: e.target.value }))} placeholder="my-article-slug" />
+              </div>
+              <div>
+                <label style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Published date</label>
+                <input type="date" style={inputStyle} value={form.published_at} onChange={(e) => setForm((p) => ({ ...p, published_at: e.target.value }))} />
+              </div>
+              <div>
+                <label style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Image</label>
+                <input type="file" accept="image/*" style={{ ...inputStyle, padding: '7px 12px' }}
+                  onChange={(e) => setForm((p) => ({ ...p, imageFile: e.target.files?.[0] ?? null }))} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 24 }}>
+                <input type="checkbox" id="isActive" checked={form.is_active} onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.checked }))} style={{ width: 16, height: 16 }} />
+                <label htmlFor="isActive" style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.black, cursor: 'pointer' }}>Published</label>
+              </div>
+            </div>
+
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12 }}>Translations</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {form.translations.map((t) => (
+                <div key={t.language} style={{ background: A.g100, borderRadius: 10, padding: 14 }}>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 700, color: A.g700, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t.language}</div>
+                  <div style={{ marginBottom: 8 }}>
+                    <input style={inputStyle} placeholder="Title" value={t.title} onChange={(e) => setTranslation(t.language, 'title', e.target.value)} />
+                  </div>
+                  <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} placeholder="Description" value={t.description} onChange={(e) => setTranslation(t.language, 'description', e.target.value)} />
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 24, justifyContent: 'flex-end' }}>
+              <Button variant="outline" onClick={closeForm}>Cancel</Button>
+              <Button variant="primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const { user, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
@@ -757,6 +967,7 @@ export default function AdminPage() {
         isMobile={isMobile}
       />
     ),
+    news: <NewsView isMobile={isMobile} />,
   };
 
   const sidebarContent = (

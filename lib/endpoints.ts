@@ -412,6 +412,24 @@ export type ApiWebhookLog = {
   created_at?: string;
 };
 
+export type ApiNewsArticle = {
+  id: number;
+  slug: string;
+  image: string | null;
+  published_at: string;
+  title: string;
+  description: string;
+  translations?: Array<{ id: number; language: string; title: string; description: string }>;
+};
+
+export type AdminNewsArticlePayload = {
+  slug: string;
+  published_at: string;
+  is_active: boolean;
+  sort_order: number;
+  translations: Array<{ language: string; title: string; description: string }>;
+};
+
 export type AdminScooterPayload = {
   model: number;
   title: string;
@@ -591,6 +609,22 @@ export const endpoints = {
     api<Paginated<ApiWebhookLog> | ApiWebhookLog[]>('/admin/security/webhooks/', { auth: true, query: params }),
   adminPayments: (params?: { page_size?: number; ordering?: string }) =>
     api<Paginated<ApiPayment> | ApiPayment[]>('/payments/', { auth: true, query: params }),
+
+  // News (public)
+  newsList: (params?: { page?: number; page_size?: number }, lang?: string) =>
+    api<Paginated<ApiNewsArticle> | ApiNewsArticle[]>('/news/', { query: params, lang }),
+  newsArticle: (slug: string, lang?: string) =>
+    api<ApiNewsArticle>(`/news/${slug}/`, { lang }),
+
+  // News (admin)
+  adminNewsList: (params?: { page?: number; page_size?: number }) =>
+    api<Paginated<ApiNewsArticle> | ApiNewsArticle[]>('/admin/content/news/', { auth: true, query: params }),
+  adminCreateNews: (body: FormData | Partial<AdminNewsArticlePayload>) =>
+    api<ApiNewsArticle>('/admin/content/news/', { method: 'POST', body, auth: true }),
+  adminUpdateNews: (id: number | string, body: FormData | Partial<AdminNewsArticlePayload>) =>
+    api<ApiNewsArticle>(`/admin/content/news/${id}/`, { method: 'PATCH', body, auth: true }),
+  adminDeleteNews: (id: number | string) =>
+    api<void>(`/admin/content/news/${id}/`, { method: 'DELETE', auth: true }),
 };
 
 export type BookingCreatePayload = {

@@ -12,7 +12,7 @@ export const LOCALES: { code: Locale; name: string; flag: string }[] = [
 export type Dict = typeof en;
 
 export const en = {
-  nav: { catalog: 'Catalog', how: 'How it works', locations: 'Locations', admin: 'Admin', book: 'Book now', login: 'Sign in', logout: 'Sign out', profile: 'Profile' },
+  nav: { catalog: 'Catalog', how: 'How it works', locations: 'Locations', news: 'News', admin: 'Admin', book: 'Book now', login: 'Sign in', logout: 'Sign out', profile: 'Profile' },
   hero: {
     eyebrow: 'RIDE BALI. YOUR WAY.',
     title1: 'EXPLORE BALI',
@@ -148,10 +148,21 @@ export const en = {
       confirmed: 'CONFIRMED', active: 'ACTIVE', completed: 'COMPLETED', cancelled: 'CANCELLED', created: 'CREATED',
     },
   },
+  news: {
+    eyebrow: '09 — NEWS', title: 'News & Updates.',
+    desc: 'Stay up to date with the latest news, tips, and stories from Bali-Rent.',
+    loading: 'Loading news…', empty: 'No news yet.', error: 'Could not load news.',
+    readMore: 'Read more →', backToNews: '← Back to news',
+    adminTitle: 'News Management', addArticle: '+ Add article',
+    editArticle: 'Edit article', deleteArticle: 'Delete', confirmDelete: 'Delete this article?',
+    slug: 'Slug', publishedAt: 'Published date', isActive: 'Published', sortOrder: 'Sort order',
+    translations: 'Translations', titleLabel: 'Title', descriptionLabel: 'Description',
+    save: 'Save', cancel: 'Cancel', imageLabel: 'Image',
+  },
 };
 
 export const ru: Dict = {
-  nav: { catalog: 'Каталог', how: 'Как это работает', locations: 'Локации', admin: 'Админ', book: 'Забронировать', login: 'Войти', logout: 'Выйти', profile: 'Профиль' },
+  nav: { catalog: 'Каталог', how: 'Как это работает', locations: 'Локации', news: 'Новости', admin: 'Админ', book: 'Забронировать', login: 'Войти', logout: 'Выйти', profile: 'Профиль' },
   hero: {
     eyebrow: 'ПОКОРИ БАЛИ. ПО-СВОЕМУ.',
     title1: 'ИССЛЕДУЙ БАЛИ',
@@ -272,10 +283,21 @@ export const ru: Dict = {
       confirmed: 'ПОДТВЕРЖДЕНО', active: 'АКТИВНО', completed: 'ЗАВЕРШЕНО', cancelled: 'ОТМЕНЕНО', created: 'СОЗДАНО',
     },
   },
+  news: {
+    eyebrow: '09 — НОВОСТИ', title: 'Новости и обновления.',
+    desc: 'Будьте в курсе последних новостей, советов и историй от Bali-Rent.',
+    loading: 'Загружаем новости…', empty: 'Новостей пока нет.', error: 'Не удалось загрузить новости.',
+    readMore: 'Читать →', backToNews: '← Все новости',
+    adminTitle: 'Управление новостями', addArticle: '+ Добавить статью',
+    editArticle: 'Редактировать', deleteArticle: 'Удалить', confirmDelete: 'Удалить эту статью?',
+    slug: 'Slug', publishedAt: 'Дата публикации', isActive: 'Опубликовано', sortOrder: 'Порядок',
+    translations: 'Переводы', titleLabel: 'Заголовок', descriptionLabel: 'Описание',
+    save: 'Сохранить', cancel: 'Отмена', imageLabel: 'Фото',
+  },
 };
 
 export const zh: Dict = {
-  nav: { catalog: '车型', how: '如何使用', locations: '地点', admin: '管理', book: '立即预订', login: '登录', logout: '退出', profile: '资料' },
+  nav: { catalog: '车型', how: '如何使用', locations: '地点', news: '新闻', admin: '管理', book: '立即预订', login: '登录', logout: '退出', profile: '资料' },
   hero: { eyebrow: '畅游巴厘岛，随心所欲。', title1: '探索巴厘岛', title2: '由你', title3: '做主。', pickup: '取车', pickupDate: '取车日期', returnDate: '还车日期', model: '车型', cta: '查看可用车', locations: '6 个地点', available: '可用 {n}' },
   stats: { fleet: '车队规模', riders: '今年骑手', rating: '平均评分', support: '岛上支援' },
   fleet: { eyebrow: '01 — 车队', title: '阵容', viewAll: '查看全部 →' },
@@ -308,10 +330,11 @@ export const zh: Dict = {
   admin: { overview: '概览', bookings: '预订', fleet: '车队', riders: '骑手', calendar: '日历', payouts: '结算', settings: '设置', fleetStatus: '车队状态', live: '76% 在线', deployed: '258 / 340 已部署', title: '管理 · {section}', export: '↧ 导出 CSV', new: '+ 新预订', cards: { totalBookings: '总预订', revenue: '收入', activeRentals: '在租中', availability: '车队可用率' }, table: { booking: '预订号', rider: '骑手', scooter: '车型', dates: '日期', total: '总计', status: '状态' }, filters: ['全部', '已创建', '已确认', '进行中', '已完成', '已取消'], needAuth: '请以管理员身份登录查看预订。', empty: '暂无预订。' },
   auth: { login: '登录', register: '注册', email: '邮箱', password: '密码', name: '姓名', phone: '电话', loginCta: '登录 →', registerCta: '注册 →', haveAccount: '已有账户？', noAccount: '还没有账户？', signOut: '退出', welcome: '欢迎回来，{name}', error: '出错了。' },
   common: { loading: '加载中…', tryAgain: '重试', currency: 'USD', day: '天', noData: '暂无数据', statusLabels: { available: '可用', booked: '已订', partial: '部分', service: '维护', confirmed: '已确认', active: '进行中', completed: '已完成', cancelled: '已取消', created: '已创建' } },
+  news: { eyebrow: '09 — 新闻', title: '新闻动态。', desc: '随时了解 Bali-Rent 的最新新闻、技巧和故事。', loading: '加载新闻中…', empty: '暂无新闻。', error: '无法加载新闻。', readMore: '阅读更多 →', backToNews: '← 返回新闻', adminTitle: '新闻管理', addArticle: '+ 添加文章', editArticle: '编辑', deleteArticle: '删除', confirmDelete: '确认删除该文章？', slug: 'Slug', publishedAt: '发布日期', isActive: '已发布', sortOrder: '排序', translations: '翻译', titleLabel: '标题', descriptionLabel: '描述', save: '保存', cancel: '取消', imageLabel: '图片' },
 };
 
 export const id: Dict = {
-  nav: { catalog: 'Katalog', how: 'Cara kerja', locations: 'Lokasi', admin: 'Admin', book: 'Pesan sekarang', login: 'Masuk', logout: 'Keluar', profile: 'Profil' },
+  nav: { catalog: 'Katalog', how: 'Cara kerja', locations: 'Lokasi', news: 'Berita', admin: 'Admin', book: 'Pesan sekarang', login: 'Masuk', logout: 'Keluar', profile: 'Profil' },
   hero: { eyebrow: 'JELAJAHI BALI. CARAMU.', title1: 'JELAJAHI BALI', title2: 'SESUAI', title3: 'AKALMU.', pickup: 'AMBIL', pickupDate: 'TANGGAL AMBIL', returnDate: 'TANGGAL KEMBALI', model: 'MODEL', cta: 'CEK KETERSEDIAAN', locations: '6 lokasi', available: '{n} tersedia' },
   stats: { fleet: 'Skuter di armada', riders: 'Pengendara tahun ini', rating: 'Peringkat rata-rata', support: 'Dukungan di pulau' },
   fleet: { eyebrow: '01 — ARMADA', title: 'Pilihan kami.', viewAll: 'Lihat semua →' },
@@ -344,10 +367,11 @@ export const id: Dict = {
   admin: { overview: 'Ringkasan', bookings: 'Pesanan', fleet: 'Armada', riders: 'Pengendara', calendar: 'Kalender', payouts: 'Pembayaran', settings: 'Pengaturan', fleetStatus: 'STATUS ARMADA', live: '76% aktif', deployed: '258 / 340 terdeploy', title: 'Admin · {section}', export: '↧ Ekspor CSV', new: '+ Pesanan baru', cards: { totalBookings: 'Total pesanan', revenue: 'Pendapatan', activeRentals: 'Sewa aktif', availability: 'Ketersediaan armada' }, table: { booking: 'PESANAN', rider: 'PENGENDARA', scooter: 'SKUTER', dates: 'TANGGAL', total: 'TOTAL', status: 'STATUS' }, filters: ['Semua', 'Dibuat', 'Terkonfirmasi', 'Aktif', 'Selesai', 'Batal'], needAuth: 'Masuk sebagai admin untuk melihat pesanan.', empty: 'Belum ada pesanan.' },
   auth: { login: 'Masuk', register: 'Daftar', email: 'Email', password: 'Sandi', name: 'Nama', phone: 'Telepon', loginCta: 'Masuk →', registerCta: 'Daftar →', haveAccount: 'Sudah punya akun?', noAccount: 'Belum punya akun?', signOut: 'Keluar', welcome: 'Selamat datang, {name}', error: 'Terjadi kesalahan.' },
   common: { loading: 'Memuat…', tryAgain: 'Coba lagi', currency: 'USD', day: 'hari', noData: 'Belum ada data', statusLabels: { available: 'TERSEDIA', booked: 'DIPESAN', partial: 'SEBAGIAN', service: 'SERVIS', confirmed: 'DIKONFIRMASI', active: 'AKTIF', completed: 'SELESAI', cancelled: 'DIBATALKAN', created: 'DIBUAT' } },
+  news: { eyebrow: '09 — BERITA', title: 'Berita & Update.', desc: 'Tetap update dengan berita, tips, dan cerita terbaru dari Bali-Rent.', loading: 'Memuat berita…', empty: 'Belum ada berita.', error: 'Gagal memuat berita.', readMore: 'Baca lebih →', backToNews: '← Kembali ke berita', adminTitle: 'Manajemen Berita', addArticle: '+ Tambah artikel', editArticle: 'Edit', deleteArticle: 'Hapus', confirmDelete: 'Hapus artikel ini?', slug: 'Slug', publishedAt: 'Tanggal terbit', isActive: 'Terbit', sortOrder: 'Urutan', translations: 'Terjemahan', titleLabel: 'Judul', descriptionLabel: 'Deskripsi', save: 'Simpan', cancel: 'Batal', imageLabel: 'Gambar' },
 };
 
 export const de: Dict = {
-  nav: { catalog: 'Katalog', how: 'So funktioniert es', locations: 'Standorte', admin: 'Admin', book: 'Jetzt buchen', login: 'Anmelden', logout: 'Abmelden', profile: 'Profil' },
+  nav: { catalog: 'Katalog', how: 'So funktioniert es', locations: 'Standorte', news: 'News', admin: 'Admin', book: 'Jetzt buchen', login: 'Anmelden', logout: 'Abmelden', profile: 'Profil' },
   hero: { eyebrow: 'BALI ENTDECKEN. AUF DEINE ART.', title1: 'ERLEBE BALI', title2: 'NACH DEINEN', title3: 'REGELN.', pickup: 'ABHOLUNG', pickupDate: 'ABHOLDATUM', returnDate: 'RÜCKGABEDATUM', model: 'MODELL', cta: 'VERFÜGBARKEIT PRÜFEN', locations: '6 Standorte', available: '{n} verfügbar' },
   stats: { fleet: 'Roller im Bestand', riders: 'Fahrer dieses Jahr', rating: 'Ø Bewertung', support: 'Support vor Ort' },
   fleet: { eyebrow: '01 — FLOTTE', title: 'Unsere Auswahl.', viewAll: 'Alle ansehen →' },
@@ -380,10 +404,11 @@ export const de: Dict = {
   admin: { overview: 'Übersicht', bookings: 'Buchungen', fleet: 'Flotte', riders: 'Fahrer', calendar: 'Kalender', payouts: 'Auszahlungen', settings: 'Einstellungen', fleetStatus: 'FLOTTENSTATUS', live: '76% live', deployed: '258 / 340 unterwegs', title: 'Admin · {section}', export: '↧ CSV-Export', new: '+ Neue Buchung', cards: { totalBookings: 'Gesamt', revenue: 'Umsatz', activeRentals: 'Aktive Mieten', availability: 'Verfügbarkeit' }, table: { booking: 'BUCHUNG', rider: 'FAHRER', scooter: 'ROLLER', dates: 'DATUM', total: 'GESAMT', status: 'STATUS' }, filters: ['Alle', 'Erstellt', 'Bestätigt', 'Aktiv', 'Beendet', 'Storniert'], needAuth: 'Als Admin anmelden, um Buchungen zu sehen.', empty: 'Noch keine Buchungen.' },
   auth: { login: 'Anmelden', register: 'Konto erstellen', email: 'E-Mail', password: 'Passwort', name: 'Name', phone: 'Telefon', loginCta: 'Anmelden →', registerCta: 'Registrieren →', haveAccount: 'Schon ein Konto?', noAccount: 'Noch kein Konto?', signOut: 'Abmelden', welcome: 'Willkommen zurück, {name}', error: 'Etwas ist schiefgelaufen.' },
   common: { loading: 'Laden…', tryAgain: 'Erneut', currency: 'USD', day: 'Tag', noData: 'Keine Daten', statusLabels: { available: 'VERFÜGBAR', booked: 'GEBUCHT', partial: 'TEILWEISE', service: 'SERVICE', confirmed: 'BESTÄTIGT', active: 'AKTIV', completed: 'ABGESCHLOSSEN', cancelled: 'STORNIERT', created: 'ERSTELLT' } },
+  news: { eyebrow: '09 — NEWS', title: 'News & Updates.', desc: 'Bleib auf dem Laufenden mit den neuesten Nachrichten, Tipps und Stories von Bali-Rent.', loading: 'News laden…', empty: 'Noch keine News.', error: 'News konnten nicht geladen werden.', readMore: 'Mehr lesen →', backToNews: '← Zurück zu den News', adminTitle: 'News-Verwaltung', addArticle: '+ Artikel hinzufügen', editArticle: 'Bearbeiten', deleteArticle: 'Löschen', confirmDelete: 'Diesen Artikel löschen?', slug: 'Slug', publishedAt: 'Veröffentlichungsdatum', isActive: 'Veröffentlicht', sortOrder: 'Reihenfolge', translations: 'Übersetzungen', titleLabel: 'Titel', descriptionLabel: 'Beschreibung', save: 'Speichern', cancel: 'Abbrechen', imageLabel: 'Bild' },
 };
 
 export const fr: Dict = {
-  nav: { catalog: 'Catalogue', how: 'Comment ça marche', locations: 'Lieux', admin: 'Admin', book: 'Réserver', login: 'Connexion', logout: 'Déconnexion', profile: 'Profil' },
+  nav: { catalog: 'Catalogue', how: 'Comment ça marche', locations: 'Lieux', news: 'Actualités', admin: 'Admin', book: 'Réserver', login: 'Connexion', logout: 'Déconnexion', profile: 'Profil' },
   hero: { eyebrow: 'EXPLORER BALI. À TA FAÇON.', title1: 'EXPLORE BALI', title2: 'À TES', title3: 'CONDITIONS.', pickup: 'PRISE EN CHARGE', pickupDate: 'DATE DE PRISE', returnDate: 'DATE DE RETOUR', model: 'MODÈLE', cta: 'VÉRIFIER LA DISPO', locations: '6 lieux', available: '{n} dispo' },
   stats: { fleet: 'Scooters en flotte', riders: 'Pilotes cette année', rating: 'Note moyenne', support: 'Support sur l\'île' },
   fleet: { eyebrow: '01 — FLOTTE', title: 'La gamme.', viewAll: 'Voir tout →' },
@@ -416,6 +441,7 @@ export const fr: Dict = {
   admin: { overview: 'Vue', bookings: 'Réservations', fleet: 'Flotte', riders: 'Pilotes', calendar: 'Calendrier', payouts: 'Versements', settings: 'Réglages', fleetStatus: 'STATUT FLOTTE', live: '76% live', deployed: '258 / 340 déployés', title: 'Admin · {section}', export: '↧ Export CSV', new: '+ Nouvelle réservation', cards: { totalBookings: 'Total', revenue: 'Revenu', activeRentals: 'Locations actives', availability: 'Disponibilité' }, table: { booking: 'RÉSERVATION', rider: 'PILOTE', scooter: 'SCOOTER', dates: 'DATES', total: 'TOTAL', status: 'STATUT' }, filters: ['Tous', 'Créés', 'Confirmés', 'Actifs', 'Terminés', 'Annulés'], needAuth: 'Connecte-toi en admin pour voir les réservations.', empty: 'Aucune réservation pour le moment.' },
   auth: { login: 'Connexion', register: 'Créer un compte', email: 'Email', password: 'Mot de passe', name: 'Nom', phone: 'Téléphone', loginCta: 'Se connecter →', registerCta: 'Créer →', haveAccount: 'Déjà un compte ?', noAccount: 'Pas de compte ?', signOut: 'Déconnexion', welcome: 'Bon retour, {name}', error: 'Une erreur est survenue.' },
   common: { loading: 'Chargement…', tryAgain: 'Réessayer', currency: 'USD', day: 'jour', noData: 'Aucune donnée', statusLabels: { available: 'DISPONIBLE', booked: 'RÉSERVÉ', partial: 'PARTIEL', service: 'SERVICE', confirmed: 'CONFIRMÉ', active: 'ACTIF', completed: 'TERMINÉ', cancelled: 'ANNULÉ', created: 'CRÉÉ' } },
+  news: { eyebrow: '09 — ACTUALITÉS', title: 'Actualités.', desc: 'Restez informé des dernières nouvelles, conseils et histoires de Bali-Rent.', loading: 'Chargement des actus…', empty: 'Aucune actualité pour le moment.', error: 'Impossible de charger les actus.', readMore: 'Lire plus →', backToNews: '← Retour aux actus', adminTitle: 'Gestion des actualités', addArticle: '+ Ajouter un article', editArticle: 'Modifier', deleteArticle: 'Supprimer', confirmDelete: 'Supprimer cet article ?', slug: 'Slug', publishedAt: 'Date de publication', isActive: 'Publié', sortOrder: 'Ordre', translations: 'Traductions', titleLabel: 'Titre', descriptionLabel: 'Description', save: 'Enregistrer', cancel: 'Annuler', imageLabel: 'Image' },
 };
 
 export const dictionaries: Record<Locale, Dict> = { en, ru, zh, id, de, fr };

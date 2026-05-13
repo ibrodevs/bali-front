@@ -73,6 +73,7 @@ export default function SiteHeader({ dark = false }: { dark?: boolean }) {
       <Link href="/catalog" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.catalog}</Link>
       <Link href="/how-it-works" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.how}</Link>
       <Link href="/#delivery" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.locations}</Link>
+      <Link href="/news" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.news}</Link>
       {isAdmin && (
         <Link href="/admin" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>🔧 Админ панель</Link>
       )}
