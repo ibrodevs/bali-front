@@ -3,9 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
-import { BRLogo, BRPrimary } from './BR';
-import LanguageSwitcher from './LanguageSwitcher';
-import CurrencySwitcher from './CurrencySwitcher';
+import { BRLogo } from './BR';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { useAuth } from '@/lib/i18n/AuthProvider';
 
@@ -146,30 +144,6 @@ export default function SiteHeader({
 
   const headerActions = (
     <>
-      <LanguageSwitcher dark={dark || isTransparent} />
-      <CurrencySwitcher dark={dark || isTransparent} />
-
-      {/* WhatsApp button */}
-      <a
-        href={WA_LINK}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="br-header-whatsapp"
-        style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          padding: '8px 14px', borderRadius: 999,
-          background: 'rgba(37,211,102,0.12)', border: '1px solid rgba(37,211,102,0.35)',
-          color: isTransparent ? '#4ade80' : '#16a34a',
-          fontSize: 12, fontFamily: 'var(--br-mono)', letterSpacing: '0.04em',
-          textDecoration: 'none', minHeight: 40,
-          transition: 'background 200ms, border-color 200ms',
-        }}
-        aria-label="Contact via WhatsApp"
-      >
-        <span style={{ fontSize: 14 }}>💬</span>
-        <span>WhatsApp</span>
-      </a>
-
       {user ? (
         <div style={{ position: 'relative' }}>
           <button
