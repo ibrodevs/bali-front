@@ -48,7 +48,7 @@ export default function HowItWorksPage() {
   ];
 
   return (
-    <div style={{ width: '100%', background: bg, color: fg, fontFamily: 'var(--br-body)' }}>
+    <div style={{ width: '100%', minHeight: '100vh', display: 'flex', flexDirection: 'column', background: bg, color: fg, fontFamily: 'var(--br-body)' }}>
       <SiteHeader />
 
       {/* HERO */}

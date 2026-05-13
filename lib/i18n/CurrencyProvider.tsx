@@ -18,6 +18,26 @@ export const CURRENCY_SYMBOLS: Record<string, string> = {
   'AUD': 'A$',
 };
 
+export function isSupportedCurrency(currency?: string | null): currency is string {
+  return Boolean(currency && currency in CURRENCY_RATES);
+}
+
+export function convertAmount(amount: number, fromCurrency = 'USD', toCurrency = 'USD'): number {
+  const normalizedAmount = Number.isFinite(amount) ? amount : 0;
+  const safeFrom = isSupportedCurrency(fromCurrency) ? fromCurrency : 'USD';
+  const safeTo = isSupportedCurrency(toCurrency) ? toCurrency : 'USD';
+  const fromRate = CURRENCY_RATES[safeFrom] || 1;
+  const toRate = CURRENCY_RATES[safeTo] || 1;
+  return (normalizedAmount / fromRate) * toRate;
+}
+
+export function formatCurrencyAmount(amount: number, currency = 'USD'): string {
+  const safeCurrency = isSupportedCurrency(currency) ? currency : 'USD';
+  const symbol = CURRENCY_SYMBOLS[safeCurrency] || safeCurrency;
+  const normalizedAmount = Number.isFinite(amount) ? amount : 0;
+  return `${symbol}${normalizedAmount.toFixed(2)}`;
+}
+
 type Ctx = {
   currency: string;
   setCurrency: (c: string) => void;
@@ -31,9 +51,9 @@ const STORAGE_KEY = 'br_currency';
 
 function detectInitial(userCurrency?: string): string {
   if (typeof window === 'undefined') return 'USD';
-  if (userCurrency && userCurrency in CURRENCY_RATES) return userCurrency;
   const saved = localStorage.getItem(STORAGE_KEY) as string | null;
   if (saved && saved in CURRENCY_RATES) return saved;
+  if (userCurrency && userCurrency in CURRENCY_RATES) return userCurrency;
   return 'USD';
 }
 
@@ -58,9 +78,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
 
   const convertPrice = useCallback((priceUSD: number, targetCurrency?: string) => {
     const target = targetCurrency || currency;
-    const fromRate = CURRENCY_RATES['USD'] || 1;
-    const toRate = CURRENCY_RATES[target] || 1;
-    return (priceUSD / fromRate) * toRate;
+    return convertAmount(priceUSD, 'USD', target);
   }, [currency]);
 
   const symbol = CURRENCY_SYMBOLS[currency] || '$';

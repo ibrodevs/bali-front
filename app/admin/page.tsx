@@ -1010,6 +1010,23 @@ export default function AdminPage() {
           </div>
         ))}
       </nav>
+      <div style={{ padding: '10px 10px 0', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', padding: '8px 14px 4px' }}>
+          Content
+        </div>
+        <Link href="/admin/faq" style={{ textDecoration: 'none' }}>
+          <div style={{
+            padding: '11px 14px', borderRadius: 10,
+            display: 'flex', alignItems: 'center', gap: 10,
+            cursor: 'pointer', marginBottom: 3,
+          }}>
+            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 16 }}>💬</span>
+            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 400, color: 'rgba(255,255,255,0.5)' }}>
+              FAQ
+            </span>
+          </div>
+        </Link>
+      </div>
       <div style={{ padding: '16px 14px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
           <div style={{ width: 36, height: 36, background: 'rgba(255,215,0,0.15)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Sora, sans-serif', fontWeight: 800, fontSize: 14, color: A.gold }}>

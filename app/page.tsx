@@ -1,43 +1,88 @@
 'use client';
+
 import { useEffect, useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { BR_LOCATIONS } from '@/lib/data';
-import { BRPhoto, BRPrimary, BRSecondary, BROutline, BREyebrow, BRPrice, BRSection } from '@/components/BR';
+import { BRPhoto } from '@/components/BR';
 import {
-  CheckIcon,
-  DeliveryIcon,
-  HelmetIcon,
-  LightningIcon,
-  PhoneIcon,
-  PriceTagIcon,
-  ShieldIcon,
-  StarIcon,
-  SupportIcon,
-  WifiIcon,
-  renderAddonIcon,
-  stripLeadingSymbol,
+  ArrowRightIcon, CheckIcon,
+  ScooterIcon, StarIcon,
+  WhatsAppIcon,
 } from '@/components/Icons';
 import ScooterCard from '@/components/ScooterCard';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import { mediaUrl } from '@/lib/api';
+import { useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { endpoints } from '@/lib/endpoints';
-import { DisplayScooter, fallbackScooters, resolveScooterImage, resolveScooterImageObjectPosition } from '@/lib/displayScooter';
+import {
+  DisplayScooter,
+  fallbackScooters,
+  resolveScooterImage,
+  resolveScooterImageObjectPosition,
+} from '@/lib/displayScooter';
+
+function FAQItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ borderBottom: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          width: '100%', padding: '22px 0', background: 'transparent', border: 0,
+          cursor: 'pointer', textAlign: 'left', gap: 16,
+        }}
+      >
+        <span style={{ fontFamily: 'var(--br-display)', fontSize: 'clamp(15px, 1.8vw, 19px)', fontWeight: 600, letterSpacing: '-0.01em', color: '#0A0A0F', lineHeight: 1.3 }}>{q}</span>
+        <span style={{
+          width: 32, height: 32, borderRadius: 999, flexShrink: 0,
+          background: open ? '#0A0A0F' : 'rgba(0,0,0,0.07)',
+          color: open ? '#FFD700' : '#0A0A0F',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'all 220ms var(--br-easing)', fontSize: 20, lineHeight: 1, fontWeight: 300,
+        }}>
+          {open ? '−' : '+'}
+        </span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="faq-body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+            style={{ overflow: 'hidden' }}
+          >
+            <p style={{ margin: '0 0 24px', fontSize: 15, lineHeight: 1.7, color: 'rgba(0,0,0,0.55)', maxWidth: 680, paddingRight: 48 }}>
+              {a}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 28 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.65, ease: [0.16, 1, 0.3, 1] as const } },
+};
+const stagger = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.09 } },
+};
+
+const WA_LINK = 'https://wa.me/6281234567890?text=Hi%2C%20I%E2%80%99d%20like%20to%20rent%20a%20scooter%20in%20Bali!';
 
 export default function LandingPage() {
-  const { t, locale, tr } = useLocale();
-  const dark = false;
-  const bg = '#fff';
-  const fg = '#000';
-  const sub = 'rgba(0,0,0,0.6)';
-  const border = 'rgba(0,0,0,0.1)';
-  const [pickup] = useState('Canggu');
-  const [start] = useState('Aug 14');
-  const [end] = useState('Aug 21');
+  const { t, locale } = useLocale();
+  const { convertPrice, symbol } = useCurrency();
   const [featured, setFeatured] = useState<DisplayScooter[]>(fallbackScooters().slice(0, 3));
-  const [addonCards, setAddonCards] = useState<Array<{ id: number; name: string; description?: string; priceUSD?: number; icon?: string }>>([]);
   const [zones, setZones] = useState<Array<{ id: number; name: string; freeDelivery?: boolean }>>([]);
-  const whyIcons = [DeliveryIcon, PriceTagIcon, LightningIcon, SupportIcon] as const;
+  const [apiFaqs, setApiFaqs] = useState<Array<{ q: string; a: string }>>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,416 +90,449 @@ export default function LandingPage() {
       .then((bootstrap) => {
         if (cancelled) return;
         const nextFeatured = (bootstrap.fleet?.featured || []).map((item) => ({
-          id: item.slug,
-          apiId: item.id,
-          name: item.name,
+          id: item.slug, apiId: item.id, name: item.name,
           cc: Number(String(item.engine || '').replace(/[^\d]/g, '')) || 0,
           type: item.typeLabel || item.type || 'Scooter',
           price: Number(item.priceUSD) || 0,
           photo: 'sand',
           tag: item.featured ? 'FEATURED' : (item.typeLabel || item.type || 'BIKE').toUpperCase(),
           status: item.available ? 'available' as const : 'booked' as const,
-          range: 0,
-          top: 0,
-          weight: 0,
+          range: 0, top: 0, weight: 0,
           imageUrl: item.mainImage ? mediaUrl(item.mainImage) : (resolveScooterImage(item.slug, item.name) || undefined),
           imageObjectPosition: resolveScooterImageObjectPosition(item.slug, item.name),
         }));
         if (nextFeatured.length) setFeatured(nextFeatured);
-        setAddonCards(bootstrap.addons || []);
-        setZones((bootstrap.deliveryZones || []).map((zone) => ({ id: zone.id, name: zone.name, freeDelivery: zone.freeDelivery })));
+        setZones((bootstrap.deliveryZones || []).map((z) => ({ id: z.id, name: z.name, freeDelivery: z.freeDelivery })));
+        const faqData = (bootstrap.content as Record<string, unknown> | undefined);
+        const faqItems = (faqData?.home as Record<string, unknown> | undefined)?.faq;
+        const items = (faqItems as Record<string, unknown> | undefined)?.items;
+        if (Array.isArray(items) && items.length) setApiFaqs(items as Array<{ q: string; a: string }>);
       })
       .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [locale]);
 
   const activeZones = useMemo(() => {
-    const zoneNames = zones.map((zone) => zone.name);
-    return zoneNames.length ? zoneNames : BR_LOCATIONS;
+    const names = zones.map((z) => z.name);
+    return names.length ? names : BR_LOCATIONS;
   }, [zones]);
 
-  return (
-    <div style={{ width: '100%', background: bg, color: fg, fontFamily: 'var(--br-body)' }}>
-      <SiteHeader dark={dark} />
+  const faqs = apiFaqs.length ? apiFaqs : t.home.faqs;
+  const homeReviews = t.home.reviews;
+  const minPrice = featured[0]?.price || 8;
+  const minPriceLabel = `${symbol}${(Math.round(convertPrice(minPrice) * 100) / 100).toFixed(2)}`;
 
-      <div className="br-hero" style={{ position: 'relative', minHeight: 720, overflow: 'hidden' }}>
-        <video
-          className="br-hero-video"
-          autoPlay
-          muted
-          loop
-          playsInline
-          aria-hidden="true"
+  return (
+    <div style={{ width: '100%', minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#FAFAF5', color: '#0A0A0F', fontFamily: 'var(--br-body)', WebkitFontSmoothing: 'antialiased' }}>
+      <SiteHeader transparent />
+
+      {/* ── 01 HERO ─────────────────────────────────────────────────── */}
+      <section style={{ position: 'relative', height: '100vh', minHeight: 620, overflow: 'hidden' }}>
+        <video autoPlay muted loop playsInline aria-hidden="true"
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
         >
           <source src="/hero.mp4" type="video/mp4" />
         </video>
-        <div className="br-hero-overlay" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0.2) 0%, transparent 30%, transparent 60%, rgba(0,0,0,0.6) 100%)' }} />
 
-        <div className="br-hero-inner" style={{ position: 'relative', zIndex: 1, minHeight: 720, padding: '32px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 40 }}>
-          <div className="br-hero-top" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24 }}>
-            <div className="br-hero-meta-left" style={{ color: '#fff' }}>
-              <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.16em', opacity: 0.7 }}>EST. 2019 · LICENSED · INSURED</div>
-            </div>
-            <div className="br-hero-meta-right" style={{ color: '#fff', textAlign: 'right' }}>
-              <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.16em', opacity: 0.7 }}>N 8°30&apos;21&quot; · E 115°15&apos;10&quot;</div>
-              <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.16em', opacity: 0.7, marginTop: 4 }}>27°C · TRADE WINDS · 12 KM/H</div>
-            </div>
-          </div>
+        <div aria-hidden style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.25) 55%, rgba(0,0,0,0.1) 100%)' }} />
 
-          <div className="br-hero-bottom" style={{ display: 'grid', gap: 32, marginTop: 'auto' }}>
-            <div className="br-hero-copy" style={{ color: '#fff', maxWidth: 1100 }}>
-              <div className="br-mono" style={{ fontSize: 12, letterSpacing: '0.18em', color: '#FFD700', marginBottom: 24 }}>{t.hero.eyebrow}</div>
-              <h1 className="br-display" style={{ fontSize: 'clamp(56px, 10vw, 132px)', lineHeight: 0.92, margin: 0, letterSpacing: '-0.04em', fontWeight: 700 }}>
-                {t.hero.title1}<br />
-                {t.hero.title2} <span style={{ background: '#FFD700', color: '#000', padding: '0 14px', display: 'inline-block', transform: 'skewX(-4deg)' }}>{t.hero.title3}</span>
-              </h1>
-            </div>
+        <div style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+          padding: 'clamp(16px, 5vw, 56px) clamp(16px, 5vw, 56px) clamp(40px, 7vw, 80px)',
+        }}>
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            style={{ color: 'rgba(255,255,255,0.6)', fontSize: 'clamp(13px, 1.4vw, 16px)', marginBottom: 12, letterSpacing: '0.04em', textTransform: 'uppercase', fontFamily: 'var(--br-mono)' }}
+          >
+            Bali · Scooter Rental
+          </motion.p>
 
-            <div className="br-hero-search-wrap">
-              <div className="br-hero-search" style={{ background: '#fff', borderRadius: 16, padding: 18, display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1.2fr auto', gap: 1, alignItems: 'center', boxShadow: '0 30px 80px -20px rgba(0,0,0,0.5)' }}>
-                {[
-                  { k: t.hero.pickup, v: pickup, sub: t.hero.locations },
-                  { k: t.hero.pickupDate, v: start, sub: '08:00' },
-                  { k: t.hero.returnDate, v: end, sub: '20:00' },
-                  { k: t.hero.model, v: featured[0]?.type || 'Touring', sub: tr(t.hero.available, { n: featured.length || 3 }) },
-                ].map((f, i) => (
-                  <div key={i} className="br-hero-search-field" style={{ padding: '10px 22px', borderRight: i < 3 ? '1px solid #eee' : 'none' }}>
-                    <div className="br-mono" style={{ fontSize: 10, letterSpacing: '0.14em', color: '#888' }}>{f.k}</div>
-                    <div className="br-display" style={{ fontSize: 22, lineHeight: 1.1, marginTop: 4 }}>{f.v}</div>
-                    <div className="br-mono" style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{f.sub}</div>
-                  </div>
-                ))}
-                <div className="br-hero-search-action" style={{ paddingLeft: 18 }}>
-                  <BRPrimary href="/catalog" style={{ height: 80, padding: '0 32px', fontSize: 16 }}>
-                    {t.hero.cta} <span style={{ fontSize: 18 }}>→</span>
-                  </BRPrimary>
-                </div>
-              </div>
-            </div>
-          </div>
+          <motion.h1
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              fontFamily: 'var(--br-display)',
+              fontSize: 'clamp(52px, 9.5vw, 116px)',
+              lineHeight: 0.92, letterSpacing: '-0.04em',
+              color: '#fff', margin: '0 0 28px', fontWeight: 800,
+            }}
+          >
+            {t.home.title1}<br />
+            <span style={{ color: '#FFD700' }}>{t.home.title2}</span>
+          </motion.h1>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}
+          >
+            <a href="/catalog" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 12,
+              background: '#FFD700', color: '#0A0A0F',
+              fontFamily: 'var(--br-display)', fontSize: 'clamp(16px, 1.6vw, 20px)', fontWeight: 800,
+              padding: '0 clamp(24px, 3vw, 36px)', height: 'clamp(58px, 6vw, 68px)', borderRadius: 16,
+              textDecoration: 'none', letterSpacing: '-0.02em', whiteSpace: 'nowrap',
+              boxShadow: '0 12px 40px -8px rgba(255,215,0,0.55)',
+            }}>
+              <ScooterIcon size={20} color="#0A0A0F" strokeWidth={2.2} />
+              {t.hero.cta}
+              <ArrowRightIcon size={17} color="#0A0A0F" strokeWidth={2.5} />
+            </a>
+
+            <a href={WA_LINK} target="_blank" rel="noopener noreferrer" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 9,
+              background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              color: '#fff', fontFamily: 'var(--br-body)', fontSize: 15, fontWeight: 500,
+              textDecoration: 'none', whiteSpace: 'nowrap',
+              padding: '0 20px', height: 'clamp(58px, 6vw, 68px)', borderRadius: 16,
+            }}>
+              <WhatsAppIcon size={18} color="#25D366" />
+              WhatsApp
+            </a>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.42 }}
+            style={{ marginTop: 20, display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <StarIcon size={13} color="#FFD700" />
+            <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, fontFamily: 'var(--br-mono)' }}>
+              4.97 · 12 000+ riders · {t.home.priceFrom} <strong style={{ color: '#FFD700' }}>{minPriceLabel}/{t.common.day}</strong>
+            </span>
+          </motion.div>
         </div>
-      </div>
+      </section>
 
-      <div className="br-home-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderBottom: `1px solid ${border}`, background: bg }}>
-        {([['340+', t.stats.fleet], ['12k', t.stats.riders], ['4.97', t.stats.rating], ['24/7', t.stats.support]] as const).map(([n, l], i) => (
-          <div key={i} style={{ padding: '36px 40px', borderRight: i < 3 ? `1px solid ${border}` : 'none' }}>
-            <div className="br-display" style={{ fontSize: 56, lineHeight: 1, letterSpacing: '-0.03em' }}>{n}</div>
-            <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: sub, marginTop: 8, textTransform: 'uppercase' }}>{l}</div>
-          </div>
-        ))}
-      </div>
+      {/* ── 02 КАК ЭТО РАБОТАЕТ ─────────────────────────────────────── */}
+      <section style={{ padding: 'clamp(52px, 7vw, 96px) clamp(16px, 5vw, 56px)', background: '#fff' }}>
+        <motion.div
+          variants={stagger} initial="hidden" whileInView="visible"
+          viewport={{ once: true, margin: '-60px' }}
+          style={{ textAlign: 'center', marginBottom: 48 }}
+        >
+          <motion.h2 variants={fadeUp} className="br-display" style={{
+            margin: '0 0 12px', fontSize: 'clamp(28px, 5vw, 58px)',
+            lineHeight: 0.97, letterSpacing: '-0.035em', color: '#0A0A0F',
+          }}>
+            {t.process.title}
+          </motion.h2>
+          <motion.p variants={fadeUp} style={{
+            fontSize: 'clamp(14px, 1.4vw, 16px)', color: 'rgba(0,0,0,0.48)',
+            margin: '0 auto', lineHeight: 1.55, maxWidth: 400,
+          }}>
+            {t.home.subtitle}
+          </motion.p>
+        </motion.div>
 
-      {/* 01 — FLEET */}
-      <section className="br-section br-fleet-section" style={{ padding: '96px 48px 88px', background: bg, color: fg, position: 'relative', overflow: 'hidden' }}>
-        <div aria-hidden className="br-fleet-bgnum" style={{ position: 'absolute', top: -40, right: -20, fontFamily: 'var(--br-display)', fontSize: 'clamp(220px, 28vw, 420px)', lineHeight: 0.8, fontWeight: 800, letterSpacing: '-0.06em', color: 'rgba(0,0,0,0.04)', pointerEvents: 'none', userSelect: 'none' }}>01</div>
-        <div className="br-fleet-head" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', marginBottom: 44, position: 'relative' }}>
-          <div style={{ maxWidth: 760 }}>
-            <div className="br-mono br-fleet-stepper" style={{ fontSize: 11, letterSpacing: '0.18em', color: sub, marginBottom: 18, display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ width: 28, height: 1, background: '#000' }} />
-              <span>01 / 06</span>
-              <span>·</span>
-              <span style={{ color: '#000', fontWeight: 600 }}>{t.fleet.eyebrow}</span>
-            </div>
-            <h2 className="br-display br-fleet-title" style={{ margin: 0, fontSize: 'clamp(44px, 6vw, 76px)', lineHeight: 0.96, letterSpacing: '-0.035em' }}>
+        <motion.div
+          variants={stagger} initial="hidden" whileInView="visible"
+          viewport={{ once: true, margin: '-40px' }}
+          className="br-home-process-grid"
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, position: 'relative' }}
+        >
+          <div aria-hidden className="br-process-connector" style={{
+            position: 'absolute', top: 43, left: '18%', right: '18%', height: 2,
+            background: 'linear-gradient(90deg, #FFD700 0%, rgba(255,215,0,0.12) 100%)', zIndex: 0,
+          }} />
+
+          {(t.process.steps as [string, string][]).map(([title, desc], i) => (
+            <motion.div key={i} variants={fadeUp} style={{
+              position: 'relative', zIndex: 1,
+              padding: 'clamp(24px, 3vw, 38px) clamp(18px, 2.5vw, 30px)',
+              background: i === 0
+                ? 'linear-gradient(145deg, rgba(255,215,0,0.09) 0%, rgba(255,215,0,0.02) 100%)'
+                : '#FAFAF5',
+              border: i === 0 ? '2px solid rgba(255,215,0,0.45)' : '1.5px solid rgba(0,0,0,0.07)',
+              borderRadius: 24,
+              boxShadow: i === 0 ? '0 16px 48px -20px rgba(255,215,0,0.22)' : '0 8px 28px -14px rgba(0,0,0,0.07)',
+            }}>
+              <div style={{
+                width: 54, height: 54, borderRadius: '50%',
+                background: i === 0 ? '#FFD700' : '#0A0A0F',
+                color: i === 0 ? '#0A0A0F' : '#FFD700',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: 'var(--br-mono)', fontSize: 15, fontWeight: 800, marginBottom: 22,
+                boxShadow: i === 0 ? '0 8px 28px -8px rgba(255,215,0,0.7)' : '0 8px 24px -8px rgba(0,0,0,0.42)',
+              }}>
+                0{i + 1}
+              </div>
+              <div className="br-display" style={{ fontSize: 'clamp(17px, 1.9vw, 22px)', lineHeight: 1.1, letterSpacing: '-0.02em', color: '#0A0A0F', marginBottom: 10 }}>
+                {title}
+              </div>
+              <p style={{ fontSize: 'clamp(13px, 1.2vw, 14px)', lineHeight: 1.65, color: 'rgba(0,0,0,0.52)', margin: 0 }}>
+                {desc}
+              </p>
+              {i < 2 && (
+                <div className="br-process-step-arrow" style={{
+                  position: 'absolute', right: -19, top: '50%', transform: 'translateY(-50%)',
+                  width: 38, height: 38, borderRadius: '50%',
+                  background: '#FFD700', color: '#0A0A0F',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  zIndex: 2, boxShadow: '0 4px 14px -4px rgba(255,215,0,0.55)',
+                }}>
+                  <ArrowRightIcon size={16} color="#0A0A0F" strokeWidth={2.5} />
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </motion.div>
+      </section>
+
+      {/* ── 03 СКУТЕРЫ ──────────────────────────────────────────────── */}
+      <section id="fleet" style={{ padding: 'clamp(52px, 7vw, 100px) clamp(16px, 5vw, 56px)', background: '#FAFAF5' }}>
+        <motion.div
+          variants={stagger} initial="hidden" whileInView="visible"
+          viewport={{ once: true, margin: '-80px' }}
+          style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20, marginBottom: 36 }}
+        >
+          <motion.div variants={fadeUp}>
+            <h2 className="br-display" style={{ margin: 0, fontSize: 'clamp(28px, 5.5vw, 64px)', lineHeight: 0.97, letterSpacing: '-0.035em', color: '#0A0A0F' }}>
               {t.fleet.title}
             </h2>
-          </div>
-          <BROutline href="/catalog">{t.fleet.viewAll} <span aria-hidden style={{ marginLeft: 8 }}>→</span></BROutline>
-        </div>
-        <div className="br-home-fleet-grid br-fleet-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, position: 'relative' }}>
-          {featured.slice(0, 3).map((s, i) => (
-            <div key={s.id} className="br-fleet-cell" style={{ animation: `br-rise 700ms ${i * 90}ms var(--br-easing) both` }}>
+            <p style={{ marginTop: 10, fontSize: 'clamp(13px, 1.3vw, 15px)', color: 'rgba(0,0,0,0.48)', maxWidth: 340, lineHeight: 1.55 }}>
+              {t.home.priceFrom} {minPriceLabel}/{t.common.day} · {t.home.trustBadges[1]}
+            </p>
+          </motion.div>
+          <motion.div variants={fadeUp}>
+            <a href="/catalog" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              fontFamily: 'var(--br-body)', fontSize: 14, fontWeight: 600,
+              color: '#0A0A0F', textDecoration: 'none',
+              padding: '11px 20px', border: '1.5px solid rgba(0,0,0,0.14)',
+              borderRadius: 999,
+            }}>
+              {t.fleet.viewAll}
+              <ArrowRightIcon size={14} color="#0A0A0F" strokeWidth={2.5} />
+            </a>
+          </motion.div>
+        </motion.div>
+
+        <motion.div
+          variants={stagger} initial="hidden" whileInView="visible"
+          viewport={{ once: true, margin: '-60px' }}
+          className="br-home-fleet-grid"
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}
+        >
+          {featured.slice(0, 3).map((s) => (
+            <motion.div key={s.id} variants={fadeUp}>
               <ScooterCard s={s} large />
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }} transition={{ delay: 0.3 }}
+          style={{ textAlign: 'center', marginTop: 40 }}
+        >
+          <a href="/catalog" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 12,
+            background: '#FFD700', color: '#0A0A0F',
+            fontFamily: 'var(--br-display)', fontSize: 'clamp(14px, 1.4vw, 17px)', fontWeight: 800,
+            padding: '0 clamp(28px, 4vw, 44px)', height: 'clamp(54px, 5.5vw, 64px)', borderRadius: 999,
+            textDecoration: 'none', letterSpacing: '-0.02em',
+            boxShadow: '0 12px 36px -12px rgba(255,215,0,0.5)',
+          }}>
+            <ScooterIcon size={18} color="#0A0A0F" strokeWidth={2} />
+            {t.home.viewFullFleet}
+            <ArrowRightIcon size={15} color="#0A0A0F" strokeWidth={2.5} />
+          </a>
+        </motion.div>
       </section>
 
-      {/* 02 — WHY BALI-RENT */}
-      <section className="br-section br-why-section" style={{ padding: '96px 48px', background: '#0A0A0A', color: '#fff', position: 'relative', overflow: 'hidden' }}>
-        <div aria-hidden style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 80% 0%, rgba(255,215,0,0.10), transparent 55%), radial-gradient(circle at 0% 100%, rgba(255,215,0,0.06), transparent 50%)', pointerEvents: 'none' }} />
-        <div aria-hidden className="br-fleet-bgnum" style={{ position: 'absolute', bottom: -60, left: -20, fontFamily: 'var(--br-display)', fontSize: 'clamp(220px, 28vw, 420px)', lineHeight: 0.8, fontWeight: 800, letterSpacing: '-0.06em', color: 'rgba(255,255,255,0.04)', pointerEvents: 'none', userSelect: 'none' }}>02</div>
-        <div style={{ position: 'relative', maxWidth: 880, marginBottom: 56 }}>
-          <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.18em', color: '#FFD700', marginBottom: 18, display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ width: 28, height: 1, background: '#FFD700' }} />
-            <span>02 / 06</span>
-            <span>·</span>
-            <span style={{ fontWeight: 600 }}>{t.why.eyebrow}</span>
-          </div>
-          <h2 className="br-display" style={{ margin: 0, fontSize: 'clamp(44px, 6vw, 76px)', lineHeight: 0.96, letterSpacing: '-0.035em' }}>
-            {t.why.title}
-          </h2>
-        </div>
-        <div className="br-home-why-grid br-why-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, position: 'relative' }}>
-          {(t.why.items as [string, string][]).map(([title, desc], k) => {
-            const Icon = whyIcons[k] || SupportIcon;
-            return (
-            <div
-              key={k}
-              className="br-why-card"
-              style={{
-                position: 'relative',
-                padding: '32px 24px 28px',
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.10)',
-                borderRadius: 16,
-                overflow: 'hidden',
-                animation: `br-rise 600ms ${k * 90}ms var(--br-easing) both`,
-              }}
-            >
-              <div className="br-why-num br-mono" style={{ position: 'absolute', top: 18, right: 20, fontSize: 11, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.35)' }}>0{k + 1}</div>
-              <div className="br-why-icon" style={{ width: 56, height: 56, borderRadius: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.28)', marginBottom: 22 }}>
-                <Icon size={28} color="#FFD700" />
-              </div>
-              <div className="br-display" style={{ fontSize: 24, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{title}</div>
-              <p style={{ fontSize: 14, lineHeight: 1.6, color: 'rgba(255,255,255,0.6)', marginTop: 12, marginBottom: 0 }}>{desc}</p>
-              <div aria-hidden className="br-why-underline" style={{ marginTop: 22, height: 2, width: 32, background: '#FFD700', transition: 'width 360ms var(--br-easing)' }} />
-            </div>
-            );
-          })}
-        </div>
-      </section>
+      {/* ── 04 ОТЗЫВЫ ───────────────────────────────────────────────── */}
+      <section style={{ padding: 'clamp(52px, 7vw, 100px) clamp(16px, 5vw, 56px)', background: '#F4F2ED' }}>
+        <motion.div
+          variants={stagger} initial="hidden" whileInView="visible"
+          viewport={{ once: true, margin: '-80px' }}
+          style={{ textAlign: 'center', marginBottom: 44 }}
+        >
+          <motion.h2 variants={fadeUp} className="br-display" style={{
+            margin: '0 0 10px', fontSize: 'clamp(28px, 5.5vw, 64px)',
+            lineHeight: 0.97, letterSpacing: '-0.035em', color: '#0A0A0F',
+          }}>
+            {t.reviews.title}
+          </motion.h2>
+          <motion.p variants={fadeUp} style={{ fontSize: 14, color: 'rgba(0,0,0,0.42)', margin: 0 }}>
+            {t.reviews.verified}
+          </motion.p>
+        </motion.div>
 
-      {/* 03 — PROCESS */}
-      <section className="br-section br-process-section" style={{ padding: '96px 48px', background: bg, color: fg, position: 'relative', overflow: 'hidden' }}>
-        <div aria-hidden className="br-fleet-bgnum" style={{ position: 'absolute', top: -40, right: -20, fontFamily: 'var(--br-display)', fontSize: 'clamp(220px, 28vw, 420px)', lineHeight: 0.8, fontWeight: 800, letterSpacing: '-0.06em', color: 'rgba(0,0,0,0.04)', pointerEvents: 'none', userSelect: 'none' }}>03</div>
-        <div style={{ maxWidth: 760, marginBottom: 56, position: 'relative' }}>
-          <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.18em', color: sub, marginBottom: 18, display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ width: 28, height: 1, background: '#000' }} />
-            <span>03 / 06</span>
-            <span>·</span>
-            <span style={{ color: '#000', fontWeight: 600 }}>{t.process.eyebrow}</span>
-          </div>
-          <h2 className="br-display" style={{ margin: 0, fontSize: 'clamp(44px, 6vw, 76px)', lineHeight: 0.96, letterSpacing: '-0.035em' }}>
-            {t.process.title}
-          </h2>
-        </div>
-        <div className="br-home-process-grid br-process-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, position: 'relative' }}>
-          {(t.process.steps as [string, string][]).map(([title, desc], i) => (
-            <div
-              key={i}
-              className="br-process-step"
-              style={{
-                position: 'relative',
-                padding: '36px 28px 32px',
-                background: '#fff',
-                border: `1px solid ${border}`,
-                borderRadius: 18,
-                overflow: 'hidden',
-                animation: `br-rise 600ms ${i * 110}ms var(--br-easing) both`,
-              }}
-            >
-              <div aria-hidden style={{ position: 'absolute', inset: 0, background: i === 0 ? 'linear-gradient(180deg, rgba(255,215,0,0.06), transparent 40%)' : 'none', pointerEvents: 'none' }} />
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', position: 'relative' }}>
-                <div className="br-display br-process-num" style={{ fontSize: 88, lineHeight: 0.85, letterSpacing: '-0.05em', color: '#FFD700', WebkitTextStroke: '1px rgba(0,0,0,0.06)' }}>0{i + 1}</div>
-                <div className="br-mono" style={{ fontSize: 10, letterSpacing: '0.18em', color: sub, marginTop: 10 }}>STEP {i + 1}</div>
-              </div>
-              <div style={{ marginTop: 24, height: 1, background: 'linear-gradient(90deg, #000 0%, transparent 60%)', position: 'relative' }} />
-              <div className="br-display" style={{ fontSize: 26, lineHeight: 1.1, margin: '20px 0 12px', letterSpacing: '-0.02em', position: 'relative' }}>{title}</div>
-              <p style={{ fontSize: 15, lineHeight: 1.6, color: sub, margin: 0, position: 'relative' }}>{desc}</p>
-              {i < 2 && (
-                <div aria-hidden className="br-process-arrow" style={{ position: 'absolute', top: '50%', right: -18, width: 36, height: 36, borderRadius: 999, background: '#000', color: '#FFD700', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, transform: 'translateY(-50%)', boxShadow: '0 8px 18px -8px rgba(0,0,0,0.4)', zIndex: 2 }}>→</div>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 04 — PRICING */}
-      <section className="br-home-pricing br-pricing-section" style={{ position: 'relative', background: 'linear-gradient(180deg, #0A0A0A 0%, #111 100%)', color: '#fff', padding: '96px 48px', overflow: 'hidden' }}>
-        <div aria-hidden style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg, transparent, rgba(255,215,0,0.4), transparent)' }} />
-        <div aria-hidden className="br-fleet-bgnum" style={{ position: 'absolute', bottom: -80, right: -40, fontFamily: 'var(--br-display)', fontSize: 'clamp(220px, 28vw, 420px)', lineHeight: 0.8, fontWeight: 800, letterSpacing: '-0.06em', color: 'rgba(255,255,255,0.04)', pointerEvents: 'none', userSelect: 'none' }}>04</div>
-        <div style={{ maxWidth: 880, marginBottom: 48, position: 'relative' }}>
-          <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.18em', color: '#FFD700', marginBottom: 18, display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ width: 28, height: 1, background: '#FFD700' }} />
-            <span>04 / 06</span>
-            <span>·</span>
-            <span style={{ fontWeight: 600 }}>{t.pricing.eyebrow}</span>
-          </div>
-          <h2 className="br-display" style={{ fontSize: 'clamp(44px, 6vw, 76px)', lineHeight: 0.96, letterSpacing: '-0.035em', margin: '0 0 12px' }}>
-            {t.pricing.title} <span style={{ color: '#FFD700' }}><BRPrice amount={featured[0]?.price || 8} size={64} /></span> {t.pricing.titleSuffix}
-          </h2>
-          <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.65)', margin: 0, maxWidth: 620, lineHeight: 1.55 }}>{t.pricing.desc}</p>
-        </div>
-        <div className="br-home-pricing-grid br-pricing-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, position: 'relative' }}>
-          {featured.slice(0, 4).map((item, i) => {
-            const featuredPick = i === 1;
-            return (
-              <div
-                key={i}
-                className={`br-pricing-card ${featuredPick ? 'featured' : ''}`}
-                style={{
-                  position: 'relative',
-                  background: featuredPick ? 'linear-gradient(180deg, #FFD700 0%, #F5C518 100%)' : 'rgba(255,255,255,0.04)',
-                  color: featuredPick ? '#0A0A0A' : '#fff',
-                  borderRadius: 16,
-                  padding: '28px 24px 26px',
-                  border: featuredPick ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.10)',
-                  boxShadow: featuredPick ? '0 30px 60px -25px rgba(255,215,0,0.5)' : 'none',
-                  transform: featuredPick ? 'translateY(-8px)' : 'none',
-                  animation: `br-rise 600ms ${i * 90}ms var(--br-easing) both`,
-                }}
-              >
-                {featuredPick && (
-                  <div className="br-mono" style={{ position: 'absolute', top: -12, left: 24, background: '#000', color: '#FFD700', fontSize: 10, padding: '6px 10px', letterSpacing: '0.16em', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <StarIcon size={12} color="#FFD700" />
-                    POPULAR
-                  </div>
-                )}
-                <div className="br-mono" style={{ fontSize: 10, letterSpacing: '0.16em', color: featuredPick ? 'rgba(0,0,0,0.6)' : '#FFD700' }}>{item.type.toUpperCase()}</div>
-                <div className="br-display" style={{ fontSize: 24, marginTop: 8, lineHeight: 1.1, letterSpacing: '-0.02em' }}>{item.name}</div>
-                <div style={{ marginTop: 18, display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <span className="br-mono" style={{ fontSize: 11, color: featuredPick ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.55)' }}>{t.pricing.from}</span>
-                  <BRPrice amount={item.price} size={36} />
-                </div>
-                <div style={{ marginTop: 18, paddingTop: 18, borderTop: featuredPick ? '1px solid rgba(0,0,0,0.12)' : '1px solid rgba(255,255,255,0.10)', display: 'flex', flexDirection: 'column', gap: 8, fontFamily: 'var(--br-mono)', fontSize: 12 }}>
-                  {t.pricing.inc.map((line, li) => {
-                    const last = li === t.pricing.inc.length - 1;
-                    return (
-                      <span key={line} style={{ display: 'flex', alignItems: 'center', gap: 8, color: last ? (featuredPick ? '#000' : '#fff') : (featuredPick ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.6)') }}>
-                        <span aria-hidden style={{ display: 'inline-flex', width: 14, height: 14, borderRadius: 999, background: featuredPick ? '#000' : '#FFD700', color: featuredPick ? '#FFD700' : '#000', alignItems: 'center', justifyContent: 'center' }}>
-                          <CheckIcon size={9} color={featuredPick ? '#FFD700' : '#000'} strokeWidth={2.6} />
-                        </span>
-                        {stripLeadingSymbol(line)}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* 05 — UPGRADE THE RIDE */}
-      <section className="br-section br-addons-section" style={{ padding: '96px 48px', background: bg, color: fg, position: 'relative', overflow: 'hidden' }}>
-        <div aria-hidden className="br-fleet-bgnum" style={{ position: 'absolute', top: -40, left: -20, fontFamily: 'var(--br-display)', fontSize: 'clamp(220px, 28vw, 420px)', lineHeight: 0.8, fontWeight: 800, letterSpacing: '-0.06em', color: 'rgba(0,0,0,0.04)', pointerEvents: 'none', userSelect: 'none' }}>05</div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 24, flexWrap: 'wrap', marginBottom: 48, position: 'relative' }}>
-          <div style={{ maxWidth: 760 }}>
-            <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.18em', color: sub, marginBottom: 18, display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ width: 28, height: 1, background: '#000' }} />
-              <span>05 / 06</span>
-              <span>·</span>
-              <span style={{ color: '#000', fontWeight: 600 }}>{t.addons.eyebrow}</span>
-            </div>
-            <h2 className="br-display" style={{ margin: 0, fontSize: 'clamp(44px, 6vw, 76px)', lineHeight: 0.96, letterSpacing: '-0.035em' }}>
-              {t.addons.title}
-            </h2>
-          </div>
-          <span className="br-mono" style={{ fontSize: 11, color: sub, letterSpacing: '0.16em', padding: '10px 14px', border: `1px solid ${border}`, borderRadius: 999 }}>{t.addons.note}</span>
-        </div>
-        <div className="br-home-addons-grid br-addons-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, position: 'relative' }}>
-          {(addonCards.length ? addonCards : [
-            { id: 1, icon: 'shield', name: 'Insurance', priceUSD: 5, description: 'Full coverage. Zero excess. Sleep easy.' },
-            { id: 2, icon: 'wifi', name: 'Wi-Fi', priceUSD: 4, description: 'Unlimited data across the island.' },
-            { id: 3, icon: 'helmet', name: 'Premium helmet', priceUSD: 2, description: 'Sized to fit, cleaned and ready.' },
-            { id: 4, icon: 'phone', name: 'Phone mount', priceUSD: 2, description: 'Navigate hands-free on every route.' },
-          ]).slice(0, 4).map((item, i) => (
-            <div
-              key={item.id}
-              className="br-card br-addon-card"
-              style={{
-                position: 'relative',
-                padding: '28px 24px 26px',
-                background: '#fff',
-                borderRadius: 18,
-                overflow: 'hidden',
-                animation: `br-rise 600ms ${i * 90}ms var(--br-easing) both`,
-              }}
-            >
-              <div aria-hidden className="br-addon-glow" style={{ position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,215,0,0.35) 0%, transparent 70%)', opacity: 0, transition: 'opacity 360ms var(--br-easing)', pointerEvents: 'none' }} />
-              <div className="br-addon-icon" style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.35)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                {renderAddonIcon(item.name, item.icon, { size: 28, color: '#000' })}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 22, position: 'relative' }}>
-                <span className="br-display" style={{ fontSize: 22, letterSpacing: '-0.02em' }}>{item.name}</span>
-                <span className="br-mono" style={{ fontSize: 14, fontWeight: 700, color: '#000', background: '#FFD700', padding: '4px 8px', borderRadius: 6 }}>+${item.priceUSD || 0}/d</span>
-              </div>
-              <p style={{ fontSize: 13, color: sub, marginTop: 10, marginBottom: 0, lineHeight: 1.55, position: 'relative' }}>{item.description}</p>
-              <div aria-hidden className="br-addon-bar" style={{ marginTop: 22, height: 2, width: 24, background: '#000', transition: 'width 360ms var(--br-easing)', position: 'relative' }} />
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <div id="delivery" className="br-home-delivery" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', background: '#000', color: '#fff' }}>
-        <div className="br-home-delivery-copy" style={{ padding: '80px 60px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <BREyebrow style={{ color: '#FFD700' }}>{t.delivery.eyebrow}</BREyebrow>
-          <h2 className="br-display" style={{ fontSize: 64, lineHeight: 0.98, margin: '12px 0 20px', letterSpacing: '-0.03em' }}>
-            {t.delivery.title1}<br />
-            <span style={{ color: '#FFD700' }}>{t.delivery.title2}</span>
-          </h2>
-          <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.7)', margin: '0 0 28px', maxWidth: 480, lineHeight: 1.55 }}>{t.delivery.desc}</p>
-          <div className="br-home-delivery-zones" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            {activeZones.map((l) => (
-              <div key={l} style={{ padding: '12px 16px', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, fontFamily: 'var(--br-mono)', fontSize: 13, display: 'flex', justifyContent: 'space-between' }}>
-                <span>{l}</span><span style={{ color: '#FFD700' }}>{t.delivery.free}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="br-home-delivery-map" style={{ position: 'relative', minHeight: 600 }}>
-          <iframe
-            title="Bali map"
-            src="https://www.openstreetmap.org/export/embed.html?bbox=114.43%2C-8.95%2C115.72%2C-8.03&layer=mapnik"
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0, filter: 'grayscale(0.08) contrast(1.05) saturate(0.95)' }}
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          />
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.14) 100%)', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', top: 22, left: 22, background: 'rgba(0,0,0,0.68)', color: '#fff', padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.14)' }}>
-            <div className="br-mono" style={{ fontSize: 10, letterSpacing: '0.16em', color: '#FFD700' }}>REAL MAP · OPENSTREETMAP</div>
-            <div className="br-display" style={{ fontSize: 18, marginTop: 4 }}>South & Central Bali</div>
-          </div>
-          <div style={{ position: 'absolute', right: 22, bottom: 22, background: 'rgba(0,0,0,0.68)', color: '#fff', padding: '10px 12px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.14)', pointerEvents: 'none' }}>
-            <span className="br-mono" style={{ fontSize: 10, letterSpacing: '0.14em' }}>DRAG TO EXPLORE</span>
-          </div>
-        </div>
-      </div>
-
-      <BRSection eyebrow={t.reviews.eyebrow} title={t.reviews.title} action={<span className="br-mono" style={{ fontSize: 11, color: sub, letterSpacing: '0.14em' }}>{t.reviews.verified}</span>}>
-        <div className="br-home-reviews-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+        <motion.div
+          variants={stagger} initial="hidden" whileInView="visible"
+          viewport={{ once: true, margin: '-60px' }}
+          className="br-home-reviews-grid"
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18 }}
+        >
           {([
-            ['Léa M.', 'Paris · Stayed 14 days', 'Picked up at the airport, dropped at the villa. Tank full. The Vespa made every café look like a movie set.', 'sand'],
-            ['Marco D.', 'Milano · Surf trip', 'XMAX 300 to Uluwatu and back, three days straight. Bike was perfect. Mechanic met us in 25 min for a flat.', 'sunset'],
-            ['Aisha K.', 'Dubai · Honeymoon', 'They threw in a second helmet and a top box without asking. Felt cared for, not transactional. Coming back.', 'mist'],
-          ] as const).map(([n, m, q, t], i) => (
-            <div key={i} className="br-card" style={{ padding: 28, background: '#fff' }}>
-              <div style={{ display: 'flex', gap: 4, color: '#FFD700' }}>
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <StarIcon key={index} size={16} color="#FFD700" />
-                ))}
+            { ...homeReviews[0], tone: 'sand' as const },
+            { ...homeReviews[1], tone: 'sunset' as const },
+            { ...homeReviews[2], tone: 'mist' as const },
+          ]).map((rev, i) => (
+            <motion.div key={i} variants={fadeUp}
+              style={{
+                background: '#fff', borderRadius: 20, padding: 'clamp(20px, 2.5vw, 32px) clamp(16px, 2vw, 28px)',
+                border: '1px solid rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden',
+              }}
+            >
+              <div aria-hidden style={{ position: 'absolute', top: 10, right: 18, fontFamily: 'var(--br-display)', fontSize: 80, lineHeight: 1, color: 'rgba(255,215,0,0.11)', fontWeight: 800, userSelect: 'none', pointerEvents: 'none' }}>"</div>
+              <div style={{ display: 'flex', gap: 3, marginBottom: 16 }}>
+                {Array.from({ length: 5 }).map((_, si) => <StarIcon key={si} size={13} color="#FFD700" />)}
               </div>
-              <p style={{ fontSize: 17, lineHeight: 1.5, margin: '16px 0 24px', letterSpacing: '-0.01em' }}>&quot;{q}&quot;</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 16, borderTop: `1px solid ${border}` }}>
-                <BRPhoto tone={t} style={{ width: 44, height: 44, borderRadius: 999, flexShrink: 0 }} />
+              <p style={{ fontSize: 'clamp(13px, 1.3vw, 16px)', lineHeight: 1.62, color: '#0A0A0F', margin: '0 0 24px', position: 'relative' }}>
+                "{rev.quote}"
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 18, borderTop: '1px solid rgba(0,0,0,0.07)' }}>
+                <BRPhoto tone={rev.tone} style={{ width: 42, height: 42, borderRadius: 999, flexShrink: 0 }} />
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{n}</div>
-                  <div className="br-mono" style={{ fontSize: 11, color: sub }}>{m}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#0A0A0F' }}>{rev.name}</div>
+                  <div style={{ fontFamily: 'var(--br-mono)', fontSize: 10, color: 'rgba(0,0,0,0.38)', marginTop: 2 }}>{rev.meta}</div>
+                </div>
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(34,197,94,0.09)', color: '#16A34A', fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.1em', padding: '5px 9px', borderRadius: 999, border: '1px solid rgba(34,197,94,0.18)', flexShrink: 0 }}>
+                  <CheckIcon size={11} color="#16A34A" strokeWidth={2.5} />
+                  {t.home.reviewVerified}
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
-      </BRSection>
+        </motion.div>
+      </section>
 
-      <div className="br-home-cta" style={{ background: '#FFD700', color: '#000', padding: '100px 48px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-        <BREyebrow style={{ color: 'rgba(0,0,0,0.6)' }}>{t.cta.eyebrow}</BREyebrow>
-        <div className="br-display" style={{ fontSize: 'clamp(64px, 12vw, 128px)', lineHeight: 0.92, letterSpacing: '-0.04em', margin: '12px 0 28px' }}>
-          {t.cta.title}
+      {/* ── 05 ДОСТАВКА ─────────────────────────────────────────────── */}
+      <div id="delivery" className="br-home-delivery" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', background: '#0C0C12', color: '#fff' }}>
+        <div className="br-home-delivery-copy" style={{ padding: 'clamp(40px, 6vw, 80px) clamp(16px, 5vw, 60px)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <motion.div variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true }}>
+            <motion.h2 variants={fadeUp} className="br-display" style={{ margin: '0 0 14px', fontSize: 'clamp(26px, 4.5vw, 56px)', lineHeight: 0.97, letterSpacing: '-0.03em' }}>
+              {t.delivery.title1}<br /><span style={{ color: '#FFD700' }}>{t.delivery.title2}</span>
+            </motion.h2>
+            <motion.p variants={fadeUp} style={{ fontSize: 'clamp(13px, 1.3vw, 16px)', color: 'rgba(255,255,255,0.58)', margin: '0 0 28px', maxWidth: 400, lineHeight: 1.6 }}>
+              {t.delivery.desc}
+            </motion.p>
+            <motion.div variants={fadeUp} className="br-home-delivery-zones" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {activeZones.slice(0, 8).map((l) => (
+                <div key={l} style={{ padding: '10px 14px', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 10, fontFamily: 'var(--br-mono)', fontSize: 11, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                  <span>{l}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <CheckIcon size={10} color="#22C55E" strokeWidth={2.5} />
+                    <span style={{ color: '#22C55E', fontSize: 10 }}>{t.home.deliveryFree}</span>
+                  </span>
+                </div>
+              ))}
+            </motion.div>
+          </motion.div>
         </div>
-        <p style={{ fontSize: 19, maxWidth: 600, margin: '0 auto 36px', lineHeight: 1.5 }}>{t.cta.desc}</p>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <BRSecondary href="/catalog" style={{ height: 72, padding: '0 44px', fontSize: 18 }}>{t.cta.primary}</BRSecondary>
-          <BROutline href="/catalog" style={{ height: 72, padding: '0 32px', fontSize: 16, borderColor: '#000' }}>{t.cta.secondary}</BROutline>
+        <div className="br-home-delivery-map" style={{ position: 'relative', minHeight: 460 }}>
+          <iframe
+            title={t.home.mapTitle}
+            src="https://www.openstreetmap.org/export/embed.html?bbox=114.43%2C-8.95%2C115.72%2C-8.03&layer=mapnik"
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
+            loading="lazy" referrerPolicy="no-referrer-when-downgrade"
+          />
+          <div aria-hidden style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(12,12,18,0.42) 0%, transparent 35%)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', top: 18, left: 18, background: 'rgba(12,12,18,0.82)', backdropFilter: 'blur(12px)', color: '#fff', padding: '12px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div style={{ fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.16em', color: '#FFD700', marginBottom: 4, textTransform: 'uppercase' }}>{t.home.mapEyebrow}</div>
+            <div className="br-display" style={{ fontSize: 16 }}>{t.home.mapRegion}</div>
+          </div>
         </div>
-        <div className="br-mono" style={{ fontSize: 11, marginTop: 32, letterSpacing: '0.14em', opacity: 0.7 }}>{t.cta.terms}</div>
       </div>
+
+      {/* ── 06 FAQ ──────────────────────────────────────────────────── */}
+      <section style={{ padding: 'clamp(52px, 7vw, 100px) clamp(16px, 5vw, 56px)', background: '#fff' }}>
+        <div style={{ maxWidth: 800, margin: '0 auto' }}>
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }} transition={{ duration: 0.6 }}
+            className="br-display"
+            style={{ margin: '0 0 40px', fontSize: 'clamp(28px, 5vw, 58px)', lineHeight: 0.97, letterSpacing: '-0.035em', color: '#0A0A0F' }}
+          >
+            {t.home.faqTitle1}<br />{t.home.faqTitle2}
+          </motion.h2>
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.15 }}>
+            <div style={{ borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+              {faqs.map((item, i) => <FAQItem key={i} q={item.q} a={item.a} />)}
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── 07 ФИНАЛЬНЫЙ CTA ────────────────────────────────────────── */}
+      <section style={{ background: '#FFD700', color: '#0A0A0F', padding: 'clamp(60px, 9vw, 120px) clamp(16px, 5vw, 56px)', textAlign: 'center' }}>
+        <motion.div
+          initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }} transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <h2 className="br-display" style={{ fontSize: 'clamp(42px, 9vw, 108px)', lineHeight: 0.92, letterSpacing: '-0.04em', margin: '0 0 16px', color: '#0A0A0F' }}>
+            {t.cta.title}
+          </h2>
+          <p style={{ fontSize: 'clamp(14px, 1.7vw, 18px)', maxWidth: 440, margin: '0 auto 44px', lineHeight: 1.55, color: 'rgba(0,0,0,0.58)' }}>
+            {t.cta.desc}
+          </p>
+          <div className="br-cta-btns" style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <a href="/catalog" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 12,
+              background: '#0A0A0F', color: '#FFD700',
+              fontFamily: 'var(--br-display)', fontSize: 'clamp(15px, 1.5vw, 18px)', fontWeight: 800,
+              padding: '0 clamp(26px, 4vw, 44px)', height: 'clamp(58px, 6.5vw, 70px)', borderRadius: 999,
+              textDecoration: 'none', letterSpacing: '-0.02em',
+              boxShadow: '0 16px 48px -16px rgba(0,0,0,0.42)',
+            }}>
+              <ScooterIcon size={18} color="#FFD700" strokeWidth={2} />
+              {t.cta.primary}
+              <ArrowRightIcon size={15} color="#FFD700" strokeWidth={2.5} />
+            </a>
+            <a href={WA_LINK} target="_blank" rel="noopener noreferrer" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 10,
+              background: '#25D366', color: '#fff',
+              fontFamily: 'var(--br-body)', fontSize: 'clamp(14px, 1.4vw, 16px)', fontWeight: 700,
+              padding: '0 clamp(20px, 3vw, 32px)', height: 'clamp(58px, 6.5vw, 70px)', borderRadius: 999,
+              textDecoration: 'none',
+            }}>
+              <WhatsAppIcon size={17} color="#fff" />
+              {t.home.whatsappUs}
+            </a>
+          </div>
+          <p style={{ fontFamily: 'var(--br-mono)', fontSize: 10, marginTop: 28, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.40)', textTransform: 'uppercase' }}>
+            {t.cta.terms}
+          </p>
+        </motion.div>
+      </section>
 
       <SiteFooter />
+
+      {/* ── МОБИЛЬНАЯ STICKY CTA ─────────────────────────────────────── */}
+      <div className="br-sticky-mobile-cta" style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
+        background: 'rgba(10,10,15,0.97)',
+        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        borderTop: '1px solid rgba(255,255,255,0.09)',
+        padding: '10px 14px calc(10px + env(safe-area-inset-bottom))',
+        display: 'none', gap: 10, alignItems: 'center',
+      }}>
+        <a href={WA_LINK} target="_blank" rel="noopener noreferrer" style={{
+          flexShrink: 0, width: 52, height: 52,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: '#25D366', borderRadius: 12, textDecoration: 'none',
+        }}>
+          <WhatsAppIcon size={22} color="#fff" />
+        </a>
+        <a href="/catalog" style={{
+          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          background: '#FFD700', color: '#0A0A0F',
+          fontFamily: 'var(--br-display)', fontSize: 16, fontWeight: 800,
+          borderRadius: 12, height: 52, textDecoration: 'none', letterSpacing: '-0.02em',
+        }}>
+          <ScooterIcon size={18} color="#0A0A0F" strokeWidth={2} />
+          {t.hero.cta}
+        </a>
+      </div>
     </div>
   );
 }

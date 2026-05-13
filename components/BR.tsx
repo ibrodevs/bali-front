@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
+import { useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 
 export function BRLogo({ size = 22, dark = false }: { size?: number; dark?: boolean }) {
@@ -90,21 +91,7 @@ export function BREyebrow({ children, style }: { children: React.ReactNode; styl
 
 export function BRPrice({ amount, currency = '$', per = 'day', size = 22 }: { amount: number; currency?: string; per?: string; size?: number }) {
   const { t } = useLocale();
-  // Try to use currency context if available
-  let convertPrice = (x: number) => x;
-  let symbol = currency;
-  
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const ctx = require('@/lib/i18n/CurrencyProvider').useCurrency?.();
-    if (ctx) {
-      convertPrice = ctx.convertPrice;
-      symbol = ctx.symbol;
-    }
-  } catch (e) {
-    // Context not available, use defaults
-  }
-  
+  const { convertPrice, symbol } = useCurrency();
   const convertedAmount = Math.round(convertPrice(amount) * 100) / 100;
   const period = per === 'day' ? t.common.day : per;
   

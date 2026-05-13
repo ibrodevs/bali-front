@@ -148,7 +148,7 @@ export default function ScooterDetailPage() {
 
   if (loading) {
     return (
-      <div style={{ background: bg, color: fg, minHeight: '100vh' }}>
+      <div style={{ background: bg, color: fg, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         <SiteHeader />
         <div className="br-mono" style={{ padding: 80, textAlign: 'center', color: sub }}>{t.common.loading}</div>
       </div>
@@ -157,7 +157,7 @@ export default function ScooterDetailPage() {
 
   if (notFound || !scooter) {
     return (
-      <div style={{ background: bg, color: fg, minHeight: '100vh' }}>
+      <div style={{ background: bg, color: fg, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         <SiteHeader />
         <div style={{ padding: 80, textAlign: 'center' }}>
           <h1 className="br-display" style={{ fontSize: 48 }}>{t.detail.notFound}</h1>
@@ -182,7 +182,7 @@ export default function ScooterDetailPage() {
   ] as const;
 
   return (
-    <div className="br-has-mobile-cta" style={{ background: bg, color: fg, minHeight: 800 }}>
+    <div className="br-has-mobile-cta" style={{ background: bg, color: fg, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <SiteHeader />
       <div className="br-detail-breadcrumb" style={{ padding: '12px 40px', borderBottom: `1px solid ${border}` }}>
         <span className="br-mono" style={{ fontSize: 11, color: sub, letterSpacing: '0.12em' }}>

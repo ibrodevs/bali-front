@@ -19,6 +19,7 @@ import {
   unwrapList,
 } from '@/lib/endpoints';
 import { bookingDraftStore } from '@/lib/bookingDraft';
+import { convertAmount, formatCurrencyAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 
 type AddonOption = {
@@ -168,6 +169,7 @@ export default function BookingPage() {
 
 function BookingPageInner() {
   const { t, locale } = useLocale();
+  const { currency: selectedCurrency, convertPrice } = useCurrency();
   const copy = BOOKING_COPY[locale as keyof typeof BOOKING_COPY] || BOOKING_COPY.en;
   const router = useRouter();
   const search = useSearchParams();
@@ -262,7 +264,6 @@ function BookingPageInner() {
       add_on_ids: selectedAddOnIds.length ? selectedAddOnIds : undefined,
       promo_code: promoCode.trim() || undefined,
       payment_method: 'online_card' as const,
-      currency: 'USD',
     };
   }, [
     deliveryAddress,
@@ -327,7 +328,7 @@ function BookingPageInner() {
       route_id: routeId || undefined,
       name: scooter?.title || initialName,
       image: scooter?.main_image ? mediaUrl(scooter.main_image) : null,
-      currency: quote.currency || 'USD',
+      currency: selectedCurrency,
       start_datetime: quoteRequest.start_datetime,
       end_datetime: quoteRequest.end_datetime,
       delivery_time: quoteRequest.delivery_time,
@@ -349,11 +350,8 @@ function BookingPageInner() {
   const displayName = scooter?.title || initialName;
   const displayImage = scooter?.main_image ? mediaUrl(scooter.main_image) : null;
   const displayStatus = scooter?.status || 'available';
-  const currency = quote?.currency || 'USD';
-  const baseTotal = Number(quote?.base_price || initialPrice || 0);
-  const addonsTotal = Number(quote?.add_ons_price || 0);
-  const deliveryTotal = Number(quote?.delivery_price || 0);
-  const grandTotal = Number(quote?.total_price || baseTotal + addonsTotal + deliveryTotal);
+  // Always use the user-selected currency for display — never let the API currency override it.
+  const currency = selectedCurrency;
   const rentalDays = Number(quote?.rental_days || 0);
 
   const addonsSubtotal = useMemo(() => {
@@ -363,10 +361,30 @@ function BookingPageInner() {
     }, 0);
   }, [addons, selectedAddOnIds]);
 
+  // The API always returns amounts in USD regardless of the currency param in the request.
+  const quoteCurrency = 'USD';
+  const baseTotal = quote
+    ? convertAmount(Number(quote.base_price || 0), quoteCurrency, selectedCurrency)
+    : convertPrice(initialPrice || 0);
+  const addonsTotal = quote
+    ? convertAmount(Number(quote.add_ons_price || 0), quoteCurrency, selectedCurrency)
+    : convertPrice(addonsSubtotal);
+  const deliveryTotal = quote
+    ? convertAmount(Number(quote.delivery_price || 0), quoteCurrency, selectedCurrency)
+    : 0;
+  const rawGrandTotal = quote ? Number(quote.total_price || 0) : 0;
+  const grandTotal = quote && rawGrandTotal > 0
+    ? convertAmount(rawGrandTotal, quoteCurrency, selectedCurrency)
+    : baseTotal + addonsTotal + deliveryTotal;
+  const selectedAddonsLabel = copy.selectedAddons
+    .replace('{n}', String(selectedAddOnIds.length))
+    .replace('${amount}', formatCurrencyAmount(convertPrice(addonsSubtotal), selectedCurrency))
+    .replace('{amount}', formatCurrencyAmount(convertPrice(addonsSubtotal), selectedCurrency));
+
   const canConfirmDates = Boolean(quote && !quoteLoading && !quoteError && isDateRangeValid);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#fff', color: '#000' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#fff', color: '#000' }}>
       <SiteHeader />
 
       <section className="br-booking-hero" style={{ padding: '56px 48px 28px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
@@ -509,7 +527,7 @@ function BookingPageInner() {
                         }}
                       >
                         <span>{addon.name}</span>
-                        <span className="br-mono">${addon.price.toFixed(2)}</span>
+                        <span className="br-mono">{formatCurrencyAmount(convertPrice(addon.price), selectedCurrency)}</span>
                       </button>
                     );
                   })}
@@ -540,19 +558,19 @@ function BookingPageInner() {
               </div>
               <div style={{ marginTop: 8, color: 'rgba(0,0,0,0.58)', lineHeight: 1.55 }}>
                 {selectedAddOnIds.length
-                  ? copy.selectedAddons.replace('{n}', String(selectedAddOnIds.length)).replace('{amount}', addonsSubtotal.toFixed(2))
+                  ? selectedAddonsLabel
                   : copy.noOptions}
               </div>
 
               <div style={{ display: 'grid', gap: 10, marginTop: 22 }}>
-                <PriceRow label={copy.base} value={`${currency} ${baseTotal.toFixed(2)}`} />
-                <PriceRow label={copy.addons} value={`${currency} ${addonsTotal.toFixed(2)}`} />
-                <PriceRow label={copy.delivery} value={`${currency} ${deliveryTotal.toFixed(2)}`} />
+                <PriceRow label={copy.base} value={formatCurrencyAmount(baseTotal, currency)} />
+                <PriceRow label={copy.addons} value={formatCurrencyAmount(addonsTotal, currency)} />
+                <PriceRow label={copy.delivery} value={formatCurrencyAmount(deliveryTotal, currency)} />
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
                 <span className="br-display" style={{ fontSize: 20 }}>{copy.estimatedTotal}</span>
-                <span className="br-mono" style={{ fontSize: 28, fontWeight: 700 }}>{currency} {grandTotal.toFixed(2)}</span>
+                <span className="br-mono" style={{ fontSize: 28, fontWeight: 700 }}>{formatCurrencyAmount(grandTotal, currency)}</span>
               </div>
 
               {quoteLoading ? <div className="br-mono" style={{ marginTop: 16, color: 'rgba(0,0,0,0.55)' }}>{t.common.loading}</div> : null}

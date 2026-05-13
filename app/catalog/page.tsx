@@ -58,7 +58,7 @@ export default function CatalogPage() {
     });
 
   return (
-    <div style={{ background: bg, color: fg }}>
+    <div style={{ background: bg, color: fg, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <SiteHeader />
 
       <div className="br-catalog-hero" style={{ padding: '64px 40px 32px' }}>
