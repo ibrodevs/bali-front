@@ -320,25 +320,27 @@ function PaymentInner() {
   const summary = useMemo(() => {
     const toSelectedCurrency = (amount: string | number | undefined, fromCurrency?: string | null) =>
       convertAmount(Number(amount || 0), fromCurrency || 'USD', selectedCurrency);
+    // Keep the final payment step aligned with step 2:
+    // pricing amounts still come back from the API in USD even when another currency is requested.
+    const pricingSourceCurrency = 'USD';
 
     if (booking) {
       return {
-        base: toSelectedCurrency(booking.base_price, booking.currency),
-        addons: toSelectedCurrency(booking.add_ons_price, booking.currency),
-        delivery: toSelectedCurrency(booking.delivery_price, booking.currency),
-        total: toSelectedCurrency(booking.total_price, booking.currency),
+        base: toSelectedCurrency(booking.base_price, pricingSourceCurrency),
+        addons: toSelectedCurrency(booking.add_ons_price, pricingSourceCurrency),
+        delivery: toSelectedCurrency(booking.delivery_price, pricingSourceCurrency),
+        total: toSelectedCurrency(booking.total_price, pricingSourceCurrency),
         currency: selectedCurrency,
       };
     }
-    const quoteCurrency = quote?.currency || draft?.currency || selectedCurrency;
     return {
-      base: toSelectedCurrency(quote?.base_price, quoteCurrency),
-      addons: toSelectedCurrency(quote?.add_ons_price, quoteCurrency),
-      delivery: toSelectedCurrency(quote?.delivery_price, quoteCurrency),
-      total: toSelectedCurrency(quote?.total_price, quoteCurrency),
+      base: toSelectedCurrency(quote?.base_price, pricingSourceCurrency),
+      addons: toSelectedCurrency(quote?.add_ons_price, pricingSourceCurrency),
+      delivery: toSelectedCurrency(quote?.delivery_price, pricingSourceCurrency),
+      total: toSelectedCurrency(quote?.total_price, pricingSourceCurrency),
       currency: selectedCurrency,
     };
-  }, [booking, draft?.currency, quote, selectedCurrency]);
+  }, [booking, quote, selectedCurrency]);
 
   const trustMarks = [
     { icon: LockIcon, label: stripLeadingSymbol(t.booking.secure) },
@@ -575,7 +577,7 @@ function CardTemplate({
           <input
             value={cardName}
             onChange={(e) => setCardName(e.target.value.toUpperCase())}
-            placeholder="IVAN IVANOV"
+            placeholder=""
             style={inputStyle}
             autoComplete="cc-name"
           />
@@ -584,7 +586,7 @@ function CardTemplate({
           <input
             value={cardNumber}
             onChange={(e) => setCardNumber(formatNumber(e.target.value))}
-            placeholder="4242 4242 4242 4242"
+            placeholder=""
             style={inputStyle}
             inputMode="numeric"
             autoComplete="cc-number"
@@ -595,7 +597,7 @@ function CardTemplate({
             <input
               value={cardExpiry}
               onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
-              placeholder="12/27"
+              placeholder=""
               style={inputStyle}
               inputMode="numeric"
               autoComplete="cc-exp"
@@ -605,7 +607,7 @@ function CardTemplate({
             <input
               value={cardCvc}
               onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, '').slice(0, 4))}
-              placeholder="123"
+              placeholder=""
               style={inputStyle}
               inputMode="numeric"
               autoComplete="cc-csc"

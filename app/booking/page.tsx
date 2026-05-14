@@ -116,6 +116,15 @@ const BOOKING_COPY = {
 } as const;
 type BookingCopy = (typeof BOOKING_COPY)[keyof typeof BOOKING_COPY];
 
+const ADDRESS_REQUIRED_COPY = {
+  en: 'Enter the delivery address to continue.',
+  ru: 'Укажите адрес доставки, чтобы перейти дальше.',
+  zh: '请填写送车地址后再继续。',
+  id: 'Isi alamat pengantaran untuk melanjutkan.',
+  de: 'Bitte Lieferadresse eingeben, um fortzufahren.',
+  fr: 'Veuillez saisir l’adresse de livraison pour continuer.',
+} as const;
+
 function numberParam(value: string | null) {
   if (!value) return null;
   const parsed = Number(value);
@@ -171,6 +180,8 @@ function BookingPageInner() {
   const { t, locale } = useLocale();
   const { currency: selectedCurrency, convertPrice } = useCurrency();
   const copy = BOOKING_COPY[locale as keyof typeof BOOKING_COPY] || BOOKING_COPY.en;
+  const addressRequiredMessage =
+    ADDRESS_REQUIRED_COPY[locale as keyof typeof ADDRESS_REQUIRED_COPY] || ADDRESS_REQUIRED_COPY.en;
   const router = useRouter();
   const search = useSearchParams();
 
@@ -319,7 +330,7 @@ function BookingPageInner() {
   }, [quoteKey, quoteRequest, t.auth.error]);
 
   function handleContinueToPayment() {
-    if (!quoteRequest || !effectiveScooterId || !quote || quoteError) {
+    if (!deliveryAddress.trim() || !quoteRequest || !effectiveScooterId || !quote || quoteError) {
       return;
     }
 
@@ -350,6 +361,7 @@ function BookingPageInner() {
   const displayName = scooter?.title || initialName;
   const displayImage = scooter?.main_image ? mediaUrl(scooter.main_image) : null;
   const displayStatus = scooter?.status || 'available';
+  const hasDeliveryAddress = Boolean(deliveryAddress.trim());
   // Always use the user-selected currency for display — never let the API currency override it.
   const currency = selectedCurrency;
   const rentalDays = Number(quote?.rental_days || 0);
@@ -385,7 +397,7 @@ function BookingPageInner() {
     .replace('${amount}', formatCurrencyAmount(convertPrice(addonsSubtotal), selectedCurrency))
     .replace('{amount}', formatCurrencyAmount(convertPrice(addonsSubtotal), selectedCurrency));
 
-  const canConfirmDates = Boolean(quote && !quoteLoading && !quoteError && isDateRangeValid);
+  const canConfirmDates = Boolean(quote && !quoteLoading && !quoteError && isDateRangeValid && hasDeliveryAddress);
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#fff', color: '#000' }}>
@@ -487,6 +499,11 @@ function BookingPageInner() {
                     style={{ ...inputStyle, resize: 'vertical', minHeight: 96 }}
                   />
                 </Field>
+                {!hasDeliveryAddress && isDateRangeValid ? (
+                  <div className="br-mono" style={{ color: '#B91C1C', fontSize: 12 }}>
+                    {addressRequiredMessage}
+                  </div>
+                ) : null}
                 <Field label={copy.promoCode}>
                   <input value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())} placeholder={copy.optional} style={inputStyle} />
                   {promoCode.trim() && !quoteLoading && (
