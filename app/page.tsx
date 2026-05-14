@@ -85,6 +85,9 @@ export default function LandingPage() {
   const [featured, setFeatured] = useState<DisplayScooter[]>(fallbackScooters().slice(0, 3));
   const [zones, setZones] = useState<Array<{ id: number; name: string; freeDelivery?: boolean }>>([]);
   const [apiFaqs, setApiFaqs] = useState<Array<{ q: string; a: string }>>([]);
+  const [locationSection, setLocationSection] = useState<{
+    title1?: string; title2?: string; desc?: string; mapEyebrow?: string; mapRegion?: string;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,6 +112,8 @@ export default function LandingPage() {
         const faqItems = (faqData?.home as Record<string, unknown> | undefined)?.faq;
         const items = (faqItems as Record<string, unknown> | undefined)?.items;
         if (Array.isArray(items) && items.length) setApiFaqs(items as Array<{ q: string; a: string }>);
+        const ls = (bootstrap as Record<string, unknown>).locationSection;
+        if (ls && typeof ls === 'object') setLocationSection(ls as typeof locationSection);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -449,10 +454,10 @@ export default function LandingPage() {
         <div className="br-home-delivery-copy" style={{ padding: 'clamp(40px, 6vw, 80px) clamp(16px, 5vw, 60px)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <motion.div variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true }}>
             <motion.h2 variants={fadeUp} className="br-display" style={{ margin: '0 0 14px', fontSize: 'clamp(26px, 4.5vw, 56px)', lineHeight: 0.97, letterSpacing: '-0.03em' }}>
-              {t.delivery.title1}<br /><span style={{ color: '#FFD700' }}>{t.delivery.title2}</span>
+              {locationSection?.title1 || t.delivery.title1}<br /><span style={{ color: '#FFD700' }}>{locationSection?.title2 || t.delivery.title2}</span>
             </motion.h2>
             <motion.p variants={fadeUp} style={{ fontSize: 'clamp(13px, 1.3vw, 16px)', color: 'rgba(255,255,255,0.58)', margin: '0 0 28px', maxWidth: 400, lineHeight: 1.6 }}>
-              {t.delivery.desc}
+              {locationSection?.desc || t.delivery.desc}
             </motion.p>
             <motion.div variants={fadeUp} className="br-home-delivery-zones" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {activeZones.slice(0, 8).map((l) => (
@@ -476,8 +481,8 @@ export default function LandingPage() {
           />
           <div aria-hidden style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(12,12,18,0.42) 0%, transparent 35%)', pointerEvents: 'none' }} />
           <div style={{ position: 'absolute', top: 18, left: 18, background: 'rgba(12,12,18,0.82)', backdropFilter: 'blur(12px)', color: '#fff', padding: '12px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)' }}>
-            <div style={{ fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.16em', color: '#FFD700', marginBottom: 4, textTransform: 'uppercase' }}>{t.home.mapEyebrow}</div>
-            <div className="br-display" style={{ fontSize: 16 }}>{t.home.mapRegion}</div>
+            <div style={{ fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.16em', color: '#FFD700', marginBottom: 4, textTransform: 'uppercase' }}>{locationSection?.mapEyebrow || t.home.mapEyebrow}</div>
+            <div className="br-display" style={{ fontSize: 16 }}>{locationSection?.mapRegion || t.home.mapRegion}</div>
           </div>
         </div>
       </div>

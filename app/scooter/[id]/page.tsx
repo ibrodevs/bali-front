@@ -172,13 +172,13 @@ export default function ScooterDetailPage() {
   const fallbackTone = FALLBACK_TONES[photoIdx % FALLBACK_TONES.length];
   const specItems = [
     [EngineIcon, t.detail.engine, characteristics.engine_cc ? `${characteristics.engine_cc}cc` : scooter.cc ? `${scooter.cc}cc` : '—'],
-    [SparkIcon, 'Transmission', characteristics.transmission || '—'],
-    [FuelIcon, 'Fuel', characteristics.fuel_consumption || '—'],
-    [SparkIcon, 'Year', characteristics.year ? String(characteristics.year) : '—'],
+    [SparkIcon, t.detail.transmission, characteristics.transmission || '—'],
+    [FuelIcon, t.detail.fuel, characteristics.fuel_consumption ? String(characteristics.fuel_consumption) : '—'],
+    [SparkIcon, t.detail.year, characteristics.year ? String(characteristics.year) : '—'],
     [StorageIcon, t.detail.storage, characteristics.trunk || '—'],
     [HelmetIcon, t.detail.helmets, characteristics.helmets_count ? String(characteristics.helmets_count) : '—'],
-    [PaletteIcon, 'Color', characteristics.color || '—'],
-    [LayersIcon, 'Type', scooter.type || '—'],
+    [PaletteIcon, t.detail.color, characteristics.color || '—'],
+    [LayersIcon, t.detail.vehicleType, scooter.type || '—'],
   ] as const;
 
   return (

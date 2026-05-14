@@ -34,6 +34,7 @@ const NAV = [
   { id: 'crm', icon: '👥', label: 'CRM' },
   { id: 'analytics', icon: '📈', label: 'Analytics' },
   { id: 'support', icon: '💬', label: 'Support' },
+  { id: 'promocodes', icon: '🏷️', label: 'Promo Codes' },
 ];
 
 function loadStoredSession() {
@@ -385,6 +386,45 @@ function slugify(value) {
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+function isoToLocalDatetime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function emptyPromoCodeDraft() {
+  return {
+    id: null,
+    code: '',
+    discount_type: 'PERCENT',
+    discount_value: '',
+    starts_at: '',
+    ends_at: '',
+    usage_limit: '100',
+    current_usage: 0,
+    min_booking_amount: '0',
+    max_discount_amount: '',
+    is_active: true,
+  };
+}
+
+function promoCodeDraftFrom(item) {
+  return {
+    id: item.id,
+    code: item.code || '',
+    discount_type: item.discount_type || 'PERCENT',
+    discount_value: String(item.discount_value || ''),
+    starts_at: isoToLocalDatetime(item.starts_at),
+    ends_at: isoToLocalDatetime(item.ends_at),
+    usage_limit: String(item.usage_limit || '1'),
+    current_usage: item.current_usage || 0,
+    min_booking_amount: String(item.min_booking_amount || '0'),
+    max_discount_amount: item.max_discount_amount ? String(item.max_discount_amount) : '',
+    is_active: Boolean(item.is_active),
+  };
 }
 
 function emptyFleetDraft() {
@@ -1305,6 +1345,223 @@ function SupportView({ threads, messages, quickReplies, activeThreadId, onSelect
   );
 }
 
+function PromoCodesView({ promocodes, savingId, deletingId, onSave, onDelete }) {
+  const [selectedId, setSelectedId] = React.useState(null);
+  const [draft, setDraft] = React.useState(emptyPromoCodeDraft);
+  const [formError, setFormError] = React.useState('');
+
+  React.useEffect(() => {
+    if (selectedId == null) return;
+    const found = promocodes.find((p) => p.id === selectedId);
+    if (found) {
+      setDraft(promoCodeDraftFrom(found));
+    } else {
+      setSelectedId(null);
+      setDraft(emptyPromoCodeDraft());
+    }
+  }, [promocodes, selectedId]);
+
+  function handleNew() {
+    setSelectedId(null);
+    setDraft(emptyPromoCodeDraft());
+    setFormError('');
+  }
+
+  function handleSelect(item) {
+    setSelectedId(item.id);
+    setDraft(promoCodeDraftFrom(item));
+    setFormError('');
+  }
+
+  function update(key, value) {
+    setDraft((cur) => ({ ...cur, [key]: value }));
+  }
+
+  async function handleSubmit() {
+    setFormError('');
+    if (!draft.code.trim()) { setFormError('Code is required'); return; }
+    if (!draft.discount_value) { setFormError('Discount value is required'); return; }
+
+    const payload = {
+      code: draft.code.trim().toUpperCase(),
+      discount_type: draft.discount_type,
+      discount_value: draft.discount_value,
+      is_active: draft.is_active,
+      usage_limit: Number(draft.usage_limit) || 1,
+      min_booking_amount: draft.min_booking_amount || '0.00',
+      max_discount_amount: draft.max_discount_amount ? draft.max_discount_amount : null,
+      starts_at: draft.starts_at ? new Date(draft.starts_at).toISOString() : null,
+      ends_at: draft.ends_at ? new Date(draft.ends_at).toISOString() : null,
+    };
+
+    const saved = await onSave(payload, draft.id);
+    if (saved?.id) {
+      setSelectedId(saved.id);
+      setDraft(promoCodeDraftFrom(saved));
+    }
+  }
+
+  async function handleDelete() {
+    if (!draft.id) return;
+    if (!window.confirm(`Delete promo code "${draft.code}"?`)) return;
+    const deletedId = draft.id;
+    await onDelete(deletedId);
+    if (deletedId === selectedId) {
+      setSelectedId(null);
+      setDraft(emptyPromoCodeDraft());
+    }
+  }
+
+  const isSaving = savingId === (draft.id || 'new');
+  const isDeleting = deletingId === draft.id;
+
+  return (
+    <div style={{ overflowY: 'auto', height: '100%', padding: '28px 32px' }}>
+      <SectionHeader
+        title="Promo Codes"
+        subtitle={`${promocodes.length} codes · manage discounts for customers`}
+        action={<Button variant="dark" onClick={handleNew}>New code</Button>}
+      />
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.6fr', gap: 16, alignItems: 'start' }}>
+        <div>
+          {promocodes.length === 0 ? (
+            <EmptyState label="No promo codes yet. Create your first one." />
+          ) : (
+            <Panel style={{ overflow: 'hidden' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 0.8fr 0.9fr 0.8fr', gap: 12, padding: '12px 20px', background: A.g100, borderBottom: `1px solid ${A.g200}` }}>
+                {['Code', 'Discount', 'Usage', 'Valid Until', 'Status'].map((label) => (
+                  <div key={label} style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: A.g500 }}>{label}</div>
+                ))}
+              </div>
+              {promocodes.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => handleSelect(item)}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1.2fr 1fr 0.8fr 0.9fr 0.8fr',
+                    gap: 12,
+                    padding: '14px 20px',
+                    borderBottom: `1px solid ${A.g200}`,
+                    cursor: 'pointer',
+                    background: draft.id === item.id ? 'rgba(255,215,0,0.06)' : A.white,
+                    alignItems: 'center',
+                  }}
+                >
+                  <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 14, color: A.black, letterSpacing: '0.04em' }}>{item.code}</div>
+                  <div style={{ fontFamily: 'Inter', fontSize: 13, color: A.g700 }}>
+                    {item.discount_type === 'PERCENT'
+                      ? <><strong style={{ color: A.black }}>{item.discount_value}%</strong> <span style={{ color: A.g500, fontSize: 11 }}>off</span></>
+                      : <><strong style={{ color: A.black }}>${item.discount_value}</strong> <span style={{ color: A.g500, fontSize: 11 }}>fixed</span></>}
+                  </div>
+                  <div style={{ fontFamily: 'Inter', fontSize: 13, color: A.g700 }}>
+                    <span style={{ fontWeight: 700 }}>{item.current_usage}</span>
+                    <span style={{ color: A.g500 }}> / {item.usage_limit}</span>
+                  </div>
+                  <div style={{ fontFamily: 'Inter', fontSize: 12, color: A.g500 }}>
+                    {item.ends_at ? formatShortDate(item.ends_at) : '∞'}
+                  </div>
+                  <Badge color={item.is_active ? 'green' : 'default'}>{item.is_active ? 'Active' : 'Off'}</Badge>
+                </div>
+              ))}
+            </Panel>
+          )}
+        </div>
+
+        <Panel style={{ padding: 22, position: 'sticky', top: 28 }}>
+          <SectionHeader
+            title={draft.id ? 'Edit Code' : 'New Code'}
+            subtitle={draft.id ? `#${draft.id} · ${draft.current_usage} uses` : 'Fill in the fields below'}
+          />
+          {formError ? (
+            <div style={{ marginBottom: 14, background: A.redBg, color: A.red, borderRadius: 10, padding: '10px 14px', fontFamily: 'Inter', fontSize: 13 }}>
+              {formError}
+            </div>
+          ) : null}
+          <div style={{ display: 'grid', gap: 14 }}>
+            <Field label="Promo code">
+              <Input
+                value={draft.code}
+                onChange={(e) => update('code', e.target.value.toUpperCase())}
+                placeholder="SUMMER20"
+              />
+            </Field>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Field label="Type">
+                <Select value={draft.discount_type} onChange={(e) => update('discount_type', e.target.value)}>
+                  <option value="PERCENT">Percent (%)</option>
+                  <option value="FIXED">Fixed ($)</option>
+                </Select>
+              </Field>
+              <Field label={draft.discount_type === 'PERCENT' ? 'Discount %' : 'Discount $'}>
+                <Input
+                  type="number"
+                  min="0"
+                  step={draft.discount_type === 'PERCENT' ? '1' : '0.01'}
+                  max={draft.discount_type === 'PERCENT' ? '100' : undefined}
+                  value={draft.discount_value}
+                  onChange={(e) => update('discount_value', e.target.value)}
+                  placeholder={draft.discount_type === 'PERCENT' ? '20' : '10.00'}
+                />
+              </Field>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Field label="Start date">
+                <Input type="datetime-local" value={draft.starts_at} onChange={(e) => update('starts_at', e.target.value)} />
+              </Field>
+              <Field label="End date">
+                <Input type="datetime-local" value={draft.ends_at} onChange={(e) => update('ends_at', e.target.value)} />
+              </Field>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Field label="Usage limit">
+                <Input type="number" min="1" value={draft.usage_limit} onChange={(e) => update('usage_limit', e.target.value)} />
+              </Field>
+              <Field label="Min order, $">
+                <Input type="number" min="0" step="0.01" value={draft.min_booking_amount} onChange={(e) => update('min_booking_amount', e.target.value)} />
+              </Field>
+            </div>
+
+            {draft.discount_type === 'PERCENT' ? (
+              <Field label="Max discount, $ (optional)">
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={draft.max_discount_amount}
+                  onChange={(e) => update('max_discount_amount', e.target.value)}
+                  placeholder="No limit"
+                />
+              </Field>
+            ) : null}
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'Inter', fontSize: 14, color: A.black, cursor: 'pointer' }}>
+              <input type="checkbox" checked={draft.is_active} onChange={(e) => update('is_active', e.target.checked)} />
+              <span>Active (visible to users)</span>
+            </label>
+
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', paddingTop: 4 }}>
+              <Button variant="primary" size="md" disabled={isSaving} onClick={handleSubmit}>
+                {isSaving ? 'Saving…' : draft.id ? 'Save changes' : 'Create code'}
+              </Button>
+              <Button variant="outline" size="md" onClick={handleNew}>Reset</Button>
+              {draft.id ? (
+                <Button variant="danger" size="md" disabled={isDeleting} onClick={handleDelete}>
+                  {isDeleting ? 'Deleting…' : 'Delete'}
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
 function LoginView({ form, setForm, error, loading, onSubmit }) {
   return (
     <div style={{ minHeight: '100vh', background: A.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
@@ -1349,6 +1606,8 @@ function AdminApp() {
   const [savingFleetForm, setSavingFleetForm] = React.useState(false);
   const [deletingScooterId, setDeletingScooterId] = React.useState(null);
   const [sendingReply, setSendingReply] = React.useState(false);
+  const [savingPromoCodeId, setSavingPromoCodeId] = React.useState(null);
+  const [deletingPromoCodeId, setDeletingPromoCodeId] = React.useState(null);
   const [activeThreadId, setActiveThreadId] = React.useState(null);
   const [threadMessages, setThreadMessages] = React.useState([]);
   const [data, setData] = React.useState({
@@ -1365,6 +1624,7 @@ function AdminApp() {
     auditLogs: [],
     loginLogs: [],
     webhookLogs: [],
+    promocodes: [],
   });
 
   async function loadSupportMessages(threadId, accessToken = session?.access) {
@@ -1408,6 +1668,7 @@ function AdminApp() {
         ['auditLogs', fetchAllPages('/admin/audit/', accessToken), []],
         ['loginLogs', fetchAllPages('/admin/security/logins/', accessToken), []],
         ['webhookLogs', fetchAllPages('/admin/security/webhooks/', accessToken), []],
+        ['promocodes', fetchAllPages('/admin/marketing/promocodes/', accessToken), []],
       ];
 
       const optionalResults = await Promise.allSettled(optionalDefs.map((item) => item[1]));
@@ -1438,6 +1699,7 @@ function AdminApp() {
         auditLogs: resolved.auditLogs,
         loginLogs: resolved.loginLogs,
         webhookLogs: resolved.webhookLogs,
+        promocodes: resolved.promocodes,
       });
       setActiveThreadId((current) => current || resolved.threads?.[0]?.id || null);
       if (failedSections.length > 0) {
@@ -1485,6 +1747,44 @@ function AdminApp() {
     return () => window.clearInterval(intervalId);
   }, [activeThreadId, session?.access, view]);
 
+  async function handleSavePromoCode(payload, promoId = null) {
+    setSavingPromoCodeId(promoId || 'new');
+    setError('');
+    try {
+      const res = await requestJson(
+        promoId ? `/admin/marketing/promocodes/${promoId}/` : '/admin/marketing/promocodes/',
+        {
+          method: promoId ? 'PATCH' : 'POST',
+          body: JSON.stringify(payload),
+          token: session.access,
+        }
+      );
+      await loadAdminData(session.access);
+      return res;
+    } catch (saveError) {
+      setError(saveError.message || 'Unable to save promo code');
+      return null;
+    } finally {
+      setSavingPromoCodeId(null);
+    }
+  }
+
+  async function handleDeletePromoCode(promoId) {
+    setDeletingPromoCodeId(promoId);
+    setError('');
+    try {
+      await requestJson(`/admin/marketing/promocodes/${promoId}/`, {
+        method: 'DELETE',
+        token: session.access,
+      });
+      await loadAdminData(session.access);
+    } catch (deleteError) {
+      setError(deleteError.message || 'Unable to delete promo code');
+    } finally {
+      setDeletingPromoCodeId(null);
+    }
+  }
+
   async function handleLogin() {
     setLoading(true);
     setError('');
@@ -1519,6 +1819,7 @@ function AdminApp() {
       auditLogs: [],
       loginLogs: [],
       webhookLogs: [],
+      promocodes: [],
     });
     setActiveThreadId(null);
     setThreadMessages([]);
@@ -1685,6 +1986,15 @@ function AdminApp() {
         onSendReply={handleSendReply}
         onUpdateThreadStatus={handleThreadStatus}
         sendingReply={sendingReply}
+      />
+    ),
+    promocodes: (
+      <PromoCodesView
+        promocodes={data.promocodes}
+        savingId={savingPromoCodeId}
+        deletingId={deletingPromoCodeId}
+        onSave={handleSavePromoCode}
+        onDelete={handleDeletePromoCode}
       />
     ),
   };

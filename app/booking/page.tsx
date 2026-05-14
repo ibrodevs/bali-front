@@ -376,6 +376,10 @@ function BookingPageInner() {
   const grandTotal = quote && rawGrandTotal > 0
     ? convertAmount(rawGrandTotal, quoteCurrency, selectedCurrency)
     : baseTotal + addonsTotal + deliveryTotal;
+  const discountTotal = quote && Number(quote.discount_amount || 0) > 0
+    ? convertAmount(Number(quote.discount_amount), quoteCurrency, selectedCurrency)
+    : 0;
+  const promoApplied = Boolean(promoCode.trim() && discountTotal > 0);
   const selectedAddonsLabel = copy.selectedAddons
     .replace('{n}', String(selectedAddOnIds.length))
     .replace('${amount}', formatCurrencyAmount(convertPrice(addonsSubtotal), selectedCurrency))
@@ -485,6 +489,17 @@ function BookingPageInner() {
                 </Field>
                 <Field label={copy.promoCode}>
                   <input value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())} placeholder={copy.optional} style={inputStyle} />
+                  {promoCode.trim() && !quoteLoading && (
+                    promoApplied
+                      ? <div className="br-mono" style={{ marginTop: 8, color: '#16A34A', fontSize: 12 }}>
+                          ✓ Applied — {formatCurrencyAmount(discountTotal, selectedCurrency)} discount
+                        </div>
+                      : quote
+                        ? <div className="br-mono" style={{ marginTop: 8, color: '#B91C1C', fontSize: 12 }}>
+                            Invalid or expired promo code
+                          </div>
+                        : null
+                  )}
                 </Field>
               </div>
             </div>
@@ -566,6 +581,12 @@ function BookingPageInner() {
                 <PriceRow label={copy.base} value={formatCurrencyAmount(baseTotal, currency)} />
                 <PriceRow label={copy.addons} value={formatCurrencyAmount(addonsTotal, currency)} />
                 <PriceRow label={copy.delivery} value={formatCurrencyAmount(deliveryTotal, currency)} />
+                {discountTotal > 0 ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
+                    <span style={{ color: '#16A34A', fontSize: 13 }}>Discount ({promoCode})</span>
+                    <span className="br-mono" style={{ color: '#16A34A', fontWeight: 700 }}>−{formatCurrencyAmount(discountTotal, currency)}</span>
+                  </div>
+                ) : null}
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(0,0,0,0.08)' }}>

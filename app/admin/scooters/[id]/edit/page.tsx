@@ -7,6 +7,7 @@ import {
   AdminScooterPayload,
   ApiScooterDetail,
   ApiVehicleModel,
+  ApiVehicleTranslation,
   endpoints,
   unwrapList,
 } from '@/lib/endpoints';
@@ -147,6 +148,15 @@ const inputStyle: CSSProperties = {
   boxSizing: 'border-box',
 };
 
+const LOCALES = [
+  { code: 'en', label: 'English' },
+  { code: 'ru', label: 'Русский' },
+  { code: 'zh', label: '中文' },
+  { code: 'id', label: 'Indonesia' },
+  { code: 'de', label: 'Deutsch' },
+  { code: 'fr', label: 'Français' },
+];
+
 type DraftScooter = {
   model: string;
   title: string;
@@ -157,6 +167,25 @@ type DraftScooter = {
   status: string;
   mileage: string;
   is_featured: boolean;
+};
+
+type ModelDraft = {
+  engine_cc: string;
+  transmission: string;
+  fuel_consumption: string;
+  year: string;
+  trunk: string;
+  helmets_count: string;
+  description: string;
+  rental_terms: string;
+};
+
+type TranslationDraft = {
+  title: string;
+  description: string;
+  rental_terms: string;
+  transmission: string;
+  trunk: string;
 };
 
 type NewPhoto = {
@@ -207,6 +236,22 @@ export default function AdminEditScooterPage() {
   const [newPhotos, setNewPhotos] = useState<NewPhoto[]>([]);
   const [newMainIndex, setNewMainIndex] = useState(0);
 
+  const emptyTranslations = () =>
+    Object.fromEntries(LOCALES.map((l) => [l.code, { title: '', description: '', rental_terms: '', transmission: '', trunk: '' }])) as Record<string, TranslationDraft>;
+
+  const [translations, setTranslations] = useState<Record<string, TranslationDraft>>(emptyTranslations());
+  const [activeLang, setActiveLang] = useState('en');
+  const [modelDraft, setModelDraft] = useState<ModelDraft>({
+    engine_cc: '',
+    transmission: '',
+    fuel_consumption: '',
+    year: '',
+    trunk: '',
+    helmets_count: '',
+    description: '',
+    rental_terms: '',
+  });
+
   useEffect(() => {
     return () => {
       newPhotos.forEach((p) => URL.revokeObjectURL(p.preview));
@@ -245,6 +290,29 @@ export default function AdminEditScooterPage() {
           status: scooterRes.status || 'available',
           mileage: scooterRes.mileage != null ? String(scooterRes.mileage) : '0',
           is_featured: scooterRes.is_featured || false,
+        });
+
+        // Load model characteristics
+        const mi = scooterRes.model_info;
+        setModelDraft({
+          engine_cc: mi?.engine_cc != null ? String(mi.engine_cc) : '',
+          transmission: mi?.transmission || '',
+          fuel_consumption: mi?.fuel_consumption != null ? String(mi.fuel_consumption) : '',
+          year: mi?.year != null ? String(mi.year) : '',
+          trunk: mi?.trunk || '',
+          helmets_count: mi?.helmets_count != null ? String(mi.helmets_count) : '',
+          description: mi?.description || '',
+          rental_terms: mi?.rental_terms || '',
+        });
+
+        // Load per-vehicle translations
+        const existingTr = scooterRes.translations || [];
+        setTranslations((prev) => {
+          const next = { ...prev };
+          for (const t of existingTr) {
+            next[t.language] = { title: t.title || '', description: t.description || '', rental_terms: t.rental_terms || '', transmission: t.transmission || '', trunk: t.trunk || '' };
+          }
+          return next;
         });
       } catch (err) {
         if (cancelled) return;
@@ -340,6 +408,33 @@ export default function AdminEditScooterPage() {
           sort_order: startOrder + i,
           is_main: existingImages.length === 0 && i === newMainIndex,
         });
+      }
+
+      // Save translations
+      const translationList: ApiVehicleTranslation[] = LOCALES.map((l) => ({
+        language: l.code,
+        title: (translations[l.code]?.title || '').trim() || draft.title,
+        description: (translations[l.code]?.description || '').trim(),
+        rental_terms: (translations[l.code]?.rental_terms || '').trim(),
+        transmission: (translations[l.code]?.transmission || '').trim(),
+        trunk: (translations[l.code]?.trunk || '').trim(),
+      }));
+      await endpoints.adminSaveScooterTranslations(scooterId, translationList);
+
+      // Save model characteristics if model is selected
+      if (draft.model) {
+        const modelPayload: Record<string, string | number> = {};
+        if (modelDraft.engine_cc) modelPayload.engine_cc = Number(modelDraft.engine_cc);
+        if (modelDraft.transmission) modelPayload.transmission = modelDraft.transmission.trim();
+        if (modelDraft.fuel_consumption) modelPayload.fuel_consumption = modelDraft.fuel_consumption.trim();
+        if (modelDraft.year) modelPayload.year = Number(modelDraft.year);
+        if (modelDraft.trunk) modelPayload.trunk = modelDraft.trunk.trim();
+        if (modelDraft.helmets_count) modelPayload.helmets_count = Number(modelDraft.helmets_count);
+        if (modelDraft.description) modelPayload.description = modelDraft.description.trim();
+        if (modelDraft.rental_terms) modelPayload.rental_terms = modelDraft.rental_terms.trim();
+        if (Object.keys(modelPayload).length > 0) {
+          await endpoints.adminUpdateScooterModel(draft.model, modelPayload);
+        }
       }
 
       setSuccess('Changes saved successfully.');
@@ -585,6 +680,178 @@ export default function AdminEditScooterPage() {
                   <span>Feature on website homepage</span>
                 </label>
               </div>
+            </Panel>
+
+            {/* Characteristics */}
+            <Panel style={{ padding: pad }}>
+              <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18, color: A.black, marginBottom: 4 }}>
+                Characteristics
+              </div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, marginBottom: 16 }}>
+                Shared across all units of the same model. Changes apply to all scooters of this model.
+              </div>
+              <div style={{ display: 'grid', gap: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, minmax(0,1fr))', gap: 12 }}>
+                  <Field label="Engine (cc)">
+                    <input
+                      type="number"
+                      value={modelDraft.engine_cc}
+                      onChange={(e) => setModelDraft((p) => ({ ...p, engine_cc: e.target.value }))}
+                      style={inputStyle}
+                      placeholder="160"
+                    />
+                  </Field>
+                  <Field label="Year">
+                    <input
+                      type="number"
+                      value={modelDraft.year}
+                      onChange={(e) => setModelDraft((p) => ({ ...p, year: e.target.value }))}
+                      style={inputStyle}
+                      placeholder="2023"
+                    />
+                  </Field>
+                  <Field label="Helmets">
+                    <input
+                      type="number"
+                      value={modelDraft.helmets_count}
+                      onChange={(e) => setModelDraft((p) => ({ ...p, helmets_count: e.target.value }))}
+                      style={inputStyle}
+                      placeholder="1"
+                    />
+                  </Field>
+                  <Field label="Fuel (L/100km)">
+                    <input
+                      value={modelDraft.fuel_consumption}
+                      onChange={(e) => setModelDraft((p) => ({ ...p, fuel_consumption: e.target.value }))}
+                      style={inputStyle}
+                      placeholder="2.5"
+                    />
+                  </Field>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
+                  <Field label="Transmission">
+                    <input
+                      value={modelDraft.transmission}
+                      onChange={(e) => setModelDraft((p) => ({ ...p, transmission: e.target.value }))}
+                      style={inputStyle}
+                      placeholder="Automatic CVT"
+                    />
+                  </Field>
+                  <Field label="Trunk / Storage">
+                    <input
+                      value={modelDraft.trunk}
+                      onChange={(e) => setModelDraft((p) => ({ ...p, trunk: e.target.value }))}
+                      style={inputStyle}
+                      placeholder="18L underseat"
+                    />
+                  </Field>
+                </div>
+                <Field label="Description (English fallback)">
+                  <textarea
+                    value={modelDraft.description}
+                    onChange={(e) => setModelDraft((p) => ({ ...p, description: e.target.value }))}
+                    rows={3}
+                    style={{ ...inputStyle, resize: 'vertical', fontFamily: 'Inter, sans-serif' }}
+                    placeholder="Base description shown when no translation is available."
+                  />
+                </Field>
+                <Field label="Rental Terms (English fallback)">
+                  <textarea
+                    value={modelDraft.rental_terms}
+                    onChange={(e) => setModelDraft((p) => ({ ...p, rental_terms: e.target.value }))}
+                    rows={3}
+                    style={{ ...inputStyle, resize: 'vertical', fontFamily: 'Inter, sans-serif' }}
+                    placeholder="Base rental terms shown when no translation is available."
+                  />
+                </Field>
+              </div>
+            </Panel>
+
+            {/* Translations */}
+            <Panel style={{ padding: pad }}>
+              <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18, color: A.black, marginBottom: 4 }}>
+                Translations
+              </div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, marginBottom: 16 }}>
+                Per-vehicle description and rental terms in each language. Leave blank to use the English fallback above.
+              </div>
+
+              {/* Language tabs */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
+                {LOCALES.map((l) => {
+                  const hasTr = !!(translations[l.code]?.description || translations[l.code]?.rental_terms || translations[l.code]?.transmission || translations[l.code]?.trunk);
+                  return (
+                    <button
+                      key={l.code}
+                      type="button"
+                      onClick={() => setActiveLang(l.code)}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: 8,
+                        border: activeLang === l.code ? `2px solid ${A.black}` : `1.5px solid ${A.g200}`,
+                        background: activeLang === l.code ? A.black : hasTr ? A.greenBg : A.white,
+                        color: activeLang === l.code ? A.white : hasTr ? A.green : A.g700,
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {l.code.toUpperCase()}
+                      {hasTr ? ' ✓' : ''}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {LOCALES.map((l) => (
+                <div key={l.code} style={{ display: activeLang === l.code ? 'grid' : 'none', gap: 14 }}>
+                  <Field label={`Title (${l.label})`}>
+                    <input
+                      value={translations[l.code]?.title || ''}
+                      onChange={(e) => setTranslations((p) => ({ ...p, [l.code]: { ...p[l.code], title: e.target.value } }))}
+                      style={inputStyle}
+                      placeholder={draft.title || 'Vehicle title'}
+                    />
+                  </Field>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
+                    <Field label={`Transmission (${l.label})`}>
+                      <input
+                        value={translations[l.code]?.transmission || ''}
+                        onChange={(e) => setTranslations((p) => ({ ...p, [l.code]: { ...p[l.code], transmission: e.target.value } }))}
+                        style={inputStyle}
+                        placeholder={modelDraft.transmission || 'e.g. Automatic CVT'}
+                      />
+                    </Field>
+                    <Field label={`Storage / Trunk (${l.label})`}>
+                      <input
+                        value={translations[l.code]?.trunk || ''}
+                        onChange={(e) => setTranslations((p) => ({ ...p, [l.code]: { ...p[l.code], trunk: e.target.value } }))}
+                        style={inputStyle}
+                        placeholder={modelDraft.trunk || 'e.g. 18L underseat'}
+                      />
+                    </Field>
+                  </div>
+                  <Field label={`Description (${l.label})`}>
+                    <textarea
+                      value={translations[l.code]?.description || ''}
+                      onChange={(e) => setTranslations((p) => ({ ...p, [l.code]: { ...p[l.code], description: e.target.value } }))}
+                      rows={4}
+                      style={{ ...inputStyle, resize: 'vertical', fontFamily: 'Inter, sans-serif' }}
+                      placeholder={`Description in ${l.label}…`}
+                    />
+                  </Field>
+                  <Field label={`Rental Terms (${l.label})`}>
+                    <textarea
+                      value={translations[l.code]?.rental_terms || ''}
+                      onChange={(e) => setTranslations((p) => ({ ...p, [l.code]: { ...p[l.code], rental_terms: e.target.value } }))}
+                      rows={4}
+                      style={{ ...inputStyle, resize: 'vertical', fontFamily: 'Inter, sans-serif' }}
+                      placeholder={`Rental terms in ${l.label}…`}
+                    />
+                  </Field>
+                </div>
+              ))}
             </Panel>
 
             {/* Gallery */}

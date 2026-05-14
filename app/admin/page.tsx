@@ -22,12 +22,17 @@ import {
   ApiAnalyticsFunnel,
   ApiAnalyticsRevenue,
   AdminScooterPayload,
+  ApiAddon,
+  ApiAddonTranslation,
   ApiAuditLog,
   ApiBooking,
   ApiChatMessage,
   ApiChatThread,
   ApiCustomerProfile,
   ApiAdminUser,
+  ApiAdminDeliveryZone,
+  ApiPromoCode,
+  PromoCodePayload,
   ApiLoginLog,
   ApiNewsArticle,
   ApiPayment,
@@ -73,7 +78,7 @@ const A = {
   orangeBg: '#fff7ed',
 };
 
-type AdminView = 'overview' | 'bookings' | 'fleet' | 'calendar' | 'crm' | 'analytics' | 'support' | 'news';
+type AdminView = 'overview' | 'bookings' | 'fleet' | 'calendar' | 'crm' | 'analytics' | 'support' | 'news' | 'addons' | 'locations' | 'promocodes';
 
 const NAV: { id: AdminView; icon: ReactNode; label: string }[] = [
   { id: 'overview', icon: <OverviewIcon size={18} />, label: 'Overview' },
@@ -84,6 +89,9 @@ const NAV: { id: AdminView; icon: ReactNode; label: string }[] = [
   { id: 'analytics', icon: <OverviewIcon size={18} />, label: 'Analytics' },
   { id: 'support', icon: <MessageIcon size={18} />, label: 'Support' },
   { id: 'news', icon: <TagIcon size={18} />, label: 'News' },
+  { id: 'addons', icon: <DiamondIcon size={18} />, label: 'Add-ons' },
+  { id: 'locations', icon: <EyeIcon size={18} />, label: 'Locations' },
+  { id: 'promocodes', icon: <DollarIcon size={18} />, label: 'Promo Codes' },
 ];
 
 type BadgeColor = 'default' | 'gold' | 'green' | 'red' | 'blue' | 'orange';
@@ -446,6 +454,7 @@ type AdminData = {
   auditLogs: ApiAuditLog[];
   loginLogs: ApiLoginLog[];
   webhookLogs: ApiWebhookLog[];
+  promocodes: ApiPromoCode[];
 };
 
 const EMPTY_DATA: AdminData = {
@@ -462,9 +471,563 @@ const EMPTY_DATA: AdminData = {
   auditLogs: [],
   loginLogs: [],
   webhookLogs: [],
+  promocodes: [],
 };
 
 const LANGUAGES = ['en', 'ru', 'zh', 'id', 'de', 'fr'];
+const LANG_LABELS: Record<string, string> = { en: 'English', ru: 'Русский', zh: '中文', id: 'Indonesia', de: 'Deutsch', fr: 'Français' };
+
+type ZoneDraft ={ name: string; is_free: boolean; base_price_usd: string; is_active: boolean; translations: { language: string; name: string }[] };
+
+function LocationsView({ isMobile }: { isMobile: boolean }) {
+  const [zones, setZones] = useState<ApiAdminDeliveryZone[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const [expandedZone, setExpandedZone] = useState<number | null>('new' as unknown as null);
+  const [zoneLang, setZoneLang] = useState<Record<number | string, string>>({});
+  const [zoneDrafts, setZoneDrafts] = useState<Record<number | string, ZoneDraft>>({});
+  const [showNewZone, setShowNewZone] = useState(false);
+  const [deletingZoneId, setDeletingZoneId] = useState<number | null>(null);
+
+  const inputStyle: CSSProperties = { width: '100%', padding: '9px 12px', border: `1px solid ${A.g200}`, borderRadius: 8, fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.black, outline: 'none', background: A.white, boxSizing: 'border-box' };
+  const labelStyle: CSSProperties = { fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 };
+
+  const load = () => {
+    setLoading(true);
+    endpoints.adminDeliveryZones()
+      .then((z) => setZones(unwrapList(z)))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, []);
+
+  const emptyZoneDraft = (): ZoneDraft => ({
+    name: '', is_free: true, base_price_usd: '0', is_active: true,
+    translations: LANGUAGES.map((l) => ({ language: l, name: '' })),
+  });
+
+  const openZone = (zone: ApiAdminDeliveryZone) => {
+    if (expandedZone === zone.id) { setExpandedZone(null); return; }
+    setExpandedZone(zone.id);
+    if (!zoneLang[zone.id]) setZoneLang((p) => ({ ...p, [zone.id]: 'en' }));
+    setZoneDrafts((p) => ({
+      ...p,
+      [zone.id]: {
+        name: zone.name,
+        is_free: zone.is_free,
+        base_price_usd: '0',
+        is_active: zone.is_active,
+        translations: LANGUAGES.map((l) => {
+          const found = zone.translations.find((t) => t.language === l);
+          return { language: l, name: found?.name || '' };
+        }),
+      },
+    }));
+  };
+
+  const setZF = (zoneId: number | string, field: keyof Omit<ZoneDraft, 'translations'>, value: string | boolean) =>
+    setZoneDrafts((p) => ({ ...p, [zoneId]: { ...p[zoneId], [field]: value } }));
+
+  const setZoneTrans = (zoneId: number | string, lang: string, name: string) =>
+    setZoneDrafts((p) => ({
+      ...p,
+      [zoneId]: { ...p[zoneId], translations: p[zoneId].translations.map((t) => t.language === lang ? { ...t, name } : t) },
+    }));
+
+  const saveZone = async (zoneId: number) => {
+    const draft = zoneDrafts[zoneId];
+    if (!draft) return;
+    setSaving((p) => ({ ...p, [`z${zoneId}`]: true }));
+    try {
+      await endpoints.adminUpdateDeliveryZone(zoneId, {
+        name: draft.name, is_free: draft.is_free, is_active: draft.is_active,
+        translations: draft.translations.filter((t) => t.name.trim()),
+      });
+      setExpandedZone(null);
+      load();
+    } catch { } finally { setSaving((p) => ({ ...p, [`z${zoneId}`]: false })); }
+  };
+
+  const deleteZone = async (zoneId: number) => {
+    if (!confirm('Delete this zone? This cannot be undone.')) return;
+    setDeletingZoneId(zoneId);
+    try { await endpoints.adminDeleteDeliveryZone(zoneId); load(); }
+    catch { } finally { setDeletingZoneId(null); }
+  };
+
+  const createZone = async () => {
+    const draft = zoneDrafts['new'];
+    if (!draft || !draft.name.trim()) return;
+    setSaving((p) => ({ ...p, new: true }));
+    try {
+      await endpoints.adminCreateDeliveryZone({
+        name: draft.name, is_free: draft.is_free,
+        is_active: draft.is_active,
+        translations: draft.translations.filter((t) => t.name.trim()),
+      });
+      setShowNewZone(false);
+      setZoneDrafts((p) => { const n = { ...p }; delete n['new']; return n; });
+      load();
+    } catch { } finally { setSaving((p) => ({ ...p, new: false })); }
+  };
+
+  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: A.g500, fontFamily: 'Inter, sans-serif' }}>Loading…</div>;
+
+  return (
+    <div>
+      <SectionHeader title="Locations" subtitle="Manage delivery zones and translations" />
+
+      {/* ── ZONES ────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, margin: 0 }}>
+              Add, edit, or delete delivery zones. Zone names can be translated per language.
+            </p>
+            <Button variant="dark" onClick={() => { setShowNewZone(true); if (!zoneDrafts['new']) setZoneDrafts((p) => ({ ...p, new: emptyZoneDraft() })); setZoneLang((p) => ({ ...p, new: 'en' })); }}>
+              + Add Zone
+            </Button>
+          </div>
+
+          {/* New zone form */}
+          {showNewZone && zoneDrafts['new'] && (() => {
+            const draft = zoneDrafts['new'];
+            const activeLang = zoneLang['new'] || 'en';
+            return (
+              <Panel style={{ border: `2px solid ${A.gold}` }}>
+                <div style={{ padding: '14px 20px', borderBottom: `1px solid ${A.g200}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 700, color: A.black }}>New Zone</span>
+                  <button onClick={() => { setShowNewZone(false); setZoneDrafts((p) => { const n = { ...p }; delete n['new']; return n; }); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: A.g400, lineHeight: 1 }}>×</button>
+                </div>
+                <div style={{ padding: '16px 20px 20px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+                    <div><label style={labelStyle}>Zone name (default)</label><input style={inputStyle} value={draft.name} onChange={(e) => setZF('new', 'name', e.target.value)} placeholder="e.g. Canggu" /></div>
+                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                      <label style={{ ...labelStyle, marginBottom: 10 }}>Free delivery</label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: 13 }}>
+                        <input type="checkbox" checked={draft.is_free} onChange={(e) => setZF('new', 'is_free', e.target.checked)} style={{ width: 16, height: 16 }} />
+                        Free delivery
+                      </label>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                      <label style={{ ...labelStyle, marginBottom: 10 }}>Active</label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: 13 }}>
+                        <input type="checkbox" checked={draft.is_active} onChange={(e) => setZF('new', 'is_active', e.target.checked)} style={{ width: 16, height: 16 }} />
+                        Show on site
+                      </label>
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Translations (optional)</div>
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+                    {LANGUAGES.map((l) => {
+                      const t = draft.translations.find((x) => x.language === l);
+                      return (
+                        <button key={l} onClick={() => setZoneLang((p) => ({ ...p, new: l }))} style={{ padding: '4px 12px', borderRadius: 20, border: `1px solid ${activeLang === l ? A.black : A.g300}`, background: activeLang === l ? A.black : A.white, color: activeLang === l ? A.white : A.g700, fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          {l.toUpperCase()} {t?.name.trim() && <span style={{ color: activeLang === l ? A.gold : A.green, fontSize: 10 }}>✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={labelStyle}>Name in {LANG_LABELS[activeLang]}</label>
+                    <input style={{ ...inputStyle, maxWidth: 280 }} value={draft.translations.find((t) => t.language === activeLang)?.name || ''} onChange={(e) => setZoneTrans('new', activeLang, e.target.value)} placeholder={draft.name || 'Zone name'} />
+                  </div>
+                  <Button variant="dark" onClick={createZone} disabled={saving['new'] || !draft.name.trim()}>{saving['new'] ? 'Creating…' : 'Create Zone'}</Button>
+                </div>
+              </Panel>
+            );
+          })()}
+
+          {/* Existing zones */}
+          {zones.length === 0 && !showNewZone && (
+            <div style={{ padding: 32, textAlign: 'center', color: A.g400, fontFamily: 'Inter, sans-serif', fontSize: 14 }}>No zones yet. Click "+ Add Zone" to create the first one.</div>
+          )}
+          {zones.map((zone) => {
+            const open = expandedZone === zone.id;
+            const draft = zoneDrafts[zone.id];
+            const activeLang = zoneLang[zone.id] || 'en';
+            return (
+              <Panel key={zone.id}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px' }}>
+                  <div onClick={() => openZone(zone)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', flex: 1 }}>
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 700, color: A.black }}>{zone.name}</span>
+                    {zone.is_free ? <Badge color="green">Free</Badge> : <Badge color="orange">Paid</Badge>}
+                    {!zone.is_active && <Badge color="default">Inactive</Badge>}
+                    {zone.translations.length > 0 && <Badge color="blue">{zone.translations.length} langs</Badge>}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <Button variant="ghost" onClick={() => openZone(zone)}>{open ? 'Close' : 'Edit'}</Button>
+                    <Button variant="danger" onClick={() => deleteZone(zone.id)} disabled={deletingZoneId === zone.id}>{deletingZoneId === zone.id ? '…' : 'Delete'}</Button>
+                  </div>
+                </div>
+                {open && draft && (
+                  <div style={{ padding: '0 20px 20px', borderTop: `1px solid ${A.g200}` }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: 12, marginTop: 16, marginBottom: 16 }}>
+                      <div><label style={labelStyle}>Zone name</label><input style={inputStyle} value={draft.name} onChange={(e) => setZF(zone.id, 'name', e.target.value)} /></div>
+                      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                        <label style={{ ...labelStyle, marginBottom: 10 }}>Free delivery</label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: 13 }}>
+                          <input type="checkbox" checked={draft.is_free} onChange={(e) => setZF(zone.id, 'is_free', e.target.checked)} style={{ width: 16, height: 16 }} />
+                          Free delivery
+                        </label>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                        <label style={{ ...labelStyle, marginBottom: 10 }}>Active</label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: 13 }}>
+                          <input type="checkbox" checked={draft.is_active} onChange={(e) => setZF(zone.id, 'is_active', e.target.checked)} style={{ width: 16, height: 16 }} />
+                          Show on site
+                        </label>
+                      </div>
+                    </div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Name Translations</div>
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+                      {LANGUAGES.map((l) => {
+                        const t = draft.translations.find((x) => x.language === l);
+                        return (
+                          <button key={l} onClick={() => setZoneLang((p) => ({ ...p, [zone.id]: l }))} style={{ padding: '4px 12px', borderRadius: 20, border: `1px solid ${activeLang === l ? A.black : A.g300}`, background: activeLang === l ? A.black : A.white, color: activeLang === l ? A.white : A.g700, fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            {l.toUpperCase()} {t?.name.trim() && <span style={{ color: activeLang === l ? A.gold : A.green, fontSize: 10 }}>✓</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div style={{ marginBottom: 20 }}>
+                      <label style={labelStyle}>Name in {LANG_LABELS[activeLang]}</label>
+                      <input style={{ ...inputStyle, maxWidth: 280 }} value={draft.translations.find((t) => t.language === activeLang)?.name || ''} onChange={(e) => setZoneTrans(zone.id, activeLang, e.target.value)} placeholder={zone.name} />
+                      <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: A.g400, margin: '6px 0 0' }}>Leave empty to use the default "{zone.name}"</p>
+                    </div>
+                    <Button variant="dark" onClick={() => saveZone(zone.id)} disabled={saving[`z${zone.id}`]}>{saving[`z${zone.id}`] ? 'Saving…' : 'Save changes'}</Button>
+                  </div>
+                )}
+              </Panel>
+            );
+          })}
+        </div>
+    </div>
+  );
+}
+
+type AddonDraft = {
+  name: string;
+  description: string;
+  price_usd: string;
+  price_type: string;
+  is_active: boolean;
+  sort_order: number;
+  translations: { language: string; name: string; description: string }[];
+};
+
+function AddonsView({ isMobile }: { isMobile: boolean }) {
+  const [addons, setAddons] = useState<ApiAddon[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [activeLang, setActiveLang] = useState<Record<number, string>>({});
+  const [drafts, setDrafts] = useState<Record<number, AddonDraft>>({});
+  const [saving, setSaving] = useState<Record<number, boolean>>({});
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newAddon, setNewAddon] = useState<AddonDraft>({
+    name: '', description: '', price_usd: '0', price_type: 'per_day',
+    is_active: true, sort_order: 0,
+    translations: LANGUAGES.map((lang) => ({ language: lang, name: '', description: '' })),
+  });
+
+  const load = () => {
+    setLoading(true);
+    endpoints.adminAddons({ page_size: 100 })
+      .then((res) => setAddons(unwrapList(res)))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const openAddon = (addon: ApiAddon) => {
+    if (expandedId === addon.id) { setExpandedId(null); return; }
+    setExpandedId(addon.id);
+    if (!activeLang[addon.id]) setActiveLang((p) => ({ ...p, [addon.id]: 'en' }));
+    if (!drafts[addon.id]) {
+      const existingTrans = addon.translations || [];
+      setDrafts((p) => ({
+        ...p,
+        [addon.id]: {
+          name: addon.name,
+          description: addon.description || '',
+          price_usd: String(addon.price_usd || addon.priceUSD || 0),
+          price_type: addon.price_type || addon.priceType || 'per_day',
+          is_active: addon.is_active !== false,
+          sort_order: addon.sort_order || 0,
+          translations: LANGUAGES.map((lang) => {
+            const found = existingTrans.find((t) => t.language === lang);
+            return { language: lang, name: found?.name || '', description: found?.description || '' };
+          }),
+        },
+      }));
+    }
+  };
+
+  const setDraftField = (id: number, field: keyof Omit<AddonDraft, 'translations'>, value: string | boolean | number) => {
+    setDrafts((p) => ({ ...p, [id]: { ...p[id], [field]: value } }));
+  };
+
+  const setTransField = (id: number, lang: string, field: 'name' | 'description', value: string) => {
+    setDrafts((p) => ({
+      ...p,
+      [id]: {
+        ...p[id],
+        translations: p[id].translations.map((t) => t.language === lang ? { ...t, [field]: value } : t),
+      },
+    }));
+  };
+
+  const handleSave = async (addon: ApiAddon) => {
+    const draft = drafts[addon.id];
+    if (!draft) return;
+    setSaving((p) => ({ ...p, [addon.id]: true }));
+    try {
+      await endpoints.adminUpdateAddon(addon.id, {
+        name: draft.name,
+        description: draft.description,
+        price_usd: parseFloat(draft.price_usd) || 0,
+        price_type: draft.price_type,
+        is_active: draft.is_active,
+        sort_order: draft.sort_order,
+      });
+      const transToSave = draft.translations.filter((t) => t.name.trim() || t.description.trim());
+      if (transToSave.length > 0) {
+        await endpoints.adminSaveAddonTranslations(addon.id, transToSave);
+      }
+      load();
+      setExpandedId(null);
+      setDrafts((p) => { const n = { ...p }; delete n[addon.id]; return n; });
+    } catch {
+    } finally {
+      setSaving((p) => ({ ...p, [addon.id]: false }));
+    }
+  };
+
+  const handleCreate = async () => {
+    setCreating(true);
+    try {
+      const created = await endpoints.adminCreateAddon({
+        name: newAddon.name,
+        description: newAddon.description,
+        price_usd: parseFloat(newAddon.price_usd) || 0,
+        price_type: newAddon.price_type,
+        is_active: newAddon.is_active,
+        sort_order: newAddon.sort_order,
+      });
+      const transToSave = newAddon.translations.filter((t) => t.name.trim() || t.description.trim());
+      if (transToSave.length > 0) {
+        await endpoints.adminSaveAddonTranslations(created.id, transToSave);
+      }
+      setShowCreateForm(false);
+      setNewAddon({
+        name: '', description: '', price_usd: '0', price_type: 'per_day',
+        is_active: true, sort_order: 0,
+        translations: LANGUAGES.map((lang) => ({ language: lang, name: '', description: '' })),
+      });
+      load();
+    } catch {
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const inputStyle: CSSProperties = {
+    width: '100%', padding: '9px 12px', border: `1px solid ${A.g200}`, borderRadius: 8,
+    fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.black, outline: 'none', background: A.white,
+    boxSizing: 'border-box',
+  };
+  const labelStyle: CSSProperties = {
+    fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500,
+    letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6,
+  };
+
+  const AddonForm = ({ draft, addonId, onChange, onTransChange }: {
+    draft: AddonDraft;
+    addonId: number;
+    onChange: (field: keyof Omit<AddonDraft, 'translations'>, value: string | boolean | number) => void;
+    onTransChange: (lang: string, field: 'name' | 'description', value: string) => void;
+  }) => {
+    const lang = activeLang[addonId] || 'en';
+    const trans = draft.translations.find((t) => t.language === lang) || { language: lang, name: '', description: '' };
+    return (
+      <div style={{ padding: '16px 20px 20px', borderTop: `1px solid ${A.g200}` }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+          <div>
+            <label style={labelStyle}>Name (EN base)</label>
+            <input style={inputStyle} value={draft.name} onChange={(e) => onChange('name', e.target.value)} placeholder="Addon name" />
+          </div>
+          <div>
+            <label style={labelStyle}>Price (USD)</label>
+            <input style={inputStyle} type="number" step="0.01" value={draft.price_usd} onChange={(e) => onChange('price_usd', e.target.value)} />
+          </div>
+          <div>
+            <label style={labelStyle}>Price Type</label>
+            <select style={inputStyle} value={draft.price_type} onChange={(e) => onChange('price_type', e.target.value)}>
+              <option value="per_day">Per day</option>
+              <option value="fixed">Fixed</option>
+              <option value="per_trip">Per trip</option>
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Sort order</label>
+            <input style={inputStyle} type="number" value={draft.sort_order} onChange={(e) => onChange('sort_order', parseInt(e.target.value) || 0)} />
+          </div>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={labelStyle}>Description (EN base)</label>
+          <textarea style={{ ...inputStyle, minHeight: 64, resize: 'vertical' }} value={draft.description} onChange={(e) => onChange('description', e.target.value)} placeholder="Base description in English" />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+          <input type="checkbox" id={`active-${addonId}`} checked={draft.is_active} onChange={(e) => onChange('is_active', e.target.checked)} style={{ width: 16, height: 16 }} />
+          <label htmlFor={`active-${addonId}`} style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.black, cursor: 'pointer' }}>Active (visible to customers)</label>
+        </div>
+
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Translations</div>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
+          {LANGUAGES.map((l) => {
+            const t = draft.translations.find((x) => x.language === l);
+            const filled = !!(t?.name.trim() || t?.description.trim());
+            return (
+              <button key={l} onClick={() => setActiveLang((p) => ({ ...p, [addonId]: l }))}
+                style={{ padding: '4px 12px', borderRadius: 20, border: `1px solid ${lang === l ? A.black : A.g300}`,
+                  background: lang === l ? A.black : A.white, color: lang === l ? A.white : A.g700,
+                  fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                {l.toUpperCase()} {filled && <span style={{ color: lang === l ? A.gold : A.green, fontSize: 10 }}>✓</span>}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ background: A.g100, borderRadius: 10, padding: 14 }}>
+          <div style={{ marginBottom: 10 }}>
+            <label style={labelStyle}>Name ({lang.toUpperCase()})</label>
+            <input style={inputStyle} value={trans.name} onChange={(e) => onTransChange(lang, 'name', e.target.value)} placeholder={`Addon name in ${lang}`} />
+          </div>
+          <div>
+            <label style={labelStyle}>Description ({lang.toUpperCase()})</label>
+            <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} value={trans.description} onChange={(e) => onTransChange(lang, 'description', e.target.value)} placeholder={`Description in ${lang}`} />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ padding: isMobile ? 16 : 28, height: '100%', overflowY: 'auto' }}>
+      <SectionHeader
+        title="Add-ons Management"
+        subtitle="Manage add-ons with multilingual names and descriptions"
+        action={<Button variant="primary" onClick={() => setShowCreateForm(true)}>+ Add add-on</Button>}
+      />
+
+      {loading ? (
+        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: A.g500 }}>Loading…</p>
+      ) : addons.length === 0 ? (
+        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: A.g500 }}>No add-ons yet.</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {addons.map((addon) => {
+            const isExpanded = expandedId === addon.id;
+            const draft = drafts[addon.id];
+            const isSaving = saving[addon.id];
+            return (
+              <div key={addon.id} style={{ background: A.white, border: `1px solid ${isExpanded ? A.black : A.g200}`, borderRadius: 12, overflow: 'hidden', transition: 'border-color 0.15s' }}>
+                <div
+                  onClick={() => openAddon(addon)}
+                  style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer' }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 14, color: A.black }}>{addon.name}</div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginTop: 2 }}>
+                      ${Number(addon.price_usd || addon.priceUSD || 0).toFixed(2)} · {addon.price_type || 'per_day'}
+                      {addon.is_active === false && <span style={{ marginLeft: 8, color: A.red }}>inactive</span>}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {(addon.translations?.length ?? 0) > 0 && (
+                      <Badge color="green">{addon.translations!.length} langs</Badge>
+                    )}
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 18, color: A.g400, lineHeight: 1 }}>{isExpanded ? '▲' : '▼'}</span>
+                  </div>
+                </div>
+
+                {isExpanded && draft && (
+                  <>
+                    <AddonForm
+                      draft={draft}
+                      addonId={addon.id}
+                      onChange={(field, value) => setDraftField(addon.id, field, value)}
+                      onTransChange={(lang, field, value) => setTransField(addon.id, lang, field, value)}
+                    />
+                    <div style={{ padding: '12px 20px 16px', display: 'flex', gap: 10, justifyContent: 'flex-end', borderTop: `1px solid ${A.g200}` }}>
+                      <Button variant="outline" onClick={() => { setExpandedId(null); setDrafts((p) => { const n = { ...p }; delete n[addon.id]; return n; }); }}>Cancel</Button>
+                      <Button variant="primary" disabled={isSaving} onClick={() => handleSave(addon)}>{isSaving ? 'Saving…' : 'Save'}</Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {showCreateForm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px', overflowY: 'auto' }}>
+          <div style={{ background: A.white, borderRadius: 16, padding: 28, width: '100%', maxWidth: 720, position: 'relative' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <h3 style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18, color: A.black, margin: 0 }}>New Add-on</h3>
+              <Button variant="ghost" onClick={() => setShowCreateForm(false)}>✕</Button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div>
+                <label style={labelStyle}>Name (EN base)</label>
+                <input style={inputStyle} value={newAddon.name} onChange={(e) => setNewAddon((p) => ({ ...p, name: e.target.value }))} placeholder="Addon name" />
+              </div>
+              <div>
+                <label style={labelStyle}>Price (USD)</label>
+                <input style={inputStyle} type="number" step="0.01" value={newAddon.price_usd} onChange={(e) => setNewAddon((p) => ({ ...p, price_usd: e.target.value }))} />
+              </div>
+              <div>
+                <label style={labelStyle}>Price Type</label>
+                <select style={inputStyle} value={newAddon.price_type} onChange={(e) => setNewAddon((p) => ({ ...p, price_type: e.target.value }))}>
+                  <option value="per_day">Per day</option>
+                  <option value="fixed">Fixed</option>
+                  <option value="per_trip">Per trip</option>
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Sort order</label>
+                <input style={inputStyle} type="number" value={newAddon.sort_order} onChange={(e) => setNewAddon((p) => ({ ...p, sort_order: parseInt(e.target.value) || 0 }))} />
+              </div>
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Description (EN base)</label>
+              <textarea style={{ ...inputStyle, minHeight: 64, resize: 'vertical' }} value={newAddon.description} onChange={(e) => setNewAddon((p) => ({ ...p, description: e.target.value }))} placeholder="Base description in English" />
+            </div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Translations</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {newAddon.translations.map((t) => (
+                <div key={t.language} style={{ background: A.g100, borderRadius: 10, padding: 14 }}>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 700, color: A.g700, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t.language}</div>
+                  <div style={{ marginBottom: 8 }}>
+                    <input style={inputStyle} placeholder={`Name in ${t.language}`} value={t.name}
+                      onChange={(e) => setNewAddon((p) => ({ ...p, translations: p.translations.map((x) => x.language === t.language ? { ...x, name: e.target.value } : x) }))} />
+                  </div>
+                  <textarea style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} placeholder={`Description in ${t.language}`} value={t.description}
+                    onChange={(e) => setNewAddon((p) => ({ ...p, translations: p.translations.map((x) => x.language === t.language ? { ...x, description: e.target.value } : x) }))} />
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 24, justifyContent: 'flex-end' }}>
+              <Button variant="outline" onClick={() => setShowCreateForm(false)}>Cancel</Button>
+              <Button variant="primary" onClick={handleCreate} disabled={creating || !newAddon.name.trim()}>{creating ? 'Creating…' : 'Create'}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function NewsView({ isMobile }: { isMobile: boolean }) {
   const [articles, setArticles] = useState<ApiNewsArticle[]>([]);
@@ -672,6 +1235,288 @@ function NewsView({ isMobile }: { isMobile: boolean }) {
   );
 }
 
+// ─── Promo Codes ──────────────────────────────────────────────────────────────
+
+type PromoCodeDraft = {
+  id: number | null;
+  code: string;
+  discount_type: 'PERCENT' | 'FIXED';
+  discount_value: string;
+  starts_at: string;
+  ends_at: string;
+  usage_limit: string;
+  current_usage: number;
+  min_booking_amount: string;
+  max_discount_amount: string;
+  is_active: boolean;
+};
+
+function isoToLocal(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function emptyPromoCodeDraft(): PromoCodeDraft {
+  return { id: null, code: '', discount_type: 'PERCENT', discount_value: '', starts_at: '', ends_at: '', usage_limit: '100', current_usage: 0, min_booking_amount: '0', max_discount_amount: '', is_active: true };
+}
+
+function draftFromPromoCode(item: ApiPromoCode): PromoCodeDraft {
+  return {
+    id: item.id,
+    code: item.code,
+    discount_type: item.discount_type,
+    discount_value: String(item.discount_value),
+    starts_at: isoToLocal(item.starts_at),
+    ends_at: isoToLocal(item.ends_at),
+    usage_limit: String(item.usage_limit),
+    current_usage: item.current_usage,
+    min_booking_amount: String(item.min_booking_amount),
+    max_discount_amount: item.max_discount_amount != null ? String(item.max_discount_amount) : '',
+    is_active: item.is_active,
+  };
+}
+
+function PromoCodesView({ isMobile }: { isMobile: boolean }) {
+  const inputStyle: CSSProperties = { width: '100%', padding: '9px 12px', border: `1px solid ${A.g200}`, borderRadius: 8, fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.black, outline: 'none', background: A.white, boxSizing: 'border-box' };
+  const labelStyle: CSSProperties = { fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 };
+
+  const [codes, setCodes] = useState<ApiPromoCode[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<number | null>(null);
+  const [formError, setFormError] = useState('');
+  const [draft, setDraft] = useState<PromoCodeDraft>(emptyPromoCodeDraft);
+
+  function load() {
+    setLoading(true);
+    endpoints.adminPromoCodes({ page_size: 200 })
+      .then((res) => setCodes(unwrapList(res)))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { load(); }, []);
+
+  function upd<K extends keyof PromoCodeDraft>(key: K, value: PromoCodeDraft[K]) {
+    setDraft((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function handleSelect(item: ApiPromoCode) {
+    setDraft(draftFromPromoCode(item));
+    setFormError('');
+  }
+
+  function handleNew() {
+    setDraft(emptyPromoCodeDraft());
+    setFormError('');
+  }
+
+  async function handleSave() {
+    setFormError('');
+    if (!draft.code.trim()) { setFormError('Code is required'); return; }
+    if (!draft.discount_value) { setFormError('Discount value is required'); return; }
+    setSaving(true);
+    try {
+      const payload: PromoCodePayload = {
+        code: draft.code.trim().toUpperCase(),
+        discount_type: draft.discount_type,
+        discount_value: draft.discount_value,
+        is_active: draft.is_active,
+        usage_limit: Number(draft.usage_limit) || 1,
+        min_booking_amount: draft.min_booking_amount || '0',
+        max_discount_amount: draft.max_discount_amount ? draft.max_discount_amount : null,
+        starts_at: draft.starts_at ? new Date(draft.starts_at).toISOString() : null,
+        ends_at: draft.ends_at ? new Date(draft.ends_at).toISOString() : null,
+      };
+      const saved = draft.id
+        ? await endpoints.adminUpdatePromoCode(draft.id, payload)
+        : await endpoints.adminCreatePromoCode(payload);
+      setDraft(draftFromPromoCode(saved));
+      load();
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!draft.id) return;
+    if (!window.confirm(`Delete promo code "${draft.code}"?`)) return;
+    setDeleting(draft.id);
+    try {
+      await endpoints.adminDeletePromoCode(draft.id);
+      setDraft(emptyPromoCodeDraft());
+      load();
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Delete failed');
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+  function formatDate(iso: string | null | undefined) {
+    if (!iso) return '∞';
+    return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(iso));
+  }
+
+  return (
+    <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? '20px 16px' : '28px 32px' }}>
+      <SectionHeader
+        title="Promo Codes"
+        subtitle={`${codes.length} codes — percentage or fixed discounts for customers`}
+        action={<Button variant="dark" onClick={handleNew}>New code</Button>}
+      />
+
+      {loading ? (
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: A.g500, padding: 24 }}>Loading…</div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.5fr 0.5fr', gap: 16, alignItems: 'start' }}>
+          {/* List */}
+          <div>
+            {codes.length === 0 ? (
+              <div style={{ background: A.white, borderRadius: 14, border: `1px solid ${A.g200}`, padding: 24, fontFamily: 'Inter, sans-serif', fontSize: 14, color: A.g500 }}>
+                No promo codes yet. Create the first one.
+              </div>
+            ) : (
+              <div style={{ background: A.white, borderRadius: 14, border: `1px solid ${A.g200}`, overflow: 'hidden' }}>
+                {!isMobile && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 0.8fr 0.9fr 0.8fr', gap: 12, padding: '10px 20px', background: A.g100, borderBottom: `1px solid ${A.g200}` }}>
+                    {['Code', 'Discount', 'Usage', 'Valid Until', 'Status'].map((h) => (
+                      <div key={h} style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: A.g500 }}>{h}</div>
+                    ))}
+                  </div>
+                )}
+                {codes.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => handleSelect(item)}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: isMobile ? '1fr auto' : '1.2fr 1fr 0.8fr 0.9fr 0.8fr',
+                      gap: 12,
+                      padding: '13px 20px',
+                      borderBottom: `1px solid ${A.g200}`,
+                      cursor: 'pointer',
+                      background: draft.id === item.id ? 'rgba(255,215,0,0.06)' : A.white,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 14, color: A.black, letterSpacing: '0.04em' }}>{item.code}</div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700 }}>
+                      {item.discount_type === 'PERCENT'
+                        ? <><strong style={{ color: A.black }}>{item.discount_value}%</strong> <span style={{ color: A.g500, fontSize: 11 }}>off</span></>
+                        : <><strong style={{ color: A.black }}>${item.discount_value}</strong> <span style={{ color: A.g500, fontSize: 11 }}>fixed</span></>
+                      }
+                    </div>
+                    {!isMobile && <>
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700 }}>
+                        <span style={{ fontWeight: 700 }}>{item.current_usage}</span>
+                        <span style={{ color: A.g500 }}> / {item.usage_limit}</span>
+                      </div>
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>{formatDate(item.ends_at)}</div>
+                    </>}
+                    <Badge color={item.is_active ? 'green' : 'default'}>{item.is_active ? 'Active' : 'Off'}</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Form */}
+          <div style={{ background: A.white, borderRadius: 14, border: `1px solid ${A.g200}`, padding: 20, position: isMobile ? 'static' : 'sticky', top: 24 }}>
+            <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 16, color: A.black, marginBottom: 4 }}>
+              {draft.id ? `Edit: ${draft.code}` : 'New Promo Code'}
+            </div>
+            {draft.id ? (
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginBottom: 16 }}>
+                Used {draft.current_usage} / {draft.usage_limit} times
+              </div>
+            ) : (
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginBottom: 16 }}>Fill in the fields below</div>
+            )}
+
+            {formError && (
+              <div style={{ marginBottom: 14, background: A.redBg, color: A.red, borderRadius: 8, padding: '10px 14px', fontFamily: 'Inter, sans-serif', fontSize: 13 }}>
+                {formError}
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gap: 14 }}>
+              <div>
+                <label style={labelStyle}>Promo code</label>
+                <input style={inputStyle} value={draft.code} onChange={(e) => upd('code', e.target.value.toUpperCase())} placeholder="SUMMER20" />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={labelStyle}>Type</label>
+                  <select style={inputStyle} value={draft.discount_type} onChange={(e) => upd('discount_type', e.target.value as 'PERCENT' | 'FIXED')}>
+                    <option value="PERCENT">Percent (%)</option>
+                    <option value="FIXED">Fixed ($)</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>{draft.discount_type === 'PERCENT' ? 'Discount %' : 'Discount $'}</label>
+                  <input style={inputStyle} type="number" min="0" step={draft.discount_type === 'PERCENT' ? '1' : '0.01'} max={draft.discount_type === 'PERCENT' ? '100' : undefined} value={draft.discount_value} onChange={(e) => upd('discount_value', e.target.value)} placeholder={draft.discount_type === 'PERCENT' ? '20' : '10.00'} />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={labelStyle}>Start date</label>
+                  <input style={inputStyle} type="datetime-local" value={draft.starts_at} onChange={(e) => upd('starts_at', e.target.value)} />
+                </div>
+                <div>
+                  <label style={labelStyle}>End date</label>
+                  <input style={inputStyle} type="datetime-local" value={draft.ends_at} onChange={(e) => upd('ends_at', e.target.value)} />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={labelStyle}>Usage limit</label>
+                  <input style={inputStyle} type="number" min="1" value={draft.usage_limit} onChange={(e) => upd('usage_limit', e.target.value)} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Min order, $</label>
+                  <input style={inputStyle} type="number" min="0" step="0.01" value={draft.min_booking_amount} onChange={(e) => upd('min_booking_amount', e.target.value)} />
+                </div>
+              </div>
+
+              {draft.discount_type === 'PERCENT' && (
+                <div>
+                  <label style={labelStyle}>Max discount, $ (optional)</label>
+                  <input style={inputStyle} type="number" min="0" step="0.01" value={draft.max_discount_amount} onChange={(e) => upd('max_discount_amount', e.target.value)} placeholder="No limit" />
+                </div>
+              )}
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.black, cursor: 'pointer' }}>
+                <input type="checkbox" checked={draft.is_active} onChange={(e) => upd('is_active', e.target.checked)} style={{ width: 15, height: 15 }} />
+                Active (visible to users)
+              </label>
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 4, borderTop: `1px solid ${A.g200}` }}>
+                <Button variant="primary" size="md" disabled={saving} onClick={handleSave}>
+                  {saving ? 'Saving…' : draft.id ? 'Save changes' : 'Create code'}
+                </Button>
+                <Button variant="outline" size="md" onClick={handleNew}>Reset</Button>
+                {draft.id && (
+                  <Button variant="danger" size="md" disabled={deleting === draft.id} onClick={handleDelete}>
+                    {deleting === draft.id ? 'Deleting…' : 'Delete'}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const { user, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
@@ -756,6 +1601,7 @@ export default function AdminPage() {
         auditLogs: auditR.status === 'fulfilled' ? unwrapList(auditR.value) : [],
         loginLogs: loginR.status === 'fulfilled' ? unwrapList(loginR.value) : [],
         webhookLogs: webhookR.status === 'fulfilled' ? unwrapList(webhookR.value) : [],
+        promocodes: [],
       };
 
       setData(next);
@@ -968,6 +1814,9 @@ export default function AdminPage() {
       />
     ),
     news: <NewsView isMobile={isMobile} />,
+    addons: <AddonsView isMobile={isMobile} />,
+    locations: <LocationsView isMobile={isMobile} />,
+    promocodes: <PromoCodesView isMobile={isMobile} />,
   };
 
   const sidebarContent = (

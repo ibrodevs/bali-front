@@ -77,6 +77,7 @@ export type ApiScooterDetail = ApiScooter & {
   available_addons?: ApiAddon[];
   rental_terms?: string;
   model_info?: Partial<ApiVehicleModel>;
+  translations?: ApiVehicleTranslation[];
 };
 
 export type ApiAddon = {
@@ -94,6 +95,7 @@ export type ApiAddon = {
   is_active?: boolean;
   sort_order?: number;
   image?: string;
+  translations?: ApiAddonTranslation[];
 };
 
 export type AdminAddonPayload = {
@@ -466,6 +468,79 @@ export type AdminScooterPayload = {
   is_featured: boolean;
 };
 
+export type ApiVehicleTranslation = {
+  language: string;
+  title: string;
+  description: string;
+  rental_terms: string;
+  transmission?: string;
+  trunk?: string;
+};
+
+export type ApiAddonTranslation = {
+  language: string;
+  name: string;
+  description: string;
+};
+
+export type ApiLocationSection = {
+  id: number;
+  language: string;
+  title1: string;
+  title2: string;
+  description: string;
+  map_eyebrow: string;
+  map_region: string;
+  zones_label: string;
+  zones_title: string;
+  zones_desc: string;
+  is_active: boolean;
+  updated_at?: string;
+};
+
+export type ApiAdminDeliveryZoneTranslation = {
+  id?: number;
+  language: string;
+  name: string;
+};
+
+export type ApiAdminDeliveryZone = {
+  id: number;
+  name: string;
+  is_free: boolean;
+  is_active: boolean;
+  translations: ApiAdminDeliveryZoneTranslation[];
+};
+
+export type ApiPromoCode = {
+  id: number;
+  code: string;
+  discount_type: 'PERCENT' | 'FIXED';
+  discount_value: string | number;
+  starts_at: string | null;
+  ends_at: string | null;
+  usage_limit: number;
+  current_usage: number;
+  min_booking_amount: string | number;
+  max_discount_amount: string | number | null;
+  is_active: boolean;
+  campaign?: number | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type PromoCodePayload = {
+  code: string;
+  discount_type: 'PERCENT' | 'FIXED';
+  discount_value: string | number;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  usage_limit?: number;
+  min_booking_amount?: string | number;
+  max_discount_amount?: string | number | null;
+  is_active?: boolean;
+};
+
 export const endpoints = {
   bootstrap: (lang?: string) => api<ApiBootstrap>('/public/bootstrap/', { lang }),
 
@@ -605,6 +680,18 @@ export const endpoints = {
   adminDeleteScooterImage: (imageId: number | string) =>
     api<void>(`/admin/scooter-images/${imageId}/`, { method: 'DELETE', auth: true }),
 
+  adminScooterTranslations: (id: number | string) =>
+    api<ApiVehicleTranslation[]>(`/admin/scooters/${id}/translations/`, { auth: true }),
+  adminSaveScooterTranslations: (id: number | string, translations: ApiVehicleTranslation[]) =>
+    api<{ status: string }>(`/admin/scooters/${id}/translations/`, { method: 'POST', body: translations, auth: true }),
+  adminUpdateScooterModel: (modelId: number | string, body: Partial<AdminScooterModelPayload>) =>
+    api<ApiVehicleModel>(`/scooter-models/${modelId}/`, { method: 'PATCH', body, auth: true }),
+
+  adminAddonTranslations: (id: number | string) =>
+    api<ApiAddonTranslation[]>(`/add-ons/${id}/translations/`, { auth: true }),
+  adminSaveAddonTranslations: (id: number | string, translations: ApiAddonTranslation[]) =>
+    api<{ status: string }>(`/add-ons/${id}/translations/`, { method: 'POST', body: translations, auth: true }),
+
   adminChatMessages: (threadId: number | string, params?: { page_size?: number }) =>
     api<Paginated<ApiChatMessage> | ApiChatMessage[]>('/admin/chat/messages/', {
       auth: true,
@@ -665,6 +752,36 @@ export const endpoints = {
     api<ApiNewsArticle>(`/admin/content/news/${id}/`, { method: 'PATCH', body, auth: true }),
   adminDeleteNews: (id: number | string) =>
     api<void>(`/admin/content/news/${id}/`, { method: 'DELETE', auth: true }),
+
+  // Location Section (admin)
+  adminLocationSections: () =>
+    api<Paginated<ApiLocationSection> | ApiLocationSection[]>('/admin/content/location-sections/', { auth: true, query: { page_size: 100 } }),
+  adminCreateLocationSection: (body: Partial<ApiLocationSection>) =>
+    api<ApiLocationSection>('/admin/content/location-sections/', { method: 'POST', body, auth: true }),
+  adminUpdateLocationSection: (id: number | string, body: Partial<ApiLocationSection>) =>
+    api<ApiLocationSection>(`/admin/content/location-sections/${id}/`, { method: 'PATCH', body, auth: true }),
+  adminDeleteLocationSection: (id: number | string) =>
+    api<void>(`/admin/content/location-sections/${id}/`, { method: 'DELETE', auth: true }),
+
+  // Delivery Zones with translations (admin)
+  adminDeliveryZones: () =>
+    api<Paginated<ApiAdminDeliveryZone> | ApiAdminDeliveryZone[]>('/admin/content/delivery-zones/', { auth: true, query: { page_size: 200 } }),
+  adminCreateDeliveryZone: (body: Partial<ApiAdminDeliveryZone>) =>
+    api<ApiAdminDeliveryZone>('/admin/content/delivery-zones/', { method: 'POST', body, auth: true }),
+  adminUpdateDeliveryZone: (id: number | string, body: Partial<ApiAdminDeliveryZone>) =>
+    api<ApiAdminDeliveryZone>(`/admin/content/delivery-zones/${id}/`, { method: 'PATCH', body, auth: true }),
+  adminDeleteDeliveryZone: (id: number | string) =>
+    api<void>(`/admin/content/delivery-zones/${id}/`, { method: 'DELETE', auth: true }),
+
+  // Promo codes (admin)
+  adminPromoCodes: (params?: { page_size?: number }) =>
+    api<Paginated<ApiPromoCode> | ApiPromoCode[]>('/admin/marketing/promocodes/', { auth: true, query: params }),
+  adminCreatePromoCode: (body: PromoCodePayload) =>
+    api<ApiPromoCode>('/admin/marketing/promocodes/', { method: 'POST', body, auth: true }),
+  adminUpdatePromoCode: (id: number | string, body: Partial<PromoCodePayload>) =>
+    api<ApiPromoCode>(`/admin/marketing/promocodes/${id}/`, { method: 'PATCH', body, auth: true }),
+  adminDeletePromoCode: (id: number | string) =>
+    api<void>(`/admin/marketing/promocodes/${id}/`, { method: 'DELETE', auth: true }),
 };
 
 export type BookingCreatePayload = {

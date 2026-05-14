@@ -29,10 +29,17 @@ type Zone = {
   timeMinutes?: number;
 };
 
+type LocationOverrides = {
+  title1?: string; title2?: string; desc?: string;
+  mapEyebrow?: string; mapRegion?: string;
+  zonesLabel?: string; zonesTitle?: string; zonesDesc?: string;
+};
+
 export default function LocationsPage() {
   const { t, locale } = useLocale();
   const { convertPrice, symbol } = useCurrency();
   const [zones, setZones] = useState<Zone[]>([]);
+  const [locOver, setLocOver] = useState<LocationOverrides>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -42,14 +49,15 @@ export default function LocationsPage() {
         if (bootstrap.deliveryZones?.length) {
           setZones(
             bootstrap.deliveryZones.map((z) => ({
-              id: z.id,
-              name: z.name,
+              id: z.id, name: z.name,
               freeDelivery: z.freeDelivery,
               deliveryFeeUSD: z.deliveryFeeUSD,
               timeMinutes: z.timeMinutes,
             })),
           );
         }
+        const ls = (bootstrap as Record<string, unknown>).locationSection;
+        if (ls && typeof ls === 'object') setLocOver(ls as LocationOverrides);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -110,8 +118,8 @@ export default function LocationsPage() {
               lineHeight: 0.92, letterSpacing: '-0.04em', fontWeight: 800,
             }}
           >
-            {t.delivery.title1}<br />
-            <span style={{ color: '#FFD700' }}>{t.delivery.title2}</span>
+            {locOver.title1 || t.delivery.title1}<br />
+            <span style={{ color: '#FFD700' }}>{locOver.title2 || t.delivery.title2}</span>
           </motion.h1>
 
           <motion.p
@@ -124,7 +132,7 @@ export default function LocationsPage() {
               maxWidth: 540, lineHeight: 1.6, margin: '0 0 36px',
             }}
           >
-            {t.delivery.desc}
+            {locOver.desc || t.delivery.desc}
           </motion.p>
 
           <motion.div
@@ -170,34 +178,38 @@ export default function LocationsPage() {
               marginBottom: 16, display: 'inline-flex', alignItems: 'center', gap: 10,
             }}>
               <span style={{ width: 28, height: 1, background: '#000' }} />
-              <span>{deliveryCopy.zonesLabel}</span>
+              <span>{locOver.zonesLabel || deliveryCopy.zonesLabel}</span>
             </motion.div>
             <motion.h2 variants={fadeUp} className="br-display" style={{
               margin: '0 0 12px',
               fontSize: 'clamp(32px, 5.5vw, 64px)',
               lineHeight: 0.97, letterSpacing: '-0.035em', color: '#0A0A0F',
             }}>
-              {deliveryCopy.zonesTitle}
+              {locOver.zonesTitle || deliveryCopy.zonesTitle}
             </motion.h2>
             <motion.p variants={fadeUp} style={{
               fontSize: 'clamp(14px, 1.4vw, 16px)', color: 'rgba(0,0,0,0.52)',
               maxWidth: 480, lineHeight: 1.6, margin: 0,
             }}>
-              {deliveryCopy.zonesDesc}
+              {locOver.zonesDesc || deliveryCopy.zonesDesc}
             </motion.p>
           </motion.div>
 
-          <motion.div
-            variants={stagger} initial="hidden" whileInView="visible"
-            viewport={{ once: true, margin: '-40px' }}
+          <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
               gap: 16,
             }}
           >
             {activeZones.map((zone, i) => (
-              <motion.div key={zone.id} variants={fadeUp}>
+              <motion.div
+                key={zone.id}
+                initial={{ opacity: 0, y: 28 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.1 }}
+                transition={{ duration: 0.55, delay: (i % 5) * 0.06, ease: [0.16, 1, 0.3, 1] }}
+              >
                 <div style={{
                   padding: '24px 20px',
                   background: '#FAFAF5',
@@ -262,7 +274,7 @@ export default function LocationsPage() {
                 </div>
               </motion.div>
             ))}
-          </motion.div>
+          </div>
         </div>
       </section>
 
