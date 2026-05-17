@@ -19,6 +19,7 @@ import {
   UsersIcon,
 } from '@/components/Icons';
 import {
+  ApiAdminSiteContentEntry,
   ApiAnalyticsFunnel,
   ApiAnalyticsRevenue,
   AdminScooterPayload,
@@ -44,6 +45,7 @@ import {
   unwrapList,
 } from '@/lib/endpoints';
 import { useAuth } from '@/lib/i18n/AuthProvider';
+import { SITE_CONTENT_FIELDS, SITE_CONTENT_LANGUAGES, SITE_CONTENT_PAGES, getDefaultSiteContentValue } from '@/lib/siteContentSchema';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 function useWindowWidth() {
@@ -78,7 +80,7 @@ const A = {
   orangeBg: '#fff7ed',
 };
 
-type AdminView = 'overview' | 'bookings' | 'fleet' | 'calendar' | 'crm' | 'analytics' | 'support' | 'news' | 'addons' | 'locations' | 'promocodes';
+type AdminView = 'overview' | 'bookings' | 'fleet' | 'calendar' | 'crm' | 'analytics' | 'support' | 'news' | 'addons' | 'locations' | 'site' | 'promocodes';
 
 const NAV: { id: AdminView; icon: ReactNode; label: string }[] = [
   { id: 'overview', icon: <OverviewIcon size={18} />, label: 'Overview' },
@@ -91,6 +93,7 @@ const NAV: { id: AdminView; icon: ReactNode; label: string }[] = [
   { id: 'news', icon: <TagIcon size={18} />, label: 'News' },
   { id: 'addons', icon: <DiamondIcon size={18} />, label: 'Add-ons' },
   { id: 'locations', icon: <EyeIcon size={18} />, label: 'Locations' },
+  { id: 'site', icon: <EyeIcon size={18} />, label: 'Site Content' },
   { id: 'promocodes', icon: <DollarIcon size={18} />, label: 'Promo Codes' },
 ];
 
@@ -1816,6 +1819,7 @@ export default function AdminPage() {
     news: <NewsView isMobile={isMobile} />,
     addons: <AddonsView isMobile={isMobile} />,
     locations: <LocationsView isMobile={isMobile} />,
+    site: <SiteContentView isMobile={isMobile} />,
     promocodes: <PromoCodesView isMobile={isMobile} />,
   };
 
@@ -2038,6 +2042,542 @@ function FullScreenMessage({ title, subtitle, action }: { title: string; subtitl
         </p>
         {action ? <div style={{ display: 'flex', justifyContent: 'center' }}>{action}</div> : null}
       </Panel>
+    </div>
+  );
+}
+
+function SiteContentView({ isMobile }: { isMobile: boolean }) {
+  const [entries, setEntries] = useState<ApiAdminSiteContentEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [activePage, setActivePage] = useState<string>(SITE_CONTENT_PAGES[0]?.key || 'home');
+  const [activeLanguage, setActiveLanguage] = useState<string>('en');
+  const [search, setSearch] = useState('');
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [mediaFiles, setMediaFiles] = useState<Record<string, File | null>>({});
+  const [error, setError] = useState<string | null>(null);
+
+  const entryMap = useMemo(() => {
+    const map = new Map<string, ApiAdminSiteContentEntry>();
+    for (const entry of entries) {
+      map.set(`${entry.language}:${entry.key}`, entry);
+    }
+    return map;
+  }, [entries]);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    endpoints.adminSiteContent()
+      .then((response) => setEntries(unwrapList(response)))
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Unable to load site content'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const activePageMeta = useMemo(
+    () => SITE_CONTENT_PAGES.find((page) => page.key === activePage) || SITE_CONTENT_PAGES[0],
+    [activePage],
+  );
+
+  const fields = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return SITE_CONTENT_FIELDS.filter((field) => {
+      if (field.pageKey !== activePage) return false;
+      if (!query) return true;
+      return field.label.toLowerCase().includes(query) || field.key.toLowerCase().includes(query);
+    });
+  }, [activePage, search]);
+
+  const groupedFields = useMemo(() => {
+    const groups = new Map<string, { sectionLabel: string; fields: typeof fields }>();
+    for (const field of fields) {
+      const current = groups.get(field.sectionKey);
+      if (current) {
+        current.fields.push(field);
+      } else {
+        groups.set(field.sectionKey, { sectionLabel: field.sectionLabel, fields: [field] });
+      }
+    }
+    return Array.from(groups.entries())
+      .map(([sectionKey, value]) => ({ sectionKey, sectionLabel: value.sectionLabel, fields: value.fields }))
+      .sort((a, b) => a.sectionLabel.localeCompare(b.sectionLabel));
+  }, [fields]);
+
+  const pageCounts = useMemo(() => {
+    const counts = new Map<string, { total: number; customized: number }>();
+    for (const page of SITE_CONTENT_PAGES) {
+      counts.set(page.key, { total: 0, customized: 0 });
+    }
+    for (const field of SITE_CONTENT_FIELDS) {
+      const current = counts.get(field.pageKey);
+      if (current) current.total += 1;
+      const entry = entryMap.get(`${field.shared ? 'all' : activeLanguage}:${field.key}`);
+      if (entry && current) current.customized += 1;
+    }
+    return counts;
+  }, [entryMap, activeLanguage]);
+
+  function fieldLanguage(field: typeof SITE_CONTENT_FIELDS[number]) {
+    return field.shared ? 'all' : activeLanguage;
+  }
+
+  function fieldStateKey(field: typeof SITE_CONTENT_FIELDS[number]) {
+    return `${fieldLanguage(field)}:${field.key}`;
+  }
+
+  function fieldEntry(field: typeof SITE_CONTENT_FIELDS[number]) {
+    return entryMap.get(fieldStateKey(field)) || null;
+  }
+
+  function defaultTextValue(field: typeof SITE_CONTENT_FIELDS[number]) {
+    const lang = field.shared ? 'en' : (activeLanguage as 'en' | 'ru' | 'zh' | 'id' | 'de' | 'fr');
+    const defaultValue = getDefaultSiteContentValue(field.key, lang);
+    if (field.valueType === 'json') return JSON.stringify(defaultValue ?? null, null, 2);
+    if (typeof defaultValue === 'string') return defaultValue;
+    return defaultValue == null ? '' : String(defaultValue);
+  }
+
+  function resolveDraftValue(field: typeof SITE_CONTENT_FIELDS[number]) {
+    const stateKey = fieldStateKey(field);
+    if (drafts[stateKey] !== undefined) return drafts[stateKey];
+
+    const entry = fieldEntry(field);
+    if (!entry) return defaultTextValue(field);
+    if (field.valueType === 'json') return JSON.stringify(entry.json_value ?? null, null, 2);
+    if (field.valueType === 'image' || field.valueType === 'video' || field.valueType === 'file') {
+      return entry.value || entry.media_url || defaultTextValue(field);
+    }
+    return entry.value ?? '';
+  }
+
+  async function saveField(field: typeof SITE_CONTENT_FIELDS[number]) {
+    const stateKey = fieldStateKey(field);
+    const language = fieldLanguage(field);
+    const existing = fieldEntry(field);
+    const draftValue = resolveDraftValue(field);
+
+    setSavingKey(stateKey);
+    setError(null);
+
+    try {
+      if (field.valueType === 'json') {
+        const parsed = draftValue.trim() ? JSON.parse(draftValue) : null;
+        const body = {
+          key: field.key,
+          language,
+          value_type: field.valueType,
+          value: '',
+          json_value: parsed,
+          is_active: true,
+        };
+        const saved = existing
+          ? await endpoints.adminUpdateSiteContent(existing.id, body)
+          : await endpoints.adminCreateSiteContent(body);
+        setEntries((current) => {
+          const next = current.filter((item) => item.id !== saved.id);
+          next.push(saved);
+          return next.sort((a, b) => `${a.key}:${a.language}`.localeCompare(`${b.key}:${b.language}`));
+        });
+        return;
+      }
+
+      if (field.valueType === 'image' || field.valueType === 'video' || field.valueType === 'file') {
+        const body = new FormData();
+        body.append('key', field.key);
+        body.append('language', language);
+        body.append('value_type', field.valueType);
+        body.append('value', draftValue.trim());
+        body.append('is_active', 'true');
+        const file = mediaFiles[stateKey];
+        if (file) body.append('media', file);
+
+        const saved = existing
+          ? await endpoints.adminUpdateSiteContent(existing.id, body)
+          : await endpoints.adminCreateSiteContent(body);
+        setEntries((current) => {
+          const next = current.filter((item) => item.id !== saved.id);
+          next.push(saved);
+          return next.sort((a, b) => `${a.key}:${a.language}`.localeCompare(`${b.key}:${b.language}`));
+        });
+        setMediaFiles((current) => ({ ...current, [stateKey]: null }));
+        return;
+      }
+
+      const body = {
+        key: field.key,
+        language,
+        value_type: field.valueType,
+        value: draftValue,
+        is_active: true,
+      };
+      const saved = existing
+        ? await endpoints.adminUpdateSiteContent(existing.id, body)
+        : await endpoints.adminCreateSiteContent(body);
+      setEntries((current) => {
+        const next = current.filter((item) => item.id !== saved.id);
+        next.push(saved);
+        return next.sort((a, b) => `${a.key}:${a.language}`.localeCompare(`${b.key}:${b.language}`));
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to save content');
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  async function resetField(field: typeof SITE_CONTENT_FIELDS[number]) {
+    const existing = fieldEntry(field);
+    if (!existing) {
+      const stateKey = fieldStateKey(field);
+      setDrafts((current) => {
+        const next = { ...current };
+        delete next[stateKey];
+        return next;
+      });
+      setMediaFiles((current) => ({ ...current, [stateKey]: null }));
+      return;
+    }
+
+    setSavingKey(fieldStateKey(field));
+    setError(null);
+    try {
+      await endpoints.adminDeleteSiteContent(existing.id);
+      setEntries((current) => current.filter((item) => item.id !== existing.id));
+      const stateKey = fieldStateKey(field);
+      setDrafts((current) => {
+        const next = { ...current };
+        delete next[stateKey];
+        return next;
+      });
+      setMediaFiles((current) => ({ ...current, [stateKey]: null }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to reset content');
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  return (
+    <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? 16 : '28px 32px' }}>
+      <SectionHeader
+        title="Site Content"
+        subtitle="Edit storefront text, shared media, and translations from one place."
+        action={<Button variant="outline" size="md" onClick={load}>Reload</Button>}
+      />
+
+      <ErrorBanner error={error} onClose={() => setError(null)} />
+
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.45fr) minmax(320px, 0.9fr)', gap: 16, marginBottom: 16 }}>
+        <Panel style={{ padding: isMobile ? 16 : 20 }}>
+          <div style={{ display: 'grid', gap: 16 }}>
+            <div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
+                Pages
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+                {SITE_CONTENT_PAGES.map((page) => {
+                  const stats = pageCounts.get(page.key) || { total: 0, customized: 0 };
+                  const selected = activePage === page.key;
+                  return (
+                    <button
+                      key={page.key}
+                      type="button"
+                      onClick={() => setActivePage(page.key)}
+                      style={{
+                        textAlign: 'left',
+                        borderRadius: 16,
+                        border: `1px solid ${selected ? A.gold : A.g200}`,
+                        background: selected ? 'linear-gradient(180deg, rgba(255,215,0,0.14) 0%, rgba(255,215,0,0.06) 100%)' : A.white,
+                        padding: '16px 16px 14px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+                        <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 16, color: A.black }}>
+                          {page.label}
+                        </div>
+                        <Badge color={selected ? 'gold' : 'default'}>{stats.customized}/{stats.total}</Badge>
+                      </div>
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, lineHeight: 1.55, minHeight: 56 }}>
+                        {page.description}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', gap: 12, alignItems: 'end' }}>
+              <Field label="Search inside page">
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Find block, field or key"
+                  style={inputStyle}
+                />
+              </Field>
+              <div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
+                  Language
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {SITE_CONTENT_LANGUAGES.map((lang) => (
+                    <button
+                      key={lang.code}
+                      type="button"
+                      onClick={() => setActiveLanguage(lang.code)}
+                      style={{
+                        borderRadius: 999,
+                        border: `1px solid ${activeLanguage === lang.code ? A.black : A.g200}`,
+                        background: activeLanguage === lang.code ? A.black : A.white,
+                        color: activeLanguage === lang.code ? A.white : A.black,
+                        cursor: 'pointer',
+                        padding: '8px 12px',
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: 13,
+                        fontWeight: activeLanguage === lang.code ? 700 : 500,
+                      }}
+                    >
+                      {lang.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </Panel>
+
+        <Panel style={{ padding: isMobile ? 16 : 20 }}>
+          <div style={{ display: 'grid', gap: 16 }}>
+            <div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                Selected Page
+              </div>
+              <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 20, color: A.black, marginBottom: 8 }}>
+                {activePageMeta?.label}
+              </div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
+                {activePageMeta?.description}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Badge color="blue">{groupedFields.length} blocks</Badge>
+              <Badge color="green">{fields.length} editable fields</Badge>
+              <Badge color="orange">{activeLanguage.toUpperCase()}</Badge>
+            </div>
+
+            {activePageMeta?.route.includes('[') ? (
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
+                Dynamic page preview: {activePageMeta.route}
+              </div>
+            ) : (
+              <a
+                href={activePageMeta?.route}
+                target="_blank"
+                rel="noreferrer"
+                style={{ textDecoration: 'none' }}
+              >
+                <Button variant="dark" size="md" style={{ width: '100%' }}>
+                  {activePageMeta?.routeLabel}
+                </Button>
+              </a>
+            )}
+
+            <div style={{ borderTop: `1px solid ${A.g200}`, paddingTop: 14 }}>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
+                Quick Shortcuts
+              </div>
+              <div style={{ display: 'grid', gap: 8 }}>
+                <Link href="/admin?view=fleet" style={{ textDecoration: 'none' }}>
+                  <div style={{ border: `1px solid ${A.g200}`, borderRadius: 12, padding: '10px 12px', color: A.black }}>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 13 }}>Scooter pages</div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>Titles, specs, gallery, translations and photos of each bike.</div>
+                  </div>
+                </Link>
+                <Link href="/admin?view=locations" style={{ textDecoration: 'none' }}>
+                  <div style={{ border: `1px solid ${A.g200}`, borderRadius: 12, padding: '10px 12px', color: A.black }}>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 13 }}>Locations page</div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>Delivery zones, translated zone names and location section copy.</div>
+                  </div>
+                </Link>
+                <Link href="/admin/faq" style={{ textDecoration: 'none' }}>
+                  <div style={{ border: `1px solid ${A.g200}`, borderRadius: 12, padding: '10px 12px', color: A.black }}>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 13 }}>FAQ section</div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>Questions and answers on all languages.</div>
+                  </div>
+                </Link>
+                <Link href="/admin?view=news" style={{ textDecoration: 'none' }}>
+                  <div style={{ border: `1px solid ${A.g200}`, borderRadius: 12, padding: '10px 12px', color: A.black }}>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 13 }}>News articles</div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>Actual articles and images for the news page.</div>
+                  </div>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </Panel>
+      </div>
+
+      {loading ? (
+        <EmptyState label="Loading site content…" />
+      ) : fields.length === 0 ? (
+        <EmptyState label="No content fields found for this filter." />
+      ) : (
+        <div style={{ display: 'grid', gap: 14 }}>
+          {groupedFields.map((group) => (
+            <Panel key={group.sectionKey} style={{ padding: isMobile ? 16 : 18 }}>
+              <div style={{ display: 'grid', gap: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18, color: A.black, marginBottom: 4 }}>
+                      {group.sectionLabel}
+                    </div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
+                      {group.fields.length} fields in this block
+                    </div>
+                  </div>
+                  <Badge color="default">{group.sectionKey}</Badge>
+                </div>
+
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {group.fields.map((field) => {
+                    const stateKey = fieldStateKey(field);
+                    const entry = fieldEntry(field);
+                    const draftValue = resolveDraftValue(field);
+                    const previewUrl = entry?.media_url || entry?.value || defaultTextValue(field);
+                    const busy = savingKey === stateKey;
+                    const defaultValue = defaultTextValue(field);
+
+                    return (
+                      <div key={stateKey} style={{ border: `1px solid ${A.g200}`, borderRadius: 14, padding: isMobile ? 14 : 16 }}>
+                        <div style={{ display: 'grid', gap: 14 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+                                <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 16, color: A.black }}>
+                                  {field.label}
+                                </div>
+                                <Badge color={field.shared ? 'orange' : 'blue'}>
+                                  {field.shared ? 'shared' : activeLanguage.toUpperCase()}
+                                </Badge>
+                                {entry ? <Badge color="green">custom</Badge> : <Badge>default</Badge>}
+                              </div>
+                              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
+                                {field.key}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                              <Button variant="outline" onClick={() => resetField(field)} disabled={busy}>
+                                Reset
+                              </Button>
+                              <Button variant="dark" onClick={() => saveField(field)} disabled={busy}>
+                                {busy ? 'Saving…' : 'Save'}
+                              </Button>
+                            </div>
+                          </div>
+
+                          {(field.valueType === 'image' || field.valueType === 'video' || field.valueType === 'file') ? (
+                            <div style={{ display: 'grid', gap: 12 }}>
+                              <Field label="Media URL">
+                                <input
+                                  value={draftValue}
+                                  onChange={(event) => setDrafts((current) => ({ ...current, [stateKey]: event.target.value }))}
+                                  placeholder="https://... or leave empty and upload a file"
+                                  style={inputStyle}
+                                />
+                              </Field>
+                              <Field label={field.valueType === 'video' ? 'Upload video' : 'Upload file'}>
+                                <input
+                                  type="file"
+                                  accept={field.valueType === 'video' ? 'video/*' : field.valueType === 'image' ? 'image/*' : undefined}
+                                  onChange={(event) => {
+                                    const file = event.target.files?.[0] || null;
+                                    setMediaFiles((current) => ({ ...current, [stateKey]: file }));
+                                  }}
+                                  style={{ fontFamily: 'Inter, sans-serif', fontSize: 13 }}
+                                />
+                              </Field>
+                              {mediaFiles[stateKey] ? (
+                                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
+                                  Selected file: {mediaFiles[stateKey]?.name}
+                                </div>
+                              ) : null}
+                              {previewUrl ? (
+                                field.valueType === 'video' ? (
+                                  <video
+                                    controls
+                                    muted
+                                    playsInline
+                                    style={{ width: '100%', maxWidth: 420, borderRadius: 12, border: `1px solid ${A.g200}`, background: A.black }}
+                                  >
+                                    <source src={previewUrl} />
+                                  </video>
+                                ) : (
+                                  <a href={previewUrl} target="_blank" rel="noreferrer" style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.blue }}>
+                                    Open current media
+                                  </a>
+                                )
+                              ) : null}
+                            </div>
+                          ) : field.valueType === 'json' ? (
+                            <Field label="JSON value">
+                              <textarea
+                                value={draftValue}
+                                onChange={(event) => setDrafts((current) => ({ ...current, [stateKey]: event.target.value }))}
+                                style={{ ...inputStyle, minHeight: 220, resize: 'vertical', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
+                              />
+                            </Field>
+                          ) : (
+                            <Field label="Text value">
+                              {field.valueType === 'textarea' ? (
+                                <textarea
+                                  value={draftValue}
+                                  onChange={(event) => setDrafts((current) => ({ ...current, [stateKey]: event.target.value }))}
+                                  style={{ ...inputStyle, minHeight: 120, resize: 'vertical' }}
+                                />
+                              ) : (
+                                <input
+                                  value={draftValue}
+                                  onChange={(event) => setDrafts((current) => ({ ...current, [stateKey]: event.target.value }))}
+                                  style={inputStyle}
+                                />
+                              )}
+                            </Field>
+                          )}
+
+                          <div style={{ display: 'grid', gap: 6 }}>
+                            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                              Default value
+                            </div>
+                            <div style={{
+                              background: A.g100,
+                              border: `1px solid ${A.g200}`,
+                              borderRadius: 10,
+                              padding: '10px 12px',
+                              fontFamily: field.valueType === 'json' ? 'ui-monospace, SFMono-Regular, Menlo, monospace' : 'Inter, sans-serif',
+                              fontSize: 12,
+                              color: A.g700,
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-word',
+                            }}>
+                              {defaultValue || '—'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </Panel>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

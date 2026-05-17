@@ -138,7 +138,7 @@ export default function LandingPage() {
         <video autoPlay muted loop playsInline aria-hidden="true"
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
         >
-          <source src="/hero.mp4" type="video/mp4" />
+          <source src={t.media.home.heroVideo} type="video/mp4" />
         </video>
 
         <div aria-hidden style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.25) 55%, rgba(0,0,0,0.1) 100%)' }} />

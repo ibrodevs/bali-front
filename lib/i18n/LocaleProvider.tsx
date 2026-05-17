@@ -1,6 +1,7 @@
 'use client';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { dictionaries, Dict, Locale, LOCALES } from './dictionaries';
+import { endpoints } from '@/lib/endpoints';
 
 type Ctx = {
   locale: Locale;
@@ -24,9 +25,29 @@ function detectInitial(): Locale {
   return 'en';
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function deepMerge<T>(base: T, override: unknown): T {
+  if (!isPlainObject(base) || !isPlainObject(override)) {
+    return (override as T) ?? base;
+  }
+
+  const result: Record<string, unknown> = { ...base };
+  for (const [key, value] of Object.entries(override)) {
+    const current = result[key];
+    result[key] = isPlainObject(current) && isPlainObject(value)
+      ? deepMerge(current, value)
+      : value;
+  }
+  return result as T;
+}
+
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('en');
   const [hydrated, setHydrated] = useState(false);
+  const [dictionaryOverrides, setDictionaryOverrides] = useState<Record<string, unknown>>({});
 
   useEffect(() => {
     setLocaleState(detectInitial());
@@ -45,7 +66,25 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     if (hydrated && typeof document !== 'undefined') document.documentElement.lang = locale;
   }, [locale, hydrated]);
 
-  const t = dictionaries[locale];
+  useEffect(() => {
+    let cancelled = false;
+    setDictionaryOverrides({});
+    endpoints.bootstrap(locale)
+      .then((bootstrap) => {
+        if (!cancelled) {
+          setDictionaryOverrides((bootstrap.dictionaryOverrides as Record<string, unknown>) || {});
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setDictionaryOverrides({});
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [locale]);
+
+  const t = useMemo(() => deepMerge(dictionaries[locale], dictionaryOverrides), [locale, dictionaryOverrides]);
   const tr = useCallback((template: string, vars?: Record<string, string | number>) => {
     if (!vars) return template;
     return template.replace(/\{(\w+)\}/g, (_, k) => (vars[k] !== undefined ? String(vars[k]) : `{${k}}`));

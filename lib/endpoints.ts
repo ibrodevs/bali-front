@@ -339,6 +339,7 @@ export type ApiBootstrap = {
   lang?: string;
   languages?: { code: string; name: string }[];
   content?: Record<string, unknown>;
+  dictionaryOverrides?: Record<string, unknown>;
   fleet?: {
     featured?: Array<{
       id: number;
@@ -525,6 +526,22 @@ export type ApiPromoCode = {
   max_discount_amount: string | number | null;
   is_active: boolean;
   campaign?: number | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type SiteContentValueType = 'text' | 'textarea' | 'json' | 'image' | 'video' | 'file';
+
+export type ApiAdminSiteContentEntry = {
+  id: number;
+  key: string;
+  language: string;
+  value_type: SiteContentValueType;
+  value: string;
+  json_value?: unknown;
+  media?: string | null;
+  media_url?: string;
+  is_active: boolean;
   created_at?: string;
   updated_at?: string;
 };
@@ -772,6 +789,16 @@ export const endpoints = {
     api<ApiAdminDeliveryZone>(`/admin/content/delivery-zones/${id}/`, { method: 'PATCH', body, auth: true }),
   adminDeleteDeliveryZone: (id: number | string) =>
     api<void>(`/admin/content/delivery-zones/${id}/`, { method: 'DELETE', auth: true }),
+
+  // Site content (admin)
+  adminSiteContent: () =>
+    api<Paginated<ApiAdminSiteContentEntry> | ApiAdminSiteContentEntry[]>('/admin/content/site-content/', { auth: true, query: { page_size: 500 } }),
+  adminCreateSiteContent: (body: FormData | Partial<ApiAdminSiteContentEntry>) =>
+    api<ApiAdminSiteContentEntry>('/admin/content/site-content/', { method: 'POST', body, auth: true }),
+  adminUpdateSiteContent: (id: number | string, body: FormData | Partial<ApiAdminSiteContentEntry>) =>
+    api<ApiAdminSiteContentEntry>(`/admin/content/site-content/${id}/`, { method: 'PATCH', body, auth: true }),
+  adminDeleteSiteContent: (id: number | string) =>
+    api<void>(`/admin/content/site-content/${id}/`, { method: 'DELETE', auth: true }),
 
   // Promo codes (admin)
   adminPromoCodes: (params?: { page_size?: number }) =>

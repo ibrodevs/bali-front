@@ -9,7 +9,15 @@ export const LOCALES: { code: Locale; name: string; flag: string }[] = [
   { code: 'fr', name: 'Français', flag: 'FR' },
 ];
 
-export type Dict = typeof en;
+type SharedMedia = {
+  media: {
+    home: {
+      heroVideo: string;
+    };
+  };
+};
+
+export type Dict = typeof en & SharedMedia;
 
 export const en = {
   nav: { catalog: 'Catalog', how: 'How it works', locations: 'Locations', news: 'News', admin: 'Admin', book: 'Book now', login: 'Sign in', logout: 'Sign out', profile: 'Profile' },
@@ -237,7 +245,7 @@ export const en = {
   },
 };
 
-export const ru: Dict = {
+export const ru: typeof en = {
   nav: { catalog: 'Каталог', how: 'Как это работает', locations: 'Локации', news: 'Новости', admin: 'Админ', book: 'Забронировать', login: 'Войти', logout: 'Выйти', profile: 'Профиль' },
   hero: {
     eyebrow: 'ПОКОРИ БАЛИ. ПО-СВОЕМУ.',
@@ -448,7 +456,7 @@ export const ru: Dict = {
   },
 };
 
-export const zh: Dict = {
+export const zh: typeof en = {
   nav: { catalog: '车型', how: '如何使用', locations: '地点', news: '新闻', admin: '管理', book: '立即预订', login: '登录', logout: '退出', profile: '资料' },
   hero: { eyebrow: '畅游巴厘岛，随心所欲。', title1: '探索巴厘岛', title2: '由你', title3: '做主。', pickup: '取车', pickupDate: '取车日期', returnDate: '还车日期', model: '车型', cta: '查看可用车', locations: '6 个地点', available: '可用 {n}' },
   stats: { fleet: '车队规模', riders: '今年骑手', rating: '平均评分', support: '岛上支援' },
@@ -567,7 +575,7 @@ export const zh: Dict = {
   news: { eyebrow: '09 — 新闻', title: '新闻动态。', desc: '随时了解 Bali-Rent 的最新新闻、技巧和故事。', loading: '加载新闻中…', empty: '暂无新闻。', error: '无法加载新闻。', readMore: '阅读更多 →', backToNews: '← 返回新闻', adminTitle: '新闻管理', addArticle: '+ 添加文章', editArticle: '编辑', deleteArticle: '删除', confirmDelete: '确认删除该文章？', slug: 'Slug', publishedAt: '发布日期', isActive: '已发布', sortOrder: '排序', translations: '翻译', titleLabel: '标题', descriptionLabel: '描述', save: '保存', cancel: '取消', imageLabel: '图片' },
 };
 
-export const id: Dict = {
+export const id: typeof en = {
   nav: { catalog: 'Katalog', how: 'Cara kerja', locations: 'Lokasi', news: 'Berita', admin: 'Admin', book: 'Pesan sekarang', login: 'Masuk', logout: 'Keluar', profile: 'Profil' },
   hero: { eyebrow: 'JELAJAHI BALI. CARAMU.', title1: 'JELAJAHI BALI', title2: 'SESUAI', title3: 'AKALMU.', pickup: 'AMBIL', pickupDate: 'TANGGAL AMBIL', returnDate: 'TANGGAL KEMBALI', model: 'MODEL', cta: 'CEK KETERSEDIAAN', locations: '6 lokasi', available: '{n} tersedia' },
   stats: { fleet: 'Skuter di armada', riders: 'Pengendara tahun ini', rating: 'Peringkat rata-rata', support: 'Dukungan di pulau' },
@@ -686,7 +694,7 @@ export const id: Dict = {
   news: { eyebrow: '09 — BERITA', title: 'Berita & Update.', desc: 'Tetap update dengan berita, tips, dan cerita terbaru dari Bali-Rent.', loading: 'Memuat berita…', empty: 'Belum ada berita.', error: 'Gagal memuat berita.', readMore: 'Baca lebih →', backToNews: '← Kembali ke berita', adminTitle: 'Manajemen Berita', addArticle: '+ Tambah artikel', editArticle: 'Edit', deleteArticle: 'Hapus', confirmDelete: 'Hapus artikel ini?', slug: 'Slug', publishedAt: 'Tanggal terbit', isActive: 'Terbit', sortOrder: 'Urutan', translations: 'Terjemahan', titleLabel: 'Judul', descriptionLabel: 'Deskripsi', save: 'Simpan', cancel: 'Batal', imageLabel: 'Gambar' },
 };
 
-export const de: Dict = {
+export const de: typeof en = {
   nav: { catalog: 'Katalog', how: 'So funktioniert es', locations: 'Standorte', news: 'News', admin: 'Admin', book: 'Jetzt buchen', login: 'Anmelden', logout: 'Abmelden', profile: 'Profil' },
   hero: { eyebrow: 'BALI ENTDECKEN. AUF DEINE ART.', title1: 'ERLEBE BALI', title2: 'NACH DEINEN', title3: 'REGELN.', pickup: 'ABHOLUNG', pickupDate: 'ABHOLDATUM', returnDate: 'RÜCKGABEDATUM', model: 'MODELL', cta: 'VERFÜGBARKEIT PRÜFEN', locations: '6 Standorte', available: '{n} verfügbar' },
   stats: { fleet: 'Roller im Bestand', riders: 'Fahrer dieses Jahr', rating: 'Ø Bewertung', support: 'Support vor Ort' },
@@ -805,7 +813,7 @@ export const de: Dict = {
   news: { eyebrow: '09 — NEWS', title: 'News & Updates.', desc: 'Bleib auf dem Laufenden mit den neuesten Nachrichten, Tipps und Stories von Bali-Rent.', loading: 'News laden…', empty: 'Noch keine News.', error: 'News konnten nicht geladen werden.', readMore: 'Mehr lesen →', backToNews: '← Zurück zu den News', adminTitle: 'News-Verwaltung', addArticle: '+ Artikel hinzufügen', editArticle: 'Bearbeiten', deleteArticle: 'Löschen', confirmDelete: 'Diesen Artikel löschen?', slug: 'Slug', publishedAt: 'Veröffentlichungsdatum', isActive: 'Veröffentlicht', sortOrder: 'Reihenfolge', translations: 'Übersetzungen', titleLabel: 'Titel', descriptionLabel: 'Beschreibung', save: 'Speichern', cancel: 'Abbrechen', imageLabel: 'Bild' },
 };
 
-export const fr: Dict = {
+export const fr: typeof en = {
   nav: { catalog: 'Catalogue', how: 'Comment ça marche', locations: 'Lieux', news: 'Actualités', admin: 'Admin', book: 'Réserver', login: 'Connexion', logout: 'Déconnexion', profile: 'Profil' },
   hero: { eyebrow: 'EXPLORER BALI. À TA FAÇON.', title1: 'EXPLORE BALI', title2: 'À TES', title3: 'CONDITIONS.', pickup: 'PRISE EN CHARGE', pickupDate: 'DATE DE PRISE', returnDate: 'DATE DE RETOUR', model: 'MODÈLE', cta: 'VÉRIFIER LA DISPO', locations: '6 lieux', available: '{n} dispo' },
   stats: { fleet: 'Scooters en flotte', riders: 'Pilotes cette année', rating: 'Note moyenne', support: 'Support sur l\'île' },
@@ -924,4 +932,28 @@ export const fr: Dict = {
   news: { eyebrow: '09 — ACTUALITÉS', title: 'Actualités.', desc: 'Restez informé des dernières nouvelles, conseils et histoires de Bali-Rent.', loading: 'Chargement des actus…', empty: 'Aucune actualité pour le moment.', error: 'Impossible de charger les actus.', readMore: 'Lire plus →', backToNews: '← Retour aux actus', adminTitle: 'Gestion des actualités', addArticle: '+ Ajouter un article', editArticle: 'Modifier', deleteArticle: 'Supprimer', confirmDelete: 'Supprimer cet article ?', slug: 'Slug', publishedAt: 'Date de publication', isActive: 'Publié', sortOrder: 'Ordre', translations: 'Traductions', titleLabel: 'Titre', descriptionLabel: 'Description', save: 'Enregistrer', cancel: 'Annuler', imageLabel: 'Image' },
 };
 
-export const dictionaries: Record<Locale, Dict> = { en, ru, zh, id, de, fr };
+const SHARED_MEDIA: SharedMedia = {
+  media: {
+    home: {
+      heroVideo: '/hero.mp4',
+    },
+  },
+};
+
+function withSharedMedia<T>(dict: T): T & SharedMedia {
+  return {
+    ...(dict as object),
+    media: {
+      ...SHARED_MEDIA.media,
+    },
+  } as T & SharedMedia;
+}
+
+export const dictionaries: Record<Locale, Dict> = {
+  en: withSharedMedia(en),
+  ru: withSharedMedia(ru),
+  zh: withSharedMedia(zh),
+  id: withSharedMedia(id),
+  de: withSharedMedia(de),
+  fr: withSharedMedia(fr),
+};
