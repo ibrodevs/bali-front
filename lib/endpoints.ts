@@ -120,6 +120,11 @@ export type ApiBooking = {
   id: number;
   order_number: string;
   user?: string;
+  contact_name?: string;
+  contact_phone?: string;
+  contact_has_telegram?: boolean;
+  contact_has_wechat?: boolean;
+  contact_has_whatsapp?: boolean;
   scooter: { id: number; title: string; sku?: string };
   start_datetime: string;
   end_datetime: string;
@@ -826,9 +831,11 @@ export type BookingCreatePayload = {
 };
 
 export type GuestBookingPayload = BookingCreatePayload & {
-  guest_email: string;
   guest_full_name: string;
-  guest_phone?: string;
+  guest_phone: string;
+  guest_has_telegram?: boolean;
+  guest_has_wechat?: boolean;
+  guest_has_whatsapp?: boolean;
   language?: string;
 };
 

@@ -903,6 +903,11 @@ function FleetView({
 function BookingsView({ bookings, busyBookingId, onBookingAction }) {
   const [filter, setFilter] = React.useState('all');
   const filtered = filter === 'all' ? bookings : bookings.filter((item) => item.status === filter);
+  const contactBadges = (item) => [
+    item.contact_has_telegram ? 'Telegram' : null,
+    item.contact_has_wechat ? 'WeChat' : null,
+    item.contact_has_whatsapp ? 'WhatsApp' : null,
+  ].filter(Boolean);
 
   function actionButtons(item) {
     const busy = busyBookingId === item.id;
@@ -970,7 +975,17 @@ function BookingsView({ bookings, busyBookingId, onBookingAction }) {
                     <Badge color={paymentBadgeColor(item.latest_payment?.status || item.payment_status)}>{item.latest_payment?.status || item.payment_status}</Badge>
                   </div>
                   <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 17, color: A.black, marginBottom: 4 }}>#{item.order_number}</div>
-                  <div style={{ fontFamily: 'Inter', fontSize: 13, color: A.g700 }}>{item.user}</div>
+                  <div style={{ fontFamily: 'Inter', fontSize: 13, color: A.g700 }}>{item.contact_name || item.user || 'Guest'}</div>
+                  <div style={{ fontFamily: 'Inter', fontSize: 13, color: A.g500 }}>{item.contact_phone || 'Phone not provided'}</div>
+                  {contactBadges(item).length > 0 ? (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                      {contactBadges(item).map((label) => (
+                        <span key={label} style={{ padding: '4px 8px', borderRadius: 999, background: A.g100, color: A.g700, fontFamily: 'Inter', fontSize: 11, fontWeight: 600 }}>
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                   <div style={{ fontFamily: 'Inter', fontSize: 13, color: A.g500 }}>{item.scooter?.title || 'Scooter'}</div>
                 </div>
                 <div>

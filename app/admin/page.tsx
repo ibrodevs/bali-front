@@ -3090,6 +3090,12 @@ function BookingsView({
 }) {
   const [filter, setFilter] = useState('all');
   const filtered = filter === 'all' ? bookings : bookings.filter((item) => item.status === filter);
+  const contactBadges = (item: ApiBooking) =>
+    [
+      item.contact_has_telegram ? 'Telegram' : null,
+      item.contact_has_wechat ? 'WeChat' : null,
+      item.contact_has_whatsapp ? 'WhatsApp' : null,
+    ].filter(Boolean) as string[];
 
   function actionButtons(item: ApiBooking) {
     const busy = busyBookingId === item.id;
@@ -3167,7 +3173,32 @@ function BookingsView({
                   <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 17, color: A.black, marginBottom: 4 }}>
                     #{item.order_number}
                   </div>
-                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700 }}>{item.user || 'Guest'}</div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700 }}>
+                    {item.contact_name || item.user || 'Guest'}
+                  </div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500 }}>
+                    {item.contact_phone || 'Phone not provided'}
+                  </div>
+                  {contactBadges(item).length > 0 && (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                      {contactBadges(item).map((label) => (
+                        <span
+                          key={label}
+                          style={{
+                            padding: '4px 8px',
+                            borderRadius: 999,
+                            background: A.g100,
+                            color: A.g700,
+                            fontFamily: 'Inter, sans-serif',
+                            fontSize: 11,
+                            fontWeight: 600,
+                          }}
+                        >
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500 }}>
                     {item.scooter?.title || 'Scooter'}
                   </div>

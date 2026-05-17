@@ -26,15 +26,17 @@ const PAYMENT_COPY = {
     cardCvcInvalid: 'CVC is invalid.',
     cashConsent: 'Please confirm payment on delivery.',
     draftMissing: 'Booking draft not found',
-    guestRequired: 'Enter your name and email to continue',
+    guestRequired: 'Enter your name and phone to continue',
     bookingName: 'Scooter booking',
     pageTitle: 'Payment and confirmation',
     reserved: 'BOOKING RESERVED',
     confirmed: 'RESERVATION CONFIRMED',
     reservedDesc: 'Your scooter is reserved. It is already visible in your profile and you can pay on delivery.',
     openProfile: 'Open profile',
-    accountForProfile: 'ACCOUNT FOR PROFILE',
+    contactDetails: 'CONTACT DETAILS',
     alreadyHave: 'Already have an account? Sign in',
+    messengerTitle: 'MESSENGERS ON THIS NUMBER',
+    messengerHint: 'Mark where we can contact you faster about the booking.',
     reserveCash: 'Reserve (pay on delivery) →',
     payCrypto: 'Pay {currency} →',
     bookingLabel: 'BOOKING',
@@ -67,15 +69,17 @@ const PAYMENT_COPY = {
     cardCvcInvalid: 'CVC указан некорректно.',
     cashConsent: 'Подтвердите оплату при доставке.',
     draftMissing: 'Черновик бронирования не найден',
-    guestRequired: 'Введите имя и email, чтобы продолжить',
+    guestRequired: 'Введите имя и телефон, чтобы продолжить',
     bookingName: 'Бронирование скутера',
     pageTitle: 'Оплата и подтверждение',
     reserved: 'БРОНЬ СОЗДАНА',
     confirmed: 'БРОНЬ ПОДТВЕРЖДЕНА',
     reservedDesc: 'Ваш скутер забронирован. Он уже виден в профиле, а оплатить можно при доставке.',
     openProfile: 'Открыть профиль',
-    accountForProfile: 'АККАУНТ ДЛЯ ПРОФИЛЯ',
+    contactDetails: 'КОНТАКТНЫЕ ДАННЫЕ',
     alreadyHave: 'Уже есть аккаунт? Войти',
+    messengerTitle: 'МЕССЕНДЖЕРЫ НА ЭТОМ НОМЕРЕ',
+    messengerHint: 'Отметьте, где с вами быстрее связаться по бронированию.',
     reserveCash: 'Зарезервировать (оплата при доставке) →',
     payCrypto: 'Оплатить {currency} →',
     bookingLabel: 'БРОНЬ',
@@ -100,10 +104,10 @@ const PAYMENT_COPY = {
     amount: 'СУММА',
     amountHint: 'точная сумма будет показана после создания инвойса',
   },
-  zh: { missingDetails: '未找到预订信息，请返回第 2 步。', cardNameRequired: '请输入持卡人姓名。', cardNumberInvalid: '银行卡号看起来无效。', cardExpiryInvalid: '有效期必须为 MM/YY 格式。', cardCvcInvalid: 'CVC 无效。', cashConsent: '请确认到付付款。', draftMissing: '未找到预订草稿', guestRequired: '请输入姓名和邮箱以继续', bookingName: '摩托预订', pageTitle: '支付与确认', reserved: '预订已创建', confirmed: '预订已确认', reservedDesc: '您的车辆已预留，可在个人资料中查看并在交付时付款。', openProfile: '打开资料', accountForProfile: '用于资料的账户', alreadyHave: '已有账户？登录', reserveCash: '预留（交付时付款）→', payCrypto: '支付 {currency} →', bookingLabel: '预订', base: '基础价', addons: '附加项', bankCard: '银行卡 · STRIPE', bankCardDesc: '创建预订后，我们会将您跳转到安全的 Stripe 页面完成付款。此表单仅为预览。', cardholder: '持卡人姓名', cardNumber: '卡号', cardExpiry: '有效期 (MM/YY)', cashTitle: '货到付款', cashDesc: '配送员会将车辆送到指定地址。交付时支付现金（USD 或按日汇率的 IDR）。', deliveryAddress: '送车地址', noDelivery: '您在第 2 步没有填写送车地址，请返回补充。', cashBullet1: '预订立即确认，24 小时前可免费取消。', cashBullet2: '交付时押金：护照或可退还 100 美元。', cashBullet3: '在租赁开始当天现金支付。', cashConfirm: '我确认会在交付时现金支付，并按时在指定地点等候。', cryptoTitle: '加密支付', cryptoDesc: '我们会通过加密支付服务创建账单。确认后您将收到钱包地址和应付金额。', selectCurrency: '选择币种', amount: '金额', amountHint: '创建账单后会显示准确金额' },
-  id: { missingDetails: 'Detail pesanan tidak ditemukan. Kembali ke langkah 2.', cardNameRequired: 'Masukkan nama pemilik kartu.', cardNumberInvalid: 'Nomor kartu tampak tidak valid.', cardExpiryInvalid: 'Tanggal berlaku harus format MM/YY.', cardCvcInvalid: 'CVC tidak valid.', cashConsent: 'Harap konfirmasi pembayaran saat pengantaran.', draftMissing: 'Draft pesanan tidak ditemukan', guestRequired: 'Masukkan nama dan email untuk melanjutkan', bookingName: 'Pemesanan skuter', pageTitle: 'Pembayaran dan konfirmasi', reserved: 'PESANAN DIBUAT', confirmed: 'PESANAN DIKONFIRMASI', reservedDesc: 'Skuter Anda sudah dipesan. Sudah terlihat di profil dan bisa dibayar saat pengantaran.', openProfile: 'Buka profil', accountForProfile: 'AKUN UNTUK PROFIL', alreadyHave: 'Sudah punya akun? Masuk', reserveCash: 'Pesan (bayar saat antar) →', payCrypto: 'Bayar {currency} →', bookingLabel: 'PESANAN', base: 'Dasar', addons: 'Tambahan', bankCard: 'KARTU BANK · STRIPE', bankCardDesc: 'Setelah pesanan dibuat, kami akan mengarahkan Anda ke halaman Stripe yang aman untuk menyelesaikan pembayaran. Formulir ini hanya pratinjau.', cardholder: 'Nama pemilik kartu', cardNumber: 'Nomor kartu', cardExpiry: 'Masa berlaku (MM/YY)', cashTitle: 'BAYAR SAAT ANTAR', cashDesc: 'Kurir akan membawa skuter ke alamat yang diberikan. Bayar tunai saat diterima (USD atau IDR sesuai kurs harian).', deliveryAddress: 'ALAMAT PENGANTARAN', noDelivery: 'Anda belum mengisi alamat pengantaran pada langkah 2. Kembali dan lengkapi.', cashBullet1: 'Pesanan langsung dikonfirmasi, pembatalan gratis hingga 24 jam sebelumnya.', cashBullet2: 'Deposit saat terima: paspor atau US$100 refundable.', cashBullet3: 'Pembayaran tunai pada hari mulai sewa.', cashConfirm: 'Saya mengonfirmasi siap membayar tunai saat pengantaran dan akan berada di lokasi pada waktu yang ditentukan.', cryptoTitle: 'PEMBAYARAN KRIPTO', cryptoDesc: 'Kami akan membuat invoice melalui penyedia kripto. Setelah konfirmasi Anda akan menerima alamat wallet dan jumlah pembayaran.', selectCurrency: 'PILIH MATA UANG', amount: 'JUMLAH', amountHint: 'jumlah tepat akan ditampilkan setelah invoice dibuat' },
-  de: { missingDetails: 'Buchungsdetails wurden nicht gefunden. Bitte zu Schritt 2 zurückkehren.', cardNameRequired: 'Bitte Namen des Karteninhabers eingeben.', cardNumberInvalid: 'Kartennummer scheint ungültig zu sein.', cardExpiryInvalid: 'Ablaufdatum muss im Format MM/YY sein.', cardCvcInvalid: 'CVC ist ungültig.', cashConsent: 'Bitte Zahlung bei Lieferung bestätigen.', draftMissing: 'Buchungsentwurf nicht gefunden', guestRequired: 'Bitte Name und E-Mail eingeben, um fortzufahren', bookingName: 'Rollerbuchung', pageTitle: 'Zahlung und Bestätigung', reserved: 'BUCHUNG ERSTELLT', confirmed: 'BUCHUNG BESTÄTIGT', reservedDesc: 'Dein Roller ist reserviert. Er ist bereits im Profil sichtbar und kann bei Lieferung bezahlt werden.', openProfile: 'Profil öffnen', accountForProfile: 'KONTO FÜR PROFIL', alreadyHave: 'Schon ein Konto? Anmelden', reserveCash: 'Reservieren (bei Lieferung zahlen) →', payCrypto: '{currency} bezahlen →', bookingLabel: 'BUCHUNG', base: 'Basis', addons: 'Extras', bankCard: 'BANKKARTE · STRIPE', bankCardDesc: 'Nach Erstellung der Buchung leiten wir dich zur sicheren Stripe-Seite weiter. Dieses Formular ist nur eine Vorschau.', cardholder: 'Name des Karteninhabers', cardNumber: 'Kartennummer', cardExpiry: 'Ablauf (MM/YY)', cashTitle: 'ZAHLUNG BEI LIEFERUNG', cashDesc: 'Der Kurier bringt den Roller an die angegebene Adresse. Bezahle bar bei Übergabe (USD oder IDR zum Tageskurs).', deliveryAddress: 'LIEFERADRESSE', noDelivery: 'Du hast in Schritt 2 keine Lieferadresse angegeben. Bitte zurückgehen und ergänzen.', cashBullet1: 'Buchung wird sofort bestätigt, kostenlose Stornierung bis 24 Stunden vorher.', cashBullet2: 'Kaution bei Übergabe: Reisepass oder rückzahlbare 100 $.', cashBullet3: 'Barzahlung am ersten Miettag.', cashConfirm: 'Ich bestätige, dass ich bei Lieferung bar bezahlen werde und zur angegebenen Zeit vor Ort bin.', cryptoTitle: 'KRYPTOZAHLUNG', cryptoDesc: 'Wir erstellen eine Rechnung über den Krypto-Anbieter. Nach der Bestätigung erhältst du Wallet-Adresse und Betrag.', selectCurrency: 'WÄHRUNG WÄHLEN', amount: 'BETRAG', amountHint: 'der genaue Betrag wird nach Erstellung der Rechnung angezeigt' },
-  fr: { missingDetails: 'Les détails de réservation sont introuvables. Revenez à l’étape 2.', cardNameRequired: 'Veuillez saisir le nom du titulaire.', cardNumberInvalid: 'Le numéro de carte semble invalide.', cardExpiryInvalid: 'La date d’expiration doit être au format MM/YY.', cardCvcInvalid: 'Le CVC est invalide.', cashConsent: 'Veuillez confirmer le paiement à la livraison.', draftMissing: 'Brouillon de réservation introuvable', guestRequired: 'Saisissez votre nom et votre e-mail pour continuer', bookingName: 'Réservation du scooter', pageTitle: 'Paiement et confirmation', reserved: 'RÉSERVATION CRÉÉE', confirmed: 'RÉSERVATION CONFIRMÉE', reservedDesc: 'Votre scooter est réservé. Il est déjà visible dans votre profil et vous pourrez payer à la livraison.', openProfile: 'Ouvrir le profil', accountForProfile: 'COMPTE POUR LE PROFIL', alreadyHave: 'Déjà un compte ? Se connecter', reserveCash: 'Réserver (payer à la livraison) →', payCrypto: 'Payer {currency} →', bookingLabel: 'RÉSERVATION', base: 'Base', addons: 'Options', bankCard: 'CARTE BANCAIRE · STRIPE', bankCardDesc: 'Après création de la réservation, nous vous redirigerons vers une page Stripe sécurisée pour terminer le paiement. Ce formulaire est un aperçu.', cardholder: 'Nom du titulaire', cardNumber: 'Numéro de carte', cardExpiry: 'Expiration (MM/YY)', cashTitle: 'PAIEMENT À LA LIVRAISON', cashDesc: 'Le coursier apportera le scooter à l’adresse indiquée. Payez en espèces à la livraison (USD ou IDR au taux du jour).', deliveryAddress: 'ADRESSE DE LIVRAISON', noDelivery: 'Vous n’avez pas indiqué d’adresse de livraison à l’étape 2. Revenez en arrière pour la renseigner.', cashBullet1: 'La réservation est confirmée immédiatement, annulation gratuite jusqu’à 24 h avant.', cashBullet2: 'Dépôt à la livraison : passeport ou 100 $ remboursables.', cashBullet3: 'Paiement en espèces le jour du début de location.', cashConfirm: 'Je confirme être prêt à payer en espèces à la livraison et à être présent à l’heure indiquée.', cryptoTitle: 'PAIEMENT CRYPTO', cryptoDesc: 'Nous créerons une facture via le prestataire crypto. Après confirmation, vous recevrez l’adresse du portefeuille et le montant à payer.', selectCurrency: 'CHOISIR LA DEVISE', amount: 'MONTANT', amountHint: 'le montant exact sera affiché après création de la facture' },
+  zh: { missingDetails: '未找到预订信息，请返回第 2 步。', cardNameRequired: '请输入持卡人姓名。', cardNumberInvalid: '银行卡号看起来无效。', cardExpiryInvalid: '有效期必须为 MM/YY 格式。', cardCvcInvalid: 'CVC 无效。', cashConsent: '请确认到付付款。', draftMissing: '未找到预订草稿', guestRequired: '请输入姓名和电话以继续', bookingName: '摩托预订', pageTitle: '支付与确认', reserved: '预订已创建', confirmed: '预订已确认', reservedDesc: '您的车辆已预留，可在个人资料中查看并在交付时付款。', openProfile: '打开资料', contactDetails: '联系信息', alreadyHave: '已有账户？登录', messengerTitle: '此号码可用的聊天软件', messengerHint: '勾选我们可以更快联系您的方式。', reserveCash: '预留（交付时付款）→', payCrypto: '支付 {currency} →', bookingLabel: '预订', base: '基础价', addons: '附加项', bankCard: '银行卡 · STRIPE', bankCardDesc: '创建预订后，我们会将您跳转到安全的 Stripe 页面完成付款。此表单仅为预览。', cardholder: '持卡人姓名', cardNumber: '卡号', cardExpiry: '有效期 (MM/YY)', cashTitle: '货到付款', cashDesc: '配送员会将车辆送到指定地址。交付时支付现金（USD 或按日汇率的 IDR）。', deliveryAddress: '送车地址', noDelivery: '您在第 2 步没有填写送车地址，请返回补充。', cashBullet1: '预订立即确认，24 小时前可免费取消。', cashBullet2: '交付时押金：护照或可退还 100 美元。', cashBullet3: '在租赁开始当天现金支付。', cashConfirm: '我确认会在交付时现金支付，并按时在指定地点等候。', cryptoTitle: '加密支付', cryptoDesc: '我们会通过加密支付服务创建账单。确认后您将收到钱包地址和应付金额。', selectCurrency: '选择币种', amount: '金额', amountHint: '创建账单后会显示准确金额' },
+  id: { missingDetails: 'Detail pesanan tidak ditemukan. Kembali ke langkah 2.', cardNameRequired: 'Masukkan nama pemilik kartu.', cardNumberInvalid: 'Nomor kartu tampak tidak valid.', cardExpiryInvalid: 'Tanggal berlaku harus format MM/YY.', cardCvcInvalid: 'CVC tidak valid.', cashConsent: 'Harap konfirmasi pembayaran saat pengantaran.', draftMissing: 'Draft pesanan tidak ditemukan', guestRequired: 'Masukkan nama dan nomor telepon untuk melanjutkan', bookingName: 'Pemesanan skuter', pageTitle: 'Pembayaran dan konfirmasi', reserved: 'PESANAN DIBUAT', confirmed: 'PESANAN DIKONFIRMASI', reservedDesc: 'Skuter Anda sudah dipesan. Sudah terlihat di profil dan bisa dibayar saat pengantaran.', openProfile: 'Buka profil', contactDetails: 'DETAIL KONTAK', alreadyHave: 'Sudah punya akun? Masuk', messengerTitle: 'MESSENGER DI NOMOR INI', messengerHint: 'Centang aplikasi yang bisa kami pakai untuk menghubungi Anda lebih cepat.', reserveCash: 'Pesan (bayar saat antar) →', payCrypto: 'Bayar {currency} →', bookingLabel: 'PESANAN', base: 'Dasar', addons: 'Tambahan', bankCard: 'KARTU BANK · STRIPE', bankCardDesc: 'Setelah pesanan dibuat, kami akan mengarahkan Anda ke halaman Stripe yang aman untuk menyelesaikan pembayaran. Formulir ini hanya pratinjau.', cardholder: 'Nama pemilik kartu', cardNumber: 'Nomor kartu', cardExpiry: 'Masa berlaku (MM/YY)', cashTitle: 'BAYAR SAAT ANTAR', cashDesc: 'Kurir akan membawa skuter ke alamat yang diberikan. Bayar tunai saat diterima (USD atau IDR sesuai kurs harian).', deliveryAddress: 'ALAMAT PENGANTARAN', noDelivery: 'Anda belum mengisi alamat pengantaran pada langkah 2. Kembali dan lengkapi.', cashBullet1: 'Pesanan langsung dikonfirmasi, pembatalan gratis hingga 24 jam sebelumnya.', cashBullet2: 'Deposit saat terima: paspor atau US$100 refundable.', cashBullet3: 'Pembayaran tunai pada hari mulai sewa.', cashConfirm: 'Saya mengonfirmasi siap membayar tunai saat pengantaran dan akan berada di lokasi pada waktu yang ditentukan.', cryptoTitle: 'PEMBAYARAN KRIPTO', cryptoDesc: 'Kami akan membuat invoice melalui penyedia kripto. Setelah konfirmasi Anda akan menerima alamat wallet dan jumlah pembayaran.', selectCurrency: 'PILIH MATA UANG', amount: 'JUMLAH', amountHint: 'jumlah tepat akan ditampilkan setelah invoice dibuat' },
+  de: { missingDetails: 'Buchungsdetails wurden nicht gefunden. Bitte zu Schritt 2 zurückkehren.', cardNameRequired: 'Bitte Namen des Karteninhabers eingeben.', cardNumberInvalid: 'Kartennummer scheint ungültig zu sein.', cardExpiryInvalid: 'Ablaufdatum muss im Format MM/YY sein.', cardCvcInvalid: 'CVC ist ungültig.', cashConsent: 'Bitte Zahlung bei Lieferung bestätigen.', draftMissing: 'Buchungsentwurf nicht gefunden', guestRequired: 'Bitte Name und Telefonnummer eingeben, um fortzufahren', bookingName: 'Rollerbuchung', pageTitle: 'Zahlung und Bestätigung', reserved: 'BUCHUNG ERSTELLT', confirmed: 'BUCHUNG BESTÄTIGT', reservedDesc: 'Dein Roller ist reserviert. Er ist bereits im Profil sichtbar und kann bei Lieferung bezahlt werden.', openProfile: 'Profil öffnen', contactDetails: 'KONTAKTDATEN', alreadyHave: 'Schon ein Konto? Anmelden', messengerTitle: 'MESSENGER AUF DIESER NUMMER', messengerHint: 'Markiere, über welche Apps wir dich zur Buchung schneller erreichen können.', reserveCash: 'Reservieren (bei Lieferung zahlen) →', payCrypto: '{currency} bezahlen →', bookingLabel: 'BUCHUNG', base: 'Basis', addons: 'Extras', bankCard: 'BANKKARTE · STRIPE', bankCardDesc: 'Nach Erstellung der Buchung leiten wir dich zur sicheren Stripe-Seite weiter. Dieses Formular ist nur eine Vorschau.', cardholder: 'Name des Karteninhabers', cardNumber: 'Kartennummer', cardExpiry: 'Ablauf (MM/YY)', cashTitle: 'ZAHLUNG BEI LIEFERUNG', cashDesc: 'Der Kurier bringt den Roller an die angegebene Adresse. Bezahle bar bei Übergabe (USD oder IDR zum Tageskurs).', deliveryAddress: 'LIEFERADRESSE', noDelivery: 'Du hast in Schritt 2 keine Lieferadresse angegeben. Bitte zurückgehen und ergänzen.', cashBullet1: 'Buchung wird sofort bestätigt, kostenlose Stornierung bis 24 Stunden vorher.', cashBullet2: 'Kaution bei Übergabe: Reisepass oder rückzahlbare 100 $.', cashBullet3: 'Barzahlung am ersten Miettag.', cashConfirm: 'Ich bestätige, dass ich bei Lieferung bar bezahlen werde und zur angegebenen Zeit vor Ort bin.', cryptoTitle: 'KRYPTOZAHLUNG', cryptoDesc: 'Wir erstellen eine Rechnung über den Krypto-Anbieter. Nach der Bestätigung erhältst du Wallet-Adresse und Betrag.', selectCurrency: 'WÄHRUNG WÄHLEN', amount: 'BETRAG', amountHint: 'der genaue Betrag wird nach Erstellung der Rechnung angezeigt' },
+  fr: { missingDetails: 'Les détails de réservation sont introuvables. Revenez à l’étape 2.', cardNameRequired: 'Veuillez saisir le nom du titulaire.', cardNumberInvalid: 'Le numéro de carte semble invalide.', cardExpiryInvalid: 'La date d’expiration doit être au format MM/YY.', cardCvcInvalid: 'Le CVC est invalide.', cashConsent: 'Veuillez confirmer le paiement à la livraison.', draftMissing: 'Brouillon de réservation introuvable', guestRequired: 'Saisissez votre nom et votre téléphone pour continuer', bookingName: 'Réservation du scooter', pageTitle: 'Paiement et confirmation', reserved: 'RÉSERVATION CRÉÉE', confirmed: 'RÉSERVATION CONFIRMÉE', reservedDesc: 'Votre scooter est réservé. Il est déjà visible dans votre profil et vous pourrez payer à la livraison.', openProfile: 'Ouvrir le profil', contactDetails: 'COORDONNÉES', alreadyHave: 'Déjà un compte ? Se connecter', messengerTitle: 'MESSAGERIES SUR CE NUMÉRO', messengerHint: 'Cochez les apps sur lesquelles nous pouvons vous joindre plus vite.', reserveCash: 'Réserver (payer à la livraison) →', payCrypto: 'Payer {currency} →', bookingLabel: 'RÉSERVATION', base: 'Base', addons: 'Options', bankCard: 'CARTE BANCAIRE · STRIPE', bankCardDesc: 'Après création de la réservation, nous vous redirigerons vers une page Stripe sécurisée pour terminer le paiement. Ce formulaire est un aperçu.', cardholder: 'Nom du titulaire', cardNumber: 'Numéro de carte', cardExpiry: 'Expiration (MM/YY)', cashTitle: 'PAIEMENT À LA LIVRAISON', cashDesc: 'Le coursier apportera le scooter à l’adresse indiquée. Payez en espèces à la livraison (USD ou IDR au taux du jour).', deliveryAddress: 'ADRESSE DE LIVRAISON', noDelivery: 'Vous n’avez pas indiqué d’adresse de livraison à l’étape 2. Revenez en arrière pour la renseigner.', cashBullet1: 'La réservation est confirmée immédiatement, annulation gratuite jusqu’à 24 h avant.', cashBullet2: 'Dépôt à la livraison : passeport ou 100 $ remboursables.', cashBullet3: 'Paiement en espèces le jour du début de location.', cashConfirm: 'Je confirme être prêt à payer en espèces à la livraison et à être présent à l’heure indiquée.', cryptoTitle: 'PAIEMENT CRYPTO', cryptoDesc: 'Nous créerons une facture via le prestataire crypto. Après confirmation, vous recevrez l’adresse du portefeuille et le montant à payer.', selectCurrency: 'CHOISIR LA DEVISE', amount: 'MONTANT', amountHint: 'le montant exact sera affiché après création de la facture' },
 } as const;
 type PaymentCopy = (typeof PAYMENT_COPY)[keyof typeof PAYMENT_COPY];
 
@@ -129,8 +133,10 @@ function PaymentInner() {
     search.get('payment') === 'cash' ? 'cash' : search.get('payment') === 'crypto' ? 'crypto' : 'card'
   );
   const [guestName, setGuestName] = useState('');
-  const [guestEmail, setGuestEmail] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
+  const [guestHasTelegram, setGuestHasTelegram] = useState(false);
+  const [guestHasWechat, setGuestHasWechat] = useState(false);
+  const [guestHasWhatsapp, setGuestHasWhatsapp] = useState(false);
 
   // Card form (UI only — actual processing happens at the redirected provider)
   const [cardName, setCardName] = useState('');
@@ -212,6 +218,12 @@ function PaymentInner() {
     }
   }, [paymentUrl]);
 
+  const messengerOptions = [
+    { key: 'telegram', label: 'Telegram', checked: guestHasTelegram, setChecked: setGuestHasTelegram },
+    { key: 'wechat', label: 'WeChat', checked: guestHasWechat, setChecked: setGuestHasWechat },
+    { key: 'whatsapp', label: 'WhatsApp', checked: guestHasWhatsapp, setChecked: setGuestHasWhatsapp },
+  ] as const;
+
   function validateMethodForm(): string | null {
     if (pm === 'card') {
       const digits = cardNumber.replace(/\s+/g, '');
@@ -258,15 +270,17 @@ function PaymentInner() {
         if (user) {
           activeBooking = await endpoints.createBooking(payload, locale);
         } else {
-          if (!guestName.trim() || !guestEmail.trim()) {
+          if (!guestName.trim() || !guestPhone.trim()) {
             throw new Error(copy.guestRequired);
           }
           const result = await endpoints.guestCreateBooking(
             {
               ...payload,
               guest_full_name: guestName.trim(),
-              guest_email: guestEmail.trim(),
-              guest_phone: guestPhone.trim() || undefined,
+              guest_phone: guestPhone.trim(),
+              guest_has_telegram: guestHasTelegram,
+              guest_has_wechat: guestHasWechat,
+              guest_has_whatsapp: guestHasWhatsapp,
               language: locale,
             },
             locale
@@ -416,17 +430,45 @@ function PaymentInner() {
 
                 {!user && (
                   <div className="br-payment-card" style={{ border: `1px solid ${border}`, borderRadius: 14, padding: 18, marginBottom: 20 }}>
-                    <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.12em', color: sub }}>{copy.accountForProfile}</div>
+                    <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.12em', color: sub }}>{copy.contactDetails}</div>
                     <div className="br-payment-guest-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginTop: 14 }}>
                       <Field label={t.auth.name}>
                         <input value={guestName} onChange={(e) => setGuestName(e.target.value)} style={inputStyle} />
                       </Field>
-                      <Field label={t.auth.email}>
-                        <input type="email" value={guestEmail} onChange={(e) => setGuestEmail(e.target.value)} style={inputStyle} />
-                      </Field>
                       <Field label={t.auth.phone}>
                         <input value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} style={inputStyle} />
                       </Field>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.1em', color: sub, marginBottom: 8 }}>{copy.messengerTitle}</div>
+                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                          {messengerOptions.map((item) => (
+                            <label
+                              key={item.key}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                padding: '10px 12px',
+                                borderRadius: 999,
+                                border: `1px solid ${border}`,
+                                background: '#fff',
+                                fontFamily: 'Inter, sans-serif',
+                                fontSize: 13,
+                                color: fg,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={item.checked}
+                                onChange={(event) => item.setChecked(event.target.checked)}
+                              />
+                              <span>{item.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: sub, marginTop: 8 }}>{copy.messengerHint}</div>
+                      </div>
                       <div style={{ display: 'grid', alignContent: 'end' }}>
                         <Link href="/login" className="br-mono" style={{ color: '#000', fontSize: 12 }}>
                           {copy.alreadyHave}
