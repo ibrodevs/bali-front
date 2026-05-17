@@ -14,8 +14,18 @@ const LocaleCtx = createContext<Ctx | null>(null);
 
 const STORAGE_KEY = 'br_locale';
 
+function detectPreviewLocale(): Locale | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const requested = params.get('previewLocale') as Locale | null;
+  if (requested && requested in dictionaries) return requested;
+  return null;
+}
+
 function detectInitial(): Locale {
   if (typeof window === 'undefined') return 'en';
+  const previewLocale = detectPreviewLocale();
+  if (previewLocale) return previewLocale;
   const saved = localStorage.getItem(STORAGE_KEY) as Locale | null;
   if (saved && saved in dictionaries) return saved;
   const nav = navigator.language?.toLowerCase() || '';
@@ -48,6 +58,12 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('en');
   const [hydrated, setHydrated] = useState(false);
   const [dictionaryOverrides, setDictionaryOverrides] = useState<Record<string, unknown>>({});
+  const [previewOverrides, setPreviewOverrides] = useState<Record<string, unknown>>({});
+
+  const previewMode = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('sitePreview') === '1';
+  }, []);
 
   useEffect(() => {
     setLocaleState(detectInitial());
@@ -69,6 +85,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     setDictionaryOverrides({});
+    setPreviewOverrides({});
     endpoints.bootstrap(locale)
       .then((bootstrap) => {
         if (!cancelled) {
@@ -84,7 +101,24 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     };
   }, [locale]);
 
-  const t = useMemo(() => deepMerge(dictionaries[locale], dictionaryOverrides), [locale, dictionaryOverrides]);
+  useEffect(() => {
+    if (!previewMode || typeof window === 'undefined') return undefined;
+
+    const handler = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      const data = event.data as { type?: string; payload?: Record<string, unknown> } | null;
+      if (!data || data.type !== 'br-preview-overrides') return;
+      setPreviewOverrides(data.payload || {});
+    };
+
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [previewMode]);
+
+  const t = useMemo(
+    () => deepMerge(deepMerge(dictionaries[locale], dictionaryOverrides), previewOverrides),
+    [locale, dictionaryOverrides, previewOverrides],
+  );
   const tr = useCallback((template: string, vars?: Record<string, string | number>) => {
     if (!vars) return template;
     return template.replace(/\{(\w+)\}/g, (_, k) => (vars[k] !== undefined ? String(vars[k]) : `{${k}}`));

@@ -1,6 +1,6 @@
 'use client';
 
-import { CSSProperties, ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { CSSProperties, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ApiError, mediaUrl } from '@/lib/api';
 import {
@@ -344,6 +344,373 @@ function ErrorBanner({ error, onClose }: { error: string | null; onClose?: () =>
       ) : null}
     </div>
   );
+}
+
+type SiteContentFieldMeta = (typeof SITE_CONTENT_FIELDS)[number];
+
+function getSiteFieldTail(key: string) {
+  const parts = key.split('.');
+  return parts[parts.length - 1] || key;
+}
+
+function getSiteFieldElementLabel(field: SiteContentFieldMeta) {
+  const tail = getSiteFieldTail(field.key);
+
+  if (field.valueType === 'image') return 'Image asset';
+  if (field.valueType === 'video') return 'Video asset';
+  if (field.valueType === 'file') return 'Downloadable file';
+  if (field.valueType === 'json') return 'Structured content block';
+
+  if (/^(title|title\d+|confirmedTitle|loginHero|registerHero)$/i.test(tail)) return 'Main heading';
+  if (/^(desc|description|tagline|subtitle|protectedDesc|confirmedDesc)$/i.test(tail)) return 'Supporting text';
+  if (/^(eyebrow|label|mapEyebrow|zonesLabel|howLabel|step|stepLabel|from)$/i.test(tail)) return 'Section label';
+  if (/^(cta|primary|secondary|reserve|viewAll|readMore|save|cancel|cont|confirm|pay|clear|back|home|changeBike|loginCta|registerCta|stickyBookNow|book|viewFullFleet|whatsappUs)$/i.test(tail)) {
+    return 'Button label';
+  }
+  if (/placeholder/i.test(tail)) return 'Input placeholder';
+  if (/^(note|terms|verified|secure|pci|cancel24|free|freeZone|reviewVerified|available|status|location|month)$/i.test(tail)) return 'Helper text';
+  if (/^(quote|quoteMeta|meta)$/i.test(tail)) return 'Review content';
+  return 'Text content';
+}
+
+function getSiteFieldHint(field: SiteContentFieldMeta) {
+  const tail = getSiteFieldTail(field.key);
+  const prefix = `${field.pageLabel} -> ${field.sectionLabel}`;
+
+  if (field.valueType === 'json') {
+    return `${prefix}. This block controls multiple repeated items at once, such as cards, FAQ items, benefits, or steps.`;
+  }
+  if (/placeholder/i.test(tail)) {
+    return `${prefix}. Visitors see this text inside an empty input field before they type.`;
+  }
+  if (/^(cta|primary|secondary|reserve|viewAll|readMore|save|cancel|cont|confirm|pay|clear|back|home|changeBike|loginCta|registerCta|stickyBookNow|book|viewFullFleet|whatsappUs)$/i.test(tail)) {
+    return `${prefix}. Visitors see this as an actionable button or link.`;
+  }
+  if (/^(title|title\d+|confirmedTitle|loginHero|registerHero)$/i.test(tail)) {
+    return `${prefix}. This is a headline, so even short wording changes will be visually noticeable on the page.`;
+  }
+  if (/^(eyebrow|label|mapEyebrow|zonesLabel|howLabel|step|stepLabel|from)$/i.test(tail)) {
+    return `${prefix}. This is a small navigation or section marker that helps users orient themselves on the page.`;
+  }
+  if (/^(desc|description|tagline|subtitle|protectedDesc|confirmedDesc)$/i.test(tail)) {
+    return `${prefix}. This copy explains or supports the main message around the block.`;
+  }
+  return `${prefix}. This text is shown directly to visitors in the selected section.`;
+}
+
+function getTemplateTokens(value: string) {
+  return Array.from(new Set((value.match(/\{[^}]+\}/g) || []).map((token) => token.trim())));
+}
+
+function parsePreviewJson(value: string) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function isPreviewObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function renderStructuredPreview(data: unknown) {
+  if (Array.isArray(data)) {
+    if (data.length === 0) {
+      return (
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500 }}>
+          Empty list
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ display: 'grid', gap: 8 }}>
+        {data.slice(0, 3).map((item, index) => (
+          <div
+            key={index}
+            style={{
+              border: `1px solid ${A.g200}`,
+              borderRadius: 10,
+              background: A.white,
+              padding: '10px 12px',
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 13,
+              color: A.black,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+            }}
+          >
+            {typeof item === 'string'
+              ? item
+              : Array.isArray(item)
+                ? item.filter(Boolean).join(' — ')
+                : JSON.stringify(item, null, 2)}
+          </div>
+        ))}
+        {data.length > 3 ? (
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
+            +{data.length - 3} more items in this block
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (isPreviewObject(data)) {
+    const entries = Object.entries(data);
+    return (
+      <div style={{ display: 'grid', gap: 8 }}>
+        {entries.slice(0, 5).map(([key, value]) => (
+          <div
+            key={key}
+            style={{
+              border: `1px solid ${A.g200}`,
+              borderRadius: 10,
+              background: A.white,
+              padding: '10px 12px',
+            }}
+          >
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>
+              {key}
+            </div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.black, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              {typeof value === 'string' ? value : JSON.stringify(value)}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500 }}>
+      Preview unavailable
+    </div>
+  );
+}
+
+function SiteContentValuePreview({
+  field,
+  value,
+  mediaPreviewUrl,
+  compact = false,
+}: {
+  field: SiteContentFieldMeta;
+  value: string;
+  mediaPreviewUrl?: string;
+  compact?: boolean;
+}) {
+  const tail = getSiteFieldTail(field.key);
+  const previewPadding = compact ? '14px 14px' : '18px 18px';
+  const fontBase = compact ? 13 : 14;
+
+  if (field.valueType === 'image') {
+    return (
+      <div style={{ display: 'grid', gap: 10 }}>
+        {mediaPreviewUrl ? (
+          <img
+            src={mediaPreviewUrl}
+            alt={field.label}
+            style={{ width: '100%', maxHeight: compact ? 220 : 280, objectFit: 'cover', borderRadius: 14, border: `1px solid ${A.g200}`, background: A.g100 }}
+          />
+        ) : (
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: fontBase, color: A.g500 }}>No image selected yet.</div>
+        )}
+      </div>
+    );
+  }
+
+  if (field.valueType === 'video') {
+    return mediaPreviewUrl ? (
+      <video
+        controls
+        muted
+        playsInline
+        style={{ width: '100%', maxHeight: compact ? 240 : 300, borderRadius: 14, border: `1px solid ${A.g200}`, background: A.black }}
+      >
+        <source src={mediaPreviewUrl} />
+      </video>
+    ) : (
+      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: fontBase, color: A.g500 }}>No video selected yet.</div>
+    );
+  }
+
+  if (field.valueType === 'file') {
+    return mediaPreviewUrl ? (
+      <a href={mediaPreviewUrl} target="_blank" rel="noreferrer" style={{ color: A.blue, fontFamily: 'Inter, sans-serif', fontSize: fontBase, textDecoration: 'none' }}>
+        Open current file
+      </a>
+    ) : (
+      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: fontBase, color: A.g500 }}>No file selected yet.</div>
+    );
+  }
+
+  if (field.valueType === 'json') {
+    const parsed = parsePreviewJson(value);
+    if (parsed === null && value.trim()) {
+      return (
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: fontBase, color: A.red }}>
+          Invalid JSON. Fix the syntax to preview this block.
+        </div>
+      );
+    }
+    return renderStructuredPreview(parsed);
+  }
+
+  if (!value.trim()) {
+    return (
+      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: fontBase, color: A.g400 }}>
+        Empty value
+      </div>
+    );
+  }
+
+  if (/placeholder/i.test(tail)) {
+    return (
+      <div
+        style={{
+          border: `1px solid ${A.g200}`,
+          borderRadius: 12,
+          background: A.white,
+          padding: compact ? '12px 14px' : '14px 16px',
+          fontFamily: 'Inter, sans-serif',
+          fontSize: fontBase,
+          color: A.g400,
+        }}
+      >
+        {value}
+      </div>
+    );
+  }
+
+  if (/^(cta|primary|secondary|reserve|viewAll|readMore|save|cancel|cont|confirm|pay|clear|back|home|changeBike|loginCta|registerCta|stickyBookNow|book|viewFullFleet|whatsappUs)$/i.test(tail)) {
+    return (
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: compact ? 40 : 44,
+            borderRadius: 999,
+            padding: compact ? '0 16px' : '0 18px',
+            background: A.black,
+            color: A.white,
+            fontFamily: 'Inter, sans-serif',
+            fontSize: fontBase,
+            fontWeight: 700,
+          }}
+        >
+          {value}
+        </div>
+      </div>
+    );
+  }
+
+  if (/^(eyebrow|label|mapEyebrow|zonesLabel|howLabel|step|stepLabel|from)$/i.test(tail)) {
+    return (
+      <div
+        style={{
+          fontFamily: 'Inter, sans-serif',
+          fontSize: compact ? 11 : 12,
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+          color: A.g500,
+        }}
+      >
+        {value}
+      </div>
+    );
+  }
+
+  if (/^(title|title\d+|confirmedTitle|loginHero|registerHero)$/i.test(tail)) {
+    return (
+      <div
+        style={{
+          fontFamily: 'Sora, sans-serif',
+          fontSize: compact ? 24 : 30,
+          fontWeight: 800,
+          letterSpacing: '-0.04em',
+          lineHeight: 1.02,
+          color: A.black,
+        }}
+      >
+        {value}
+      </div>
+    );
+  }
+
+  if (/^(note|terms|verified|secure|pci|cancel24|free|freeZone|reviewVerified|available|status|location|month)$/i.test(tail)) {
+    return (
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          minHeight: compact ? 30 : 34,
+          borderRadius: 999,
+          padding: '0 12px',
+          background: A.g100,
+          color: A.g700,
+          fontFamily: 'Inter, sans-serif',
+          fontSize: compact ? 11 : 12,
+          fontWeight: 700,
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase',
+        }}
+      >
+        {value}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        background: 'linear-gradient(180deg, rgba(245,245,245,0.7) 0%, rgba(255,255,255,1) 100%)',
+        border: `1px solid ${A.g200}`,
+        borderRadius: 14,
+        padding: previewPadding,
+        fontFamily: 'Inter, sans-serif',
+        fontSize: fontBase,
+        lineHeight: 1.65,
+        color: A.black,
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+      }}
+    >
+      {value}
+    </div>
+  );
+}
+
+const SITE_PREVIEW_ROUTES: Record<string, string> = {
+  home: '/',
+  catalog: '/catalog',
+  detail: '/scooter/pcx160',
+  booking: '/booking?scooter_id=1&route_id=pcx160&slug=pcx160&name=Honda%20PCX%20160&price=18',
+  payment: '/payment',
+  auth: '/login',
+  news: '/news',
+  shared: '/',
+};
+
+function setPreviewValue(target: Record<string, unknown>, path: string, value: unknown) {
+  const parts = path.split('.');
+  let cursor: Record<string, unknown> = target;
+  for (let index = 0; index < parts.length - 1; index += 1) {
+    const part = parts[index];
+    if (typeof cursor[part] !== 'object' || cursor[part] === null || Array.isArray(cursor[part])) {
+      cursor[part] = {};
+    }
+    cursor = cursor[part] as Record<string, unknown>;
+  }
+  cursor[parts[parts.length - 1]] = value;
+}
+
+function normalizePreviewText(value: string) {
+  return value.replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
 function formatMoney(value: string | number | undefined | null) {
@@ -2052,10 +2419,11 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [activePage, setActivePage] = useState<string>(SITE_CONTENT_PAGES[0]?.key || 'home');
   const [activeLanguage, setActiveLanguage] = useState<string>('en');
-  const [search, setSearch] = useState('');
+  const [selectedFieldKey, setSelectedFieldKey] = useState<string | null>(null);
+  const [previewReloadKey, setPreviewReloadKey] = useState(0);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [mediaFiles, setMediaFiles] = useState<Record<string, File | null>>({});
   const [error, setError] = useState<string | null>(null);
+  const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
 
   const entryMap = useMemo(() => {
     const map = new Map<string, ApiAdminSiteContentEntry>();
@@ -2083,145 +2451,353 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
     [activePage],
   );
 
-  const fields = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return SITE_CONTENT_FIELDS.filter((field) => {
-      if (field.pageKey !== activePage) return false;
-      if (!query) return true;
-      return field.label.toLowerCase().includes(query) || field.key.toLowerCase().includes(query);
-    });
-  }, [activePage, search]);
+  const pageFields = useMemo(
+    () => SITE_CONTENT_FIELDS.filter((field) => field.pageKey === activePage),
+    [activePage],
+  );
 
-  const groupedFields = useMemo(() => {
-    const groups = new Map<string, { sectionLabel: string; fields: typeof fields }>();
-    for (const field of fields) {
-      const current = groups.get(field.sectionKey);
-      if (current) {
-        current.fields.push(field);
-      } else {
-        groups.set(field.sectionKey, { sectionLabel: field.sectionLabel, fields: [field] });
-      }
-    }
-    return Array.from(groups.entries())
-      .map(([sectionKey, value]) => ({ sectionKey, sectionLabel: value.sectionLabel, fields: value.fields }))
-      .sort((a, b) => a.sectionLabel.localeCompare(b.sectionLabel));
-  }, [fields]);
+  const previewFields = useMemo(
+    () => SITE_CONTENT_FIELDS.filter((field) => field.pageKey === activePage || field.pageKey === 'shared'),
+    [activePage],
+  );
+
+  const previewTextFields = useMemo(
+    () => previewFields.filter((field) => field.valueType === 'text' || field.valueType === 'textarea'),
+    [previewFields],
+  );
 
   const pageCounts = useMemo(() => {
-    const counts = new Map<string, { total: number; customized: number }>();
+    const counts = new Map<string, { total: number; customized: number; clickable: number }>();
     for (const page of SITE_CONTENT_PAGES) {
-      counts.set(page.key, { total: 0, customized: 0 });
+      counts.set(page.key, { total: 0, customized: 0, clickable: 0 });
     }
     for (const field of SITE_CONTENT_FIELDS) {
       const current = counts.get(field.pageKey);
       if (current) current.total += 1;
+      if (current && (field.valueType === 'text' || field.valueType === 'textarea')) current.clickable += 1;
       const entry = entryMap.get(`${field.shared ? 'all' : activeLanguage}:${field.key}`);
       if (entry && current) current.customized += 1;
     }
     return counts;
   }, [entryMap, activeLanguage]);
 
-  function fieldLanguage(field: typeof SITE_CONTENT_FIELDS[number]) {
-    return field.shared ? 'all' : activeLanguage;
+  function storageLanguage(field: SiteContentFieldMeta, languageCode: string) {
+    return field.shared ? 'all' : languageCode;
   }
 
-  function fieldStateKey(field: typeof SITE_CONTENT_FIELDS[number]) {
-    return `${fieldLanguage(field)}:${field.key}`;
+  function fieldStateKey(field: SiteContentFieldMeta, languageCode: string) {
+    return `${storageLanguage(field, languageCode)}:${field.key}`;
   }
 
-  function fieldEntry(field: typeof SITE_CONTENT_FIELDS[number]) {
-    return entryMap.get(fieldStateKey(field)) || null;
+  function fieldEntry(field: SiteContentFieldMeta, languageCode: string) {
+    return entryMap.get(fieldStateKey(field, languageCode)) || null;
   }
 
-  function defaultTextValue(field: typeof SITE_CONTENT_FIELDS[number]) {
-    const lang = field.shared ? 'en' : (activeLanguage as 'en' | 'ru' | 'zh' | 'id' | 'de' | 'fr');
+  function defaultTextValue(field: SiteContentFieldMeta, languageCode: string) {
+    const lang = field.shared ? 'en' : (languageCode as 'en' | 'ru' | 'zh' | 'id' | 'de' | 'fr');
     const defaultValue = getDefaultSiteContentValue(field.key, lang);
     if (field.valueType === 'json') return JSON.stringify(defaultValue ?? null, null, 2);
     if (typeof defaultValue === 'string') return defaultValue;
     return defaultValue == null ? '' : String(defaultValue);
   }
 
-  function resolveDraftValue(field: typeof SITE_CONTENT_FIELDS[number]) {
-    const stateKey = fieldStateKey(field);
+  function resolveDraftValue(field: SiteContentFieldMeta, languageCode: string) {
+    const stateKey = fieldStateKey(field, languageCode);
     if (drafts[stateKey] !== undefined) return drafts[stateKey];
 
-    const entry = fieldEntry(field);
-    if (!entry) return defaultTextValue(field);
+    const entry = fieldEntry(field, languageCode);
+    if (!entry) return defaultTextValue(field, languageCode);
     if (field.valueType === 'json') return JSON.stringify(entry.json_value ?? null, null, 2);
     if (field.valueType === 'image' || field.valueType === 'video' || field.valueType === 'file') {
-      return entry.value || entry.media_url || defaultTextValue(field);
+      return entry.value || entry.media_url || defaultTextValue(field, languageCode);
     }
     return entry.value ?? '';
   }
 
-  async function saveField(field: typeof SITE_CONTENT_FIELDS[number]) {
-    const stateKey = fieldStateKey(field);
-    const language = fieldLanguage(field);
-    const existing = fieldEntry(field);
-    const draftValue = resolveDraftValue(field);
+  function setDraftValue(field: SiteContentFieldMeta, languageCode: string, value: string) {
+    const stateKey = fieldStateKey(field, languageCode);
+    setDrafts((current) => ({ ...current, [stateKey]: value }));
+  }
 
+  useEffect(() => {
+    if (selectedFieldKey && !previewFields.some((field) => field.key === selectedFieldKey)) {
+      setSelectedFieldKey(null);
+    }
+  }, [previewFields, selectedFieldKey]);
+
+  const selectedField = useMemo(
+    () => previewFields.find((field) => field.key === selectedFieldKey) || null,
+    [previewFields, selectedFieldKey],
+  );
+
+  const previewUrl = useMemo(() => {
+    const route = SITE_PREVIEW_ROUTES[activePage] || activePageMeta?.route || '/';
+    const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    const url = new URL(route, base);
+    url.searchParams.set('sitePreview', '1');
+    url.searchParams.set('previewLocale', activeLanguage);
+    url.searchParams.set('previewRev', String(previewReloadKey));
+    return `${url.pathname}${url.search}`;
+  }, [activeLanguage, activePage, activePageMeta, previewReloadKey]);
+
+  const previewOverrides = useMemo(() => {
+    const overrides: Record<string, unknown> = {};
+
+    for (const field of previewFields) {
+      const rawValue = resolveDraftValue(field, activeLanguage);
+      let nextValue: unknown = rawValue;
+
+      if (field.valueType === 'json') {
+        const parsed = parsePreviewJson(rawValue);
+        nextValue = rawValue.trim() ? parsed : null;
+      }
+
+      setPreviewValue(overrides, field.key, nextValue);
+    }
+
+    return overrides;
+  }, [previewFields, drafts, entries, activeLanguage]);
+
+  const comparableValuesForField = useCallback((field: SiteContentFieldMeta) => {
+    if (!['text', 'textarea'].includes(field.valueType)) return [] as string[];
+    const values = [resolveDraftValue(field, activeLanguage), defaultTextValue(field, activeLanguage)];
+    return Array.from(new Set(values.map((value) => normalizePreviewText(value)).filter((value) => value.length >= 2)));
+  }, [drafts, entries, activeLanguage]);
+
+  const pushPreviewOverrides = useCallback(() => {
+    const frame = previewFrameRef.current;
+    const target = frame?.contentWindow;
+    if (!target || typeof window === 'undefined') return;
+    target.postMessage({ type: 'br-preview-overrides', payload: previewOverrides }, window.location.origin);
+  }, [previewOverrides]);
+
+  const resolveFieldFromElement = useCallback((element: HTMLElement | null) => {
+    if (!element) return null;
+
+    const rawCandidates = [
+      element.textContent || '',
+      element.getAttribute('aria-label') || '',
+      element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement ? element.placeholder || '' : '',
+      element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement ? element.value || '' : '',
+    ];
+    const candidates = Array.from(new Set(rawCandidates.map((value) => normalizePreviewText(value)).filter(Boolean)));
+    if (!candidates.length) return null;
+
+    let bestMatch: { fieldKey: string; score: number } | null = null;
+
+    for (const field of previewTextFields) {
+      const variants = comparableValuesForField(field);
+      if (!variants.length) continue;
+
+      for (const candidate of candidates) {
+        for (const variant of variants) {
+          let score = 0;
+          if (candidate === variant) score = 1000 + variant.length;
+          else if (candidate.includes(variant) && variant.length > 5) score = 700 + variant.length;
+          else if (variant.includes(candidate) && candidate.length > 5) score = 500 + candidate.length;
+
+          if (!bestMatch || score > bestMatch.score) {
+            bestMatch = { fieldKey: field.key, score };
+          }
+        }
+      }
+    }
+
+    return bestMatch && bestMatch.score > 0 ? bestMatch.fieldKey : null;
+  }, [comparableValuesForField, previewTextFields]);
+
+  const clearPreviewHighlights = useCallback(() => {
+    const doc = previewFrameRef.current?.contentDocument;
+    if (!doc) return;
+
+    doc.querySelectorAll('[data-admin-preview-field-key]').forEach((node) => {
+      const element = node as HTMLElement;
+      element.style.outline = '';
+      element.style.outlineOffset = '';
+      element.style.boxShadow = '';
+      element.style.borderRadius = '';
+      element.style.backgroundColor = '';
+    });
+  }, []);
+
+  const highlightPreviewSelection = useCallback(() => {
+    const doc = previewFrameRef.current?.contentDocument;
+    if (!doc) return;
+
+    clearPreviewHighlights();
+
+    if (!selectedField) return;
+
+    doc.querySelectorAll(`[data-admin-preview-field-key="${selectedField.key}"]`).forEach((node) => {
+      const element = node as HTMLElement;
+      element.style.outline = `2px solid ${A.gold}`;
+      element.style.outlineOffset = '4px';
+      element.style.boxShadow = '0 0 0 6px rgba(255,215,0,0.18)';
+      element.style.borderRadius = '10px';
+      element.style.backgroundColor = 'rgba(255,215,0,0.08)';
+    });
+  }, [clearPreviewHighlights, selectedField]);
+
+  const indexPreviewClickableText = useCallback(() => {
+    const doc = previewFrameRef.current?.contentDocument as (Document & {
+      __brAdminPreviewClickHandler?: (event: MouseEvent) => void;
+    }) | null;
+    if (!doc?.body) return;
+
+    doc.querySelectorAll('[data-admin-preview-field-key]').forEach((node) => {
+      const element = node as HTMLElement;
+      element.removeAttribute('data-admin-preview-field-key');
+      element.style.cursor = '';
+    });
+
+    const nodes = Array.from(
+      doc.body.querySelectorAll('h1,h2,h3,h4,h5,h6,p,span,a,button,li,label,small,strong,em,input,textarea'),
+    ) as HTMLElement[];
+
+    for (const node of nodes) {
+      const fieldKey = resolveFieldFromElement(node);
+      if (fieldKey) {
+        node.setAttribute('data-admin-preview-field-key', fieldKey);
+        node.style.cursor = 'pointer';
+      }
+    }
+
+    highlightPreviewSelection();
+  }, [highlightPreviewSelection, resolveFieldFromElement]);
+
+  const bindPreviewInteractions = useCallback(() => {
+    const doc = previewFrameRef.current?.contentDocument as (Document & {
+      __brAdminPreviewClickHandler?: (event: MouseEvent) => void;
+      __brAdminPreviewObserver?: MutationObserver;
+      __brAdminPreviewReindexTimer?: number;
+    }) | null;
+    if (!doc) return;
+
+    let styleTag = doc.getElementById('br-admin-preview-style') as HTMLStyleElement | null;
+    if (!styleTag) {
+      styleTag = doc.createElement('style');
+      styleTag.id = 'br-admin-preview-style';
+      styleTag.textContent = `
+        html, body { cursor: crosshair !important; }
+        [data-admin-preview-field-key] {
+          position: relative;
+          transition: outline-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+        }
+        [data-admin-preview-field-key]:hover {
+          outline: 2px solid rgba(255,215,0,0.7);
+          outline-offset: 4px;
+          box-shadow: 0 0 0 4px rgba(255,215,0,0.12);
+          border-radius: 10px;
+          background-color: rgba(255,215,0,0.06);
+        }
+        a, button, input, textarea, h1, h2, h3, h4, h5, h6, p, span, li, label {
+          transition: outline-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+        }
+      `;
+      doc.head.appendChild(styleTag);
+    }
+
+    if (doc.__brAdminPreviewClickHandler) {
+      doc.removeEventListener('click', doc.__brAdminPreviewClickHandler, true);
+    }
+    if (doc.__brAdminPreviewObserver) {
+      doc.__brAdminPreviewObserver.disconnect();
+    }
+    if (doc.__brAdminPreviewReindexTimer) {
+      window.clearTimeout(doc.__brAdminPreviewReindexTimer);
+    }
+
+    const handler = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+
+      const element = target.closest('[data-admin-preview-field-key]') as HTMLElement | null;
+      const blockNavigation = target.closest('a, button, input, textarea');
+      if (blockNavigation) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      if (element) {
+        event.preventDefault();
+        event.stopPropagation();
+        setSelectedFieldKey(element.getAttribute('data-admin-preview-field-key'));
+        return;
+      }
+
+      const fallbackTarget = target.closest('button, a, input, textarea, h1, h2, h3, h4, h5, h6, p, span, li, label, small, strong, em') as HTMLElement | null;
+      const fallbackFieldKey = resolveFieldFromElement(fallbackTarget);
+      if (fallbackFieldKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        setSelectedFieldKey(fallbackFieldKey);
+      }
+    };
+
+    doc.__brAdminPreviewClickHandler = handler;
+    doc.addEventListener('click', handler, true);
+
+    doc.__brAdminPreviewObserver = new MutationObserver(() => {
+      if (doc.__brAdminPreviewReindexTimer) {
+        window.clearTimeout(doc.__brAdminPreviewReindexTimer);
+      }
+      doc.__brAdminPreviewReindexTimer = window.setTimeout(() => {
+        indexPreviewClickableText();
+      }, 120);
+    });
+    doc.__brAdminPreviewObserver.observe(doc.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+    });
+
+    indexPreviewClickableText();
+  }, [indexPreviewClickableText, resolveFieldFromElement]);
+
+  useEffect(() => {
+    pushPreviewOverrides();
+    if (typeof window === 'undefined') return undefined;
+    const timeout = window.setTimeout(() => {
+      indexPreviewClickableText();
+    }, 120);
+    return () => window.clearTimeout(timeout);
+  }, [pushPreviewOverrides, indexPreviewClickableText]);
+
+  useEffect(() => {
+    bindPreviewInteractions();
+  }, [bindPreviewInteractions, previewUrl]);
+
+  useEffect(() => {
+    highlightPreviewSelection();
+  }, [highlightPreviewSelection, selectedField, previewOverrides]);
+
+  async function persistField(field: SiteContentFieldMeta, languageCode: string) {
+    const language = storageLanguage(field, languageCode);
+    const existing = fieldEntry(field, languageCode);
+    const draftValue = resolveDraftValue(field, languageCode);
+    const body = {
+      key: field.key,
+      language,
+      value_type: field.valueType,
+      value: draftValue,
+      is_active: true,
+    };
+    const saved = existing
+      ? await endpoints.adminUpdateSiteContent(existing.id, body)
+      : await endpoints.adminCreateSiteContent(body);
+    setEntries((current) => {
+      const next = current.filter((item) => item.id !== saved.id);
+      next.push(saved);
+      return next.sort((a, b) => `${a.key}:${a.language}`.localeCompare(`${b.key}:${b.language}`));
+    });
+  }
+
+  async function saveFieldLanguage(field: SiteContentFieldMeta, languageCode: string) {
+    const stateKey = fieldStateKey(field, languageCode);
     setSavingKey(stateKey);
     setError(null);
-
     try {
-      if (field.valueType === 'json') {
-        const parsed = draftValue.trim() ? JSON.parse(draftValue) : null;
-        const body = {
-          key: field.key,
-          language,
-          value_type: field.valueType,
-          value: '',
-          json_value: parsed,
-          is_active: true,
-        };
-        const saved = existing
-          ? await endpoints.adminUpdateSiteContent(existing.id, body)
-          : await endpoints.adminCreateSiteContent(body);
-        setEntries((current) => {
-          const next = current.filter((item) => item.id !== saved.id);
-          next.push(saved);
-          return next.sort((a, b) => `${a.key}:${a.language}`.localeCompare(`${b.key}:${b.language}`));
-        });
-        return;
-      }
-
-      if (field.valueType === 'image' || field.valueType === 'video' || field.valueType === 'file') {
-        const body = new FormData();
-        body.append('key', field.key);
-        body.append('language', language);
-        body.append('value_type', field.valueType);
-        body.append('value', draftValue.trim());
-        body.append('is_active', 'true');
-        const file = mediaFiles[stateKey];
-        if (file) body.append('media', file);
-
-        const saved = existing
-          ? await endpoints.adminUpdateSiteContent(existing.id, body)
-          : await endpoints.adminCreateSiteContent(body);
-        setEntries((current) => {
-          const next = current.filter((item) => item.id !== saved.id);
-          next.push(saved);
-          return next.sort((a, b) => `${a.key}:${a.language}`.localeCompare(`${b.key}:${b.language}`));
-        });
-        setMediaFiles((current) => ({ ...current, [stateKey]: null }));
-        return;
-      }
-
-      const body = {
-        key: field.key,
-        language,
-        value_type: field.valueType,
-        value: draftValue,
-        is_active: true,
-      };
-      const saved = existing
-        ? await endpoints.adminUpdateSiteContent(existing.id, body)
-        : await endpoints.adminCreateSiteContent(body);
-      setEntries((current) => {
-        const next = current.filter((item) => item.id !== saved.id);
-        next.push(saved);
-        return next.sort((a, b) => `${a.key}:${a.language}`.localeCompare(`${b.key}:${b.language}`));
-      });
+      await persistField(field, languageCode);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to save content');
     } finally {
@@ -2229,31 +2805,44 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
     }
   }
 
-  async function resetField(field: typeof SITE_CONTENT_FIELDS[number]) {
-    const existing = fieldEntry(field);
+  async function saveSelectedFieldAll() {
+    if (!selectedField) return;
+    const languages = selectedField.shared ? ['all'] : SITE_CONTENT_LANGUAGES.map((lang) => lang.code);
+    setSavingKey(`bulk:${selectedField.key}`);
+    setError(null);
+    try {
+      for (const languageCode of languages) {
+        await persistField(selectedField, languageCode);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to save content');
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  async function resetFieldLanguage(field: SiteContentFieldMeta, languageCode: string) {
+    const stateKey = fieldStateKey(field, languageCode);
+    const existing = fieldEntry(field, languageCode);
     if (!existing) {
-      const stateKey = fieldStateKey(field);
       setDrafts((current) => {
         const next = { ...current };
         delete next[stateKey];
         return next;
       });
-      setMediaFiles((current) => ({ ...current, [stateKey]: null }));
       return;
     }
 
-    setSavingKey(fieldStateKey(field));
+    setSavingKey(stateKey);
     setError(null);
     try {
       await endpoints.adminDeleteSiteContent(existing.id);
       setEntries((current) => current.filter((item) => item.id !== existing.id));
-      const stateKey = fieldStateKey(field);
       setDrafts((current) => {
         const next = { ...current };
         delete next[stateKey];
         return next;
       });
-      setMediaFiles((current) => ({ ...current, [stateKey]: null }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to reset content');
     } finally {
@@ -2261,11 +2850,45 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
     }
   }
 
+  async function resetSelectedFieldAll() {
+    if (!selectedField) return;
+    const languages = selectedField.shared ? ['all'] : SITE_CONTENT_LANGUAGES.map((lang) => lang.code);
+    setSavingKey(`reset:${selectedField.key}`);
+    setError(null);
+    try {
+      for (const languageCode of languages) {
+        const existing = fieldEntry(selectedField, languageCode);
+        const stateKey = fieldStateKey(selectedField, languageCode);
+        if (existing) {
+          await endpoints.adminDeleteSiteContent(existing.id);
+          setEntries((current) => current.filter((item) => item.id !== existing.id));
+        }
+        setDrafts((current) => {
+          const next = { ...current };
+          delete next[stateKey];
+          return next;
+        });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to reset content');
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  const editorLanguages = selectedField?.shared
+    ? [{ code: 'all', name: 'Shared content', flag: 'ALL' }]
+    : SITE_CONTENT_LANGUAGES.map((lang) => ({ code: lang.code, name: lang.name, flag: lang.flag }));
+
+  const selectionBusy = selectedField
+    ? Boolean(savingKey && (savingKey.includes(selectedField.key) || savingKey === `bulk:${selectedField.key}` || savingKey === `reset:${selectedField.key}`))
+    : false;
+
   return (
     <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? 16 : '28px 32px' }}>
       <SectionHeader
         title="Site Content"
-        subtitle="Edit storefront text, shared media, and translations from one place."
+        subtitle="Choose a page, click text on the site preview, and edit that copy across languages."
         action={<Button variant="outline" size="md" onClick={load}>Reload</Button>}
       />
 
@@ -2280,13 +2903,16 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
                 {SITE_CONTENT_PAGES.map((page) => {
-                  const stats = pageCounts.get(page.key) || { total: 0, customized: 0 };
+                  const stats = pageCounts.get(page.key) || { total: 0, customized: 0, clickable: 0 };
                   const selected = activePage === page.key;
                   return (
                     <button
                       key={page.key}
                       type="button"
-                      onClick={() => setActivePage(page.key)}
+                      onClick={() => {
+                        setActivePage(page.key);
+                        setSelectedFieldKey(null);
+                      }}
                       style={{
                         textAlign: 'left',
                         borderRadius: 16,
@@ -2300,7 +2926,7 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
                         <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 16, color: A.black }}>
                           {page.label}
                         </div>
-                        <Badge color={selected ? 'gold' : 'default'}>{stats.customized}/{stats.total}</Badge>
+                        <Badge color={selected ? 'gold' : 'default'}>{stats.clickable} clickable</Badge>
                       </div>
                       <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, lineHeight: 1.55, minHeight: 56 }}>
                         {page.description}
@@ -2311,41 +2937,31 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', gap: 12, alignItems: 'end' }}>
-              <Field label="Search inside page">
-                <input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Find block, field or key"
-                  style={inputStyle}
-                />
-              </Field>
-              <div>
-                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
-                  Language
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {SITE_CONTENT_LANGUAGES.map((lang) => (
-                    <button
-                      key={lang.code}
-                      type="button"
-                      onClick={() => setActiveLanguage(lang.code)}
-                      style={{
-                        borderRadius: 999,
-                        border: `1px solid ${activeLanguage === lang.code ? A.black : A.g200}`,
-                        background: activeLanguage === lang.code ? A.black : A.white,
-                        color: activeLanguage === lang.code ? A.white : A.black,
-                        cursor: 'pointer',
-                        padding: '8px 12px',
-                        fontFamily: 'Inter, sans-serif',
-                        fontSize: 13,
-                        fontWeight: activeLanguage === lang.code ? 700 : 500,
-                      }}
-                    >
-                      {lang.name}
-                    </button>
-                  ))}
-                </div>
+            <div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
+                Preview language
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {SITE_CONTENT_LANGUAGES.map((lang) => (
+                  <button
+                    key={lang.code}
+                    type="button"
+                    onClick={() => setActiveLanguage(lang.code)}
+                    style={{
+                      borderRadius: 999,
+                      border: `1px solid ${activeLanguage === lang.code ? A.black : A.g200}`,
+                      background: activeLanguage === lang.code ? A.black : A.white,
+                      color: activeLanguage === lang.code ? A.white : A.black,
+                      cursor: 'pointer',
+                      padding: '8px 12px',
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: 13,
+                      fontWeight: activeLanguage === lang.code ? 700 : 500,
+                    }}
+                  >
+                    {lang.name}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -2366,27 +2982,14 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
             </div>
 
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <Badge color="blue">{groupedFields.length} blocks</Badge>
-              <Badge color="green">{fields.length} editable fields</Badge>
-              <Badge color="orange">{activeLanguage.toUpperCase()}</Badge>
+              <Badge color="blue">{previewTextFields.length} clickable text fields</Badge>
+              <Badge color="green">{pageFields.length} total content entries</Badge>
+              <Badge color="orange">Preview: {activeLanguage.toUpperCase()}</Badge>
             </div>
 
-            {activePageMeta?.route.includes('[') ? (
-              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
-                Dynamic page preview: {activePageMeta.route}
-              </div>
-            ) : (
-              <a
-                href={activePageMeta?.route}
-                target="_blank"
-                rel="noreferrer"
-                style={{ textDecoration: 'none' }}
-              >
-                <Button variant="dark" size="md" style={{ width: '100%' }}>
-                  {activePageMeta?.routeLabel}
-                </Button>
-              </a>
-            )}
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
+              Click highlighted text on the live page preview to open its editor. The editor shows every language at once, so content managers do not need to hunt through long field lists.
+            </div>
 
             <div style={{ borderTop: `1px solid ${A.g200}`, paddingTop: 14 }}>
               <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
@@ -2425,157 +3028,244 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
 
       {loading ? (
         <EmptyState label="Loading site content…" />
-      ) : fields.length === 0 ? (
-        <EmptyState label="No content fields found for this filter." />
+      ) : previewTextFields.length === 0 ? (
+        <EmptyState label="No clickable text fields found for this page." />
       ) : (
-        <div style={{ display: 'grid', gap: 14 }}>
-          {groupedFields.map((group) => (
-            <Panel key={group.sectionKey} style={{ padding: isMobile ? 16 : 18 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.4fr) minmax(340px, 0.8fr)', gap: 16, alignItems: 'start' }}>
+          <div style={{ display: 'grid', gap: 16, position: isMobile ? 'static' : 'sticky', top: 20 }}>
+            <Panel style={{ padding: isMobile ? 16 : 20 }}>
               <div style={{ display: 'grid', gap: 14 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                  <div>
-                    <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18, color: A.black, marginBottom: 4 }}>
-                      {group.sectionLabel}
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                        Live site preview
                     </div>
-                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
-                      {group.fields.length} fields in this block
+                    <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 22, color: A.black, marginBottom: 6 }}>
+                      Real page inside admin
+                    </div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
+                      The page below uses the selected language and receives your draft content live. Click visible text on the preview to jump to the matching field.
                     </div>
                   </div>
-                  <Badge color="default">{group.sectionKey}</Badge>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <Button variant="outline" onClick={() => setPreviewReloadKey((current) => current + 1)}>
+                        <RefreshIcon size={14} />
+                        Reload preview
+                    </Button>
+                    <a href={previewUrl} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
+                      <Button variant="dark">
+                        Open page
+                      </Button>
+                    </a>
+                  </div>
                 </div>
 
-                <div style={{ display: 'grid', gap: 12 }}>
-                  {group.fields.map((field) => {
-                    const stateKey = fieldStateKey(field);
-                    const entry = fieldEntry(field);
-                    const draftValue = resolveDraftValue(field);
-                    const previewUrl = entry?.media_url || entry?.value || defaultTextValue(field);
-                    const busy = savingKey === stateKey;
-                    const defaultValue = defaultTextValue(field);
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <Badge color="blue">{activePageMeta?.label}</Badge>
+                  <Badge color="orange">{activeLanguage.toUpperCase()}</Badge>
+                  <Badge color="green">{previewTextFields.length} clickable texts</Badge>
+                </div>
 
-                    return (
-                      <div key={stateKey} style={{ border: `1px solid ${A.g200}`, borderRadius: 14, padding: isMobile ? 14 : 16 }}>
-                        <div style={{ display: 'grid', gap: 14 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                            <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
-                                <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 16, color: A.black }}>
-                                  {field.label}
+                <div style={{ border: `1px solid ${A.g200}`, borderRadius: 18, overflow: 'hidden', background: A.white }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 14px', borderBottom: `1px solid ${A.g200}`, background: A.g100 }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 999, background: '#ff5f57', display: 'inline-block' }} />
+                      <span style={{ width: 10, height: 10, borderRadius: 999, background: '#febc2e', display: 'inline-block' }} />
+                      <span style={{ width: 10, height: 10, borderRadius: 999, background: '#28c840', display: 'inline-block' }} />
+                    </div>
+                    <div style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 11, color: A.g500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {previewUrl}
+                    </div>
+                  </div>
+                  <iframe
+                    key={previewUrl}
+                    ref={previewFrameRef}
+                    src={previewUrl}
+                    title="Site preview"
+                    onLoad={() => {
+                      pushPreviewOverrides();
+                      bindPreviewInteractions();
+                    }}
+                    style={{
+                      width: '100%',
+                      height: isMobile ? 520 : 620,
+                      border: 'none',
+                      display: 'block',
+                        background: A.white,
+                      }}
+                  />
+                </div>
+              </div>
+            </Panel>
+          </div>
+
+          <div style={{ display: 'grid', gap: 16, position: isMobile ? 'static' : 'sticky', top: 20 }}>
+            {!selectedField ? (
+              <Panel style={{ padding: isMobile ? 16 : 20 }}>
+                <div style={{ display: 'grid', gap: 14 }}>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                    Click To Edit
+                  </div>
+                  <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 24, color: A.black }}>
+                    Choose text directly on the site
+                  </div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: A.g500, lineHeight: 1.65 }}>
+                    Pick a page on top, look at the real site preview, then click any highlighted text. The editor for that specific copy will open here with all languages.
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <Badge color="blue">{activePageMeta?.label}</Badge>
+                    <Badge color="green">{previewTextFields.length} text elements ready</Badge>
+                    <Badge color="orange">Preview in {activeLanguage.toUpperCase()}</Badge>
+                  </div>
+                </div>
+              </Panel>
+            ) : (
+              <Panel style={{ padding: isMobile ? 16 : 20 }}>
+                <div style={{ display: 'grid', gap: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                        Selected text
+                      </div>
+                      <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 24, color: A.black, marginBottom: 6 }}>
+                        {selectedField.label}
+                      </div>
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
+                        {selectedField.pageLabel} / {selectedField.sectionLabel} / {getSiteFieldElementLabel(selectedField)}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <Button variant="outline" onClick={() => setSelectedFieldKey(null)} disabled={selectionBusy}>
+                        Close
+                      </Button>
+                      <Button variant="outline" onClick={resetSelectedFieldAll} disabled={selectionBusy}>
+                        Reset field
+                      </Button>
+                      <Button variant="dark" onClick={saveSelectedFieldAll} disabled={selectionBusy}>
+                        {selectionBusy ? 'Saving…' : 'Save all languages'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <Badge color={selectedField.shared ? 'orange' : 'blue'}>
+                      {selectedField.shared ? 'shared across all languages' : 'localized text'}
+                    </Badge>
+                    <Badge color="default">{selectedField.key}</Badge>
+                  </div>
+
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                      Previewed right now
+                    </div>
+                    <div style={{ border: `1px solid ${A.g200}`, borderRadius: 16, background: 'linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(247,247,248,1) 100%)', padding: 16 }}>
+                      <SiteContentValuePreview
+                        field={selectedField}
+                        value={resolveDraftValue(selectedField, activeLanguage)}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                      Where this appears
+                    </div>
+                    <div style={{
+                      border: `1px solid ${A.g200}`,
+                      borderRadius: 12,
+                      padding: '12px 14px',
+                      background: A.g100,
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: 13,
+                      color: A.black,
+                      lineHeight: 1.6,
+                    }}>
+                      {getSiteFieldHint(selectedField)}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gap: 12 }}>
+                    {editorLanguages.map((lang) => {
+                      const draftValue = resolveDraftValue(selectedField, lang.code);
+                      const defaultValue = defaultTextValue(selectedField, lang.code === 'all' ? activeLanguage : lang.code);
+                      const currentEntry = fieldEntry(selectedField, lang.code);
+                      const busy = savingKey === fieldStateKey(selectedField, lang.code) || savingKey === `bulk:${selectedField.key}` || savingKey === `reset:${selectedField.key}`;
+
+                      return (
+                        <div key={lang.code} style={{ border: `1px solid ${A.g200}`, borderRadius: 16, padding: 14, background: A.white }}>
+                          <div style={{ display: 'grid', gap: 12 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                              <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                                  <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 17, color: A.black }}>
+                                    {lang.name}
+                                  </div>
+                                  <Badge color={currentEntry ? 'green' : 'default'}>
+                                    {currentEntry ? 'custom' : 'default'}
+                                  </Badge>
                                 </div>
-                                <Badge color={field.shared ? 'orange' : 'blue'}>
-                                  {field.shared ? 'shared' : activeLanguage.toUpperCase()}
-                                </Badge>
-                                {entry ? <Badge color="green">custom</Badge> : <Badge>default</Badge>}
-                              </div>
-                              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
-                                {field.key}
-                              </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                              <Button variant="outline" onClick={() => resetField(field)} disabled={busy}>
-                                Reset
-                              </Button>
-                              <Button variant="dark" onClick={() => saveField(field)} disabled={busy}>
-                                {busy ? 'Saving…' : 'Save'}
-                              </Button>
-                            </div>
-                          </div>
-
-                          {(field.valueType === 'image' || field.valueType === 'video' || field.valueType === 'file') ? (
-                            <div style={{ display: 'grid', gap: 12 }}>
-                              <Field label="Media URL">
-                                <input
-                                  value={draftValue}
-                                  onChange={(event) => setDrafts((current) => ({ ...current, [stateKey]: event.target.value }))}
-                                  placeholder="https://... or leave empty and upload a file"
-                                  style={inputStyle}
-                                />
-                              </Field>
-                              <Field label={field.valueType === 'video' ? 'Upload video' : 'Upload file'}>
-                                <input
-                                  type="file"
-                                  accept={field.valueType === 'video' ? 'video/*' : field.valueType === 'image' ? 'image/*' : undefined}
-                                  onChange={(event) => {
-                                    const file = event.target.files?.[0] || null;
-                                    setMediaFiles((current) => ({ ...current, [stateKey]: file }));
-                                  }}
-                                  style={{ fontFamily: 'Inter, sans-serif', fontSize: 13 }}
-                                />
-                              </Field>
-                              {mediaFiles[stateKey] ? (
                                 <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
-                                  Selected file: {mediaFiles[stateKey]?.name}
+                                  {lang.code === activeLanguage ? 'This language is shown in the live preview.' : 'Edit here even if another language is open in preview.'}
                                 </div>
-                              ) : null}
-                              {previewUrl ? (
-                                field.valueType === 'video' ? (
-                                  <video
-                                    controls
-                                    muted
-                                    playsInline
-                                    style={{ width: '100%', maxWidth: 420, borderRadius: 12, border: `1px solid ${A.g200}`, background: A.black }}
-                                  >
-                                    <source src={previewUrl} />
-                                  </video>
-                                ) : (
-                                  <a href={previewUrl} target="_blank" rel="noreferrer" style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.blue }}>
-                                    Open current media
-                                  </a>
-                                )
-                              ) : null}
+                              </div>
+                              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                {!selectedField.shared ? (
+                                  <Button variant="ghost" onClick={() => setActiveLanguage(lang.code)} disabled={busy}>
+                                    Preview this language
+                                  </Button>
+                                ) : null}
+                                <Button variant="outline" onClick={() => resetFieldLanguage(selectedField, lang.code)} disabled={busy}>
+                                  Reset
+                                </Button>
+                                <Button variant="dark" onClick={() => saveFieldLanguage(selectedField, lang.code)} disabled={busy}>
+                                  {busy ? 'Saving…' : 'Save'}
+                                </Button>
+                              </div>
                             </div>
-                          ) : field.valueType === 'json' ? (
-                            <Field label="JSON value">
-                              <textarea
-                                value={draftValue}
-                                onChange={(event) => setDrafts((current) => ({ ...current, [stateKey]: event.target.value }))}
-                                style={{ ...inputStyle, minHeight: 220, resize: 'vertical', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
-                              />
-                            </Field>
-                          ) : (
-                            <Field label="Text value">
-                              {field.valueType === 'textarea' ? (
+
+                            <Field label="Text">
+                              {selectedField.valueType === 'textarea' ? (
                                 <textarea
                                   value={draftValue}
-                                  onChange={(event) => setDrafts((current) => ({ ...current, [stateKey]: event.target.value }))}
+                                  onChange={(event) => setDraftValue(selectedField, lang.code, event.target.value)}
                                   style={{ ...inputStyle, minHeight: 120, resize: 'vertical' }}
                                 />
                               ) : (
                                 <input
                                   value={draftValue}
-                                  onChange={(event) => setDrafts((current) => ({ ...current, [stateKey]: event.target.value }))}
+                                  onChange={(event) => setDraftValue(selectedField, lang.code, event.target.value)}
                                   style={inputStyle}
                                 />
                               )}
                             </Field>
-                          )}
 
-                          <div style={{ display: 'grid', gap: 6 }}>
-                            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                              Default value
-                            </div>
-                            <div style={{
-                              background: A.g100,
-                              border: `1px solid ${A.g200}`,
-                              borderRadius: 10,
-                              padding: '10px 12px',
-                              fontFamily: field.valueType === 'json' ? 'ui-monospace, SFMono-Regular, Menlo, monospace' : 'Inter, sans-serif',
-                              fontSize: 12,
-                              color: A.g700,
-                              whiteSpace: 'pre-wrap',
-                              wordBreak: 'break-word',
-                            }}>
-                              {defaultValue || '—'}
+                            <div style={{ display: 'grid', gap: 6 }}>
+                              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                                Default value
+                              </div>
+                              <div style={{
+                                background: A.g100,
+                                border: `1px solid ${A.g200}`,
+                                borderRadius: 10,
+                                padding: '10px 12px',
+                                fontFamily: 'Inter, sans-serif',
+                                fontSize: 12,
+                                color: A.g700,
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word',
+                              }}>
+                                {defaultValue || '—'}
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            </Panel>
-          ))}
+              </Panel>
+            )}
+          </div>
         </div>
       )}
     </div>
