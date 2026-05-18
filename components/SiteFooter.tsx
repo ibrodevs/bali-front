@@ -3,9 +3,16 @@ import Link from 'next/link';
 import { BRLogo } from './BR';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { CURRENCY_RATES } from '@/lib/i18n/CurrencyProvider';
+import { useSiteContentPreview } from '@/lib/siteContentPreview';
 
 export default function SiteFooter() {
   const { t } = useLocale();
+  const { marker } = useSiteContentPreview();
+  const footer = t.footer as typeof t.footer & {
+    whatsappButton?: string;
+    metaLine?: string;
+    localesLine?: string;
+  };
   const footerRouteMap = new Map<string, string>([
     [t.nav.catalog, '/catalog'],
     [t.nav.how, '/how-it-works'],
@@ -29,27 +36,27 @@ export default function SiteFooter() {
         <div>
           <BRLogo dark size={22} />
           <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 18, lineHeight: 1.55, maxWidth: 320 }}>
-            {t.footer.tagline}
+            <span {...marker('footer.tagline')}>{t.footer.tagline}</span>
           </p>
           <a href="https://wa.me/628135915173" target="_blank" rel="noopener noreferrer" style={{ marginTop: 20, background: '#25D366', color: '#fff', borderRadius: 999, padding: '12px 18px', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-            <span style={{ fontSize: 18 }}>◉</span> WhatsApp · +62 813-5915-173
+            <span style={{ fontSize: 18 }}>◉</span> <span {...marker('footer.whatsappButton')}>{footer.whatsappButton || 'WhatsApp · +62 813-5915-173'}</span>
           </a>
         </div>
         {cols.map((col) => (
           <div key={col.heading}>
-            <div className="br-mono" style={{ fontSize: 10, color: '#FFD700', letterSpacing: '0.16em', marginBottom: 14 }}>{col.heading.toUpperCase()}</div>
+            <div {...marker('footer.cols')} className="br-mono" style={{ fontSize: 10, color: '#FFD700', letterSpacing: '0.16em', marginBottom: 14 }}>{col.heading.toUpperCase()}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {col.items.map((item) => (
-                <Link key={item.label} href={item.href} style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: 14 }}>{item.label}</Link>
+                <Link {...marker('footer.cols')} key={item.label} href={item.href} style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: 14 }}>{item.label}</Link>
               ))}
             </div>
           </div>
         ))}
       </div>
       <div className="br-site-footer-meta" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 24, gap: 16, flexWrap: 'wrap' }}>
-        <div className="br-mono" style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.1em' }}>BALI-RENT · JL. PANTAI BERAWA · CANGGU 80361 · LIC. 04/2019 · © 2026</div>
+        <div {...marker('footer.metaLine')} className="br-mono" style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.1em' }}>{footer.metaLine || 'BALI-RENT · JL. PANTAI BERAWA · CANGGU 80361 · LIC. 04/2019 · © 2026'}</div>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-          <span className="br-mono" style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>EN · ID · RU · DE · FR · ZH</span>
+          <span {...marker('footer.localesLine')} className="br-mono" style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{footer.localesLine || 'EN · ID · RU · DE · FR · ZH'}</span>
           <span className="br-mono" style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{supportedCurrencies}</span>
         </div>
       </div>

@@ -9,6 +9,7 @@ import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { endpoints } from '@/lib/endpoints';
 import { BR_LOCATIONS } from '@/lib/data';
+import { useSiteContentPreview } from '@/lib/siteContentPreview';
 
 const WA_LINK = 'https://wa.me/628135915173?text=Hi%2C%20I%E2%80%99d%20like%20to%20rent%20a%20scooter%20in%20Bali!';
 
@@ -37,6 +38,7 @@ type LocationOverrides = {
 
 export default function LocationsPage() {
   const { t, locale } = useLocale();
+  const { marker } = useSiteContentPreview();
   const { convertPrice, symbol } = useCurrency();
   const [zones, setZones] = useState<Zone[]>([]);
   const [locOver, setLocOver] = useState<LocationOverrides>({});
@@ -103,7 +105,7 @@ export default function LocationsPage() {
               marginBottom: 18, display: 'inline-flex', alignItems: 'center', gap: 10,
             }}>
               <span style={{ width: 28, height: 1, background: '#FFD700' }} />
-              <span>{t.delivery.eyebrow}</span>
+              <span {...marker('delivery.eyebrow')}>{t.delivery.eyebrow}</span>
             </div>
           </motion.div>
 
@@ -118,8 +120,8 @@ export default function LocationsPage() {
               lineHeight: 0.92, letterSpacing: '-0.04em', fontWeight: 800,
             }}
           >
-            {locOver.title1 || t.delivery.title1}<br />
-            <span style={{ color: '#FFD700' }}>{locOver.title2 || t.delivery.title2}</span>
+            <span {...marker('delivery.title1')}>{locOver.title1 || t.delivery.title1}</span><br />
+            <span {...marker('delivery.title2')} style={{ color: '#FFD700' }}>{locOver.title2 || t.delivery.title2}</span>
           </motion.h1>
 
           <motion.p
@@ -132,7 +134,7 @@ export default function LocationsPage() {
               maxWidth: 540, lineHeight: 1.6, margin: '0 0 36px',
             }}
           >
-            {locOver.desc || t.delivery.desc}
+            <span {...marker('delivery.desc')}>{locOver.desc || t.delivery.desc}</span>
           </motion.p>
 
           <motion.div
@@ -148,7 +150,7 @@ export default function LocationsPage() {
             }}>
               <DeliveryIcon size={14} color="#FFD700" />
               <span className="br-mono" style={{ fontSize: 11, color: '#FFD700', letterSpacing: '0.12em' }}>
-                {deliveryCopy.zonesCount.replace('{n}', String(activeZones.length))}
+                <span {...marker('delivery.zonesCount')}>{deliveryCopy.zonesCount.replace('{n}', String(activeZones.length))}</span>
               </span>
             </div>
             <div style={{
@@ -158,7 +160,7 @@ export default function LocationsPage() {
             }}>
               <CheckIcon size={12} color="#22C55E" strokeWidth={2.5} />
               <span className="br-mono" style={{ fontSize: 11, color: '#22C55E', letterSpacing: '0.12em' }}>
-                {deliveryCopy.freeInMostZones}
+                <span {...marker('delivery.freeInMostZones')}>{deliveryCopy.freeInMostZones}</span>
               </span>
             </div>
           </motion.div>
@@ -178,20 +180,20 @@ export default function LocationsPage() {
               marginBottom: 16, display: 'inline-flex', alignItems: 'center', gap: 10,
             }}>
               <span style={{ width: 28, height: 1, background: '#000' }} />
-              <span>{locOver.zonesLabel || deliveryCopy.zonesLabel}</span>
+              <span {...marker('delivery.zonesLabel')}>{locOver.zonesLabel || deliveryCopy.zonesLabel}</span>
             </motion.div>
             <motion.h2 variants={fadeUp} className="br-display" style={{
               margin: '0 0 12px',
               fontSize: 'clamp(32px, 5.5vw, 64px)',
               lineHeight: 0.97, letterSpacing: '-0.035em', color: '#0A0A0F',
             }}>
-              {locOver.zonesTitle || deliveryCopy.zonesTitle}
+              <span {...marker('delivery.zonesTitle')}>{locOver.zonesTitle || deliveryCopy.zonesTitle}</span>
             </motion.h2>
             <motion.p variants={fadeUp} style={{
               fontSize: 'clamp(14px, 1.4vw, 16px)', color: 'rgba(0,0,0,0.52)',
               maxWidth: 480, lineHeight: 1.6, margin: 0,
             }}>
-              {locOver.zonesDesc || deliveryCopy.zonesDesc}
+              <span {...marker('delivery.zonesDesc')}>{locOver.zonesDesc || deliveryCopy.zonesDesc}</span>
             </motion.p>
           </motion.div>
 
@@ -333,9 +335,9 @@ export default function LocationsPage() {
                 <div className="br-display" style={{
                   fontSize: 22, letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 10,
                 }}>
-                  {step.title}
+                  <span {...marker('delivery.steps')}>{step.title}</span>
                 </div>
-                <p style={{ fontSize: 14, lineHeight: 1.65, color: 'rgba(255,255,255,0.6)', margin: 0 }}>
+                <p {...marker('delivery.steps')} style={{ fontSize: 14, lineHeight: 1.65, color: 'rgba(255,255,255,0.6)', margin: 0 }}>
                   {step.desc}
                 </p>
                 {i < 2 && (
@@ -381,9 +383,9 @@ export default function LocationsPage() {
               fontSize: 10, letterSpacing: '0.16em', color: '#FFD700',
               marginBottom: 4, textTransform: 'uppercase',
             }}>
-              {t.home.mapEyebrow}
+              <span {...marker('home.mapEyebrow')}>{t.home.mapEyebrow}</span>
             </div>
-            <div className="br-display" style={{ fontSize: 16 }}>{t.home.mapRegion}</div>
+            <div {...marker('home.mapRegion')} className="br-display" style={{ fontSize: 16 }}>{t.home.mapRegion}</div>
           </div>
           <div style={{
             position: 'absolute', bottom: 18, right: 18,
@@ -392,7 +394,7 @@ export default function LocationsPage() {
             border: '1px solid rgba(255,255,255,0.08)',
           }}>
             <span className="br-mono" style={{ fontSize: 10, letterSpacing: '0.12em' }}>
-              {t.home.mapDrag}
+              <span {...marker('home.mapDrag')}>{t.home.mapDrag}</span>
             </span>
           </div>
         </div>
@@ -412,19 +414,19 @@ export default function LocationsPage() {
             fontSize: 11, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.5)',
             marginBottom: 14, textTransform: 'uppercase',
           }}>
-            {t.cta.eyebrow}
+            <span {...marker('cta.eyebrow')}>{t.cta.eyebrow}</span>
           </p>
           <h2 className="br-display" style={{
             fontSize: 'clamp(42px, 9vw, 108px)', lineHeight: 0.92,
             letterSpacing: '-0.04em', margin: '0 0 16px',
           }}>
-            {t.cta.title}
+            <span {...marker('cta.title')}>{t.cta.title}</span>
           </h2>
           <p style={{
             fontSize: 'clamp(14px, 1.7vw, 18px)', maxWidth: 440,
             margin: '0 auto 44px', lineHeight: 1.55, color: 'rgba(0,0,0,0.58)',
           }}>
-            {t.cta.desc}
+            <span {...marker('cta.desc')}>{t.cta.desc}</span>
           </p>
           <div className="br-cta-btns" style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
             <a href="/catalog" style={{
@@ -436,7 +438,7 @@ export default function LocationsPage() {
               boxShadow: '0 16px 48px -16px rgba(0,0,0,0.42)',
             }}>
               <ScooterIcon size={18} color="#FFD700" strokeWidth={2} />
-              {t.cta.primary}
+              <span {...marker('cta.primary')}>{t.cta.primary}</span>
               <ArrowRightIcon size={15} color="#FFD700" strokeWidth={2.5} />
             </a>
             <a href={WA_LINK} target="_blank" rel="noopener noreferrer" style={{
@@ -447,14 +449,14 @@ export default function LocationsPage() {
               textDecoration: 'none',
             }}>
               <WhatsAppIcon size={17} color="#fff" />
-              {t.home.whatsappUs}
+              <span {...marker('home.whatsappUs')}>{t.home.whatsappUs}</span>
             </a>
           </div>
           <p className="br-mono" style={{
             fontSize: 10, marginTop: 28, letterSpacing: '0.14em',
             color: 'rgba(0,0,0,0.40)', textTransform: 'uppercase',
           }}>
-            {t.cta.terms}
+            <span {...marker('cta.terms')}>{t.cta.terms}</span>
           </p>
         </motion.div>
       </section>

@@ -22,6 +22,7 @@ import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { BR_ADDONS } from '@/lib/data';
 import { BR_SCOOTERS } from '@/lib/data';
 import { mapApiScooterDetail, DisplayScooter, pickTone, resolveScooterImage, resolveScooterRouteId } from '@/lib/displayScooter';
+import { useSiteContentPreview } from '@/lib/siteContentPreview';
 
 type AddonView = { id: string | number; apiId?: number; name: string; icon: string; price: number };
 
@@ -35,6 +36,7 @@ export default function ScooterDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { t, locale } = useLocale();
+  const { marker } = useSiteContentPreview();
   const { convertPrice, symbol } = useCurrency();
   const [scooter, setScooter] = useState<DisplayScooter | null>(null);
   const [addons, setAddons] = useState<AddonView[]>([]);
@@ -160,8 +162,8 @@ export default function ScooterDetailPage() {
       <div style={{ background: bg, color: fg, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         <SiteHeader />
         <div style={{ padding: 80, textAlign: 'center' }}>
-          <h1 className="br-display" style={{ fontSize: 48 }}>{t.detail.notFound}</h1>
-          <Link href="/catalog" className="br-mono" style={{ color: '#000', marginTop: 24, display: 'inline-block' }}>{t.detail.back}</Link>
+          <h1 className="br-display" style={{ fontSize: 48 }}><span {...marker('detail.notFound')}>{t.detail.notFound}</span></h1>
+          <Link href="/catalog" className="br-mono" style={{ color: '#000', marginTop: 24, display: 'inline-block' }}><span {...marker('detail.back')}>{t.detail.back}</span></Link>
         </div>
         <SiteFooter />
       </div>
@@ -243,12 +245,12 @@ export default function ScooterDetailPage() {
             >
               <div style={{ textAlign: 'center', maxWidth: 340 }}>
                 <div className="br-mono" style={{ fontSize: 11, color: sub, letterSpacing: '0.14em' }}>
-                  {gallery.length ? t.detail.photoGallery : t.detail.photoPreview}
+                  <span {...marker(gallery.length ? 'detail.photoGallery' : 'detail.photoPreview')}>{gallery.length ? t.detail.photoGallery : t.detail.photoPreview}</span>
                 </div>
                 <div className="br-display" style={{ fontSize: 36, lineHeight: 1, marginTop: 12 }}>
-                  {gallery.length ? t.detail.choosePhoto : scooter.name}
+                  {gallery.length ? <span {...marker('detail.choosePhoto')}>{t.detail.choosePhoto}</span> : scooter.name}
                 </div>
-                <div style={{ marginTop: 14, fontSize: 14, color: sub, lineHeight: 1.6 }}>
+                <div {...marker(gallery.length ? 'detail.openThumbnailHint' : 'detail.photoUnavailable')} style={{ marginTop: 14, fontSize: 14, color: sub, lineHeight: 1.6 }}>
                   {gallery.length ? t.detail.openThumbnailHint : t.detail.photoUnavailable}
                 </div>
               </div>
@@ -269,7 +271,7 @@ export default function ScooterDetailPage() {
           </div>
 
           <div style={{ marginTop: 48 }}>
-            <BREyebrow>{t.detail.specs}</BREyebrow>
+            <BREyebrow><span {...marker('detail.specs')}>{t.detail.specs}</span></BREyebrow>
             <div className="br-detail-specs" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, marginTop: 16, background: border }}>
               {specItems.map(([Icon, l, v], i) => (
                 <div key={i} style={{ background: bg, padding: '20px 16px' }}>
@@ -284,13 +286,13 @@ export default function ScooterDetailPage() {
               <div className="br-detail-text-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16, marginTop: 20 }}>
                 {description && (
                   <div style={{ background: surf, borderRadius: 12, padding: 18 }}>
-                    <BREyebrow>{t.detail.descriptionTitle}</BREyebrow>
+                    <BREyebrow><span {...marker('detail.descriptionTitle')}>{t.detail.descriptionTitle}</span></BREyebrow>
                     <p style={{ margin: '10px 0 0', lineHeight: 1.65, fontSize: 14, color: sub }}>{description}</p>
                   </div>
                 )}
                 {rentalTerms && (
                   <div style={{ background: surf, borderRadius: 12, padding: 18 }}>
-                    <BREyebrow>{t.detail.rentalTermsTitle}</BREyebrow>
+                    <BREyebrow><span {...marker('detail.rentalTermsTitle')}>{t.detail.rentalTermsTitle}</span></BREyebrow>
                     <p style={{ margin: '10px 0 0', lineHeight: 1.65, fontSize: 14, color: sub }}>{rentalTerms}</p>
                   </div>
                 )}
@@ -306,12 +308,12 @@ export default function ScooterDetailPage() {
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 12 }}>
               <BRPrice amount={scooter.price} size={36} />
               <span className="br-mono" style={{ fontSize: 12, color: sub }}>
-                · {t.detail.baseRate}
+                · <span {...marker('detail.baseRate')}>{t.detail.baseRate}</span>
               </span>
             </div>
 
             <div style={{ marginTop: 24 }}>
-              <BREyebrow>{t.detail.addonsTitle}</BREyebrow>
+              <BREyebrow><span {...marker('detail.addonsTitle')}>{t.detail.addonsTitle}</span></BREyebrow>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
                 {addons.map((a) => {
                   const selected = selectedAddOnIds.includes(Number(a.id));
@@ -354,7 +356,7 @@ export default function ScooterDetailPage() {
                           letterSpacing: '0.08em',
                         }}
                       >
-                        {selected ? t.detail.selected : t.detail.add}
+                        <span {...marker(selected ? 'detail.selected' : 'detail.add')}>{selected ? t.detail.selected : t.detail.add}</span>
                       </div>
                     </button>
                   );
@@ -364,14 +366,14 @@ export default function ScooterDetailPage() {
 
             <div style={{ marginTop: 24, paddingTop: 24, borderTop: `1px solid ${border}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 16, borderTop: `1px solid ${border}` }}>
-                <span className="br-display" style={{ fontSize: 16 }}>{t.detail.total}</span>
+                <span {...marker('detail.total')} className="br-display" style={{ fontSize: 16 }}>{t.detail.total}</span>
                 <span style={{ background: '#FFD700', color: '#000', padding: '6px 14px', borderRadius: 999, fontFamily: 'var(--br-mono)', fontSize: 22, fontWeight: 600 }}>
                   {symbol}
                   {(Math.round(convertPrice(total) * 100) / 100).toFixed(2)}
                 </span>
               </div>
-              <BRPrimary onClick={goBook} full style={{ marginTop: 20, padding: '18px', fontSize: 15 }}>{t.detail.reserve}</BRPrimary>
-              <div className="br-mono" style={{ fontSize: 10, color: sub, marginTop: 12, textAlign: 'center', letterSpacing: '0.1em' }}>{t.detail.cancel}</div>
+              <BRPrimary onClick={goBook} full style={{ marginTop: 20, padding: '18px', fontSize: 15 }}><span {...marker('detail.reserve')}>{t.detail.reserve}</span></BRPrimary>
+              <div {...marker('detail.cancel')} className="br-mono" style={{ fontSize: 10, color: sub, marginTop: 12, textAlign: 'center', letterSpacing: '0.1em' }}>{t.detail.cancel}</div>
             </div>
           </div>
         </div>
@@ -379,13 +381,13 @@ export default function ScooterDetailPage() {
 
       <div className="br-mobile-sticky-cta">
         <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          <span className="br-mono" style={{ fontSize: 10, color: sub, letterSpacing: '0.12em' }}>{t.detail.total.toUpperCase()} · {t.detail.withAddons}</span>
+          <span className="br-mono" style={{ fontSize: 10, color: sub, letterSpacing: '0.12em' }}><span {...marker('detail.total')}>{t.detail.total.toUpperCase()}</span> · <span {...marker('detail.withAddons')}>{t.detail.withAddons}</span></span>
           <span className="br-display" style={{ fontSize: 22, letterSpacing: '-0.02em' }}>
             {symbol}
             {(Math.round(convertPrice(total) * 100) / 100).toFixed(2)}
           </span>
         </div>
-        <BRPrimary onClick={goBook} style={{ flexShrink: 0, padding: '14px 22px' }}>{t.detail.reserve} →</BRPrimary>
+        <BRPrimary onClick={goBook} style={{ flexShrink: 0, padding: '14px 22px' }}><span {...marker('detail.reserve')}>{t.detail.reserve}</span> →</BRPrimary>
       </div>
 
       <SiteFooter />

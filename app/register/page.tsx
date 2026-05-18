@@ -7,9 +7,11 @@ import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { useAuth } from '@/lib/i18n/AuthProvider';
 import { ApiError } from '@/lib/api';
 import { CheckIcon, ScooterIcon, StarIcon } from '@/components/Icons';
+import { useSiteContentPreview } from '@/lib/siteContentPreview';
 
 export default function RegisterPage() {
   const { t, locale } = useLocale();
+  const { marker } = useSiteContentPreview();
   const { signUp } = useAuth();
   const router = useRouter();
   const [name, setName] = useState('');
@@ -86,16 +88,16 @@ export default function RegisterPage() {
             fontSize: 'clamp(30px, 4vw, 50px)', lineHeight: 0.95,
             letterSpacing: '-0.035em', fontWeight: 800, margin: '0 0 16px',
           }}>
-            {t.auth.registerHero}
+            <span {...marker('auth.registerHero')}>{t.auth.registerHero}</span>
           </h2>
 
-          <p style={{ color: 'rgba(255,255,255,0.48)', fontSize: 15, lineHeight: 1.65, maxWidth: 320, margin: '0 0 32px' }}>
+          <p {...marker('auth.registerTagline')} style={{ color: 'rgba(255,255,255,0.48)', fontSize: 15, lineHeight: 1.65, maxWidth: 320, margin: '0 0 32px' }}>
             {t.auth.registerTagline}
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {t.auth.registerBenefits.map((item: string) => (
-              <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div {...marker('auth.registerBenefits')} key={item} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <CheckIcon size={10} color="#22C55E" strokeWidth={2.5} />
                 </div>
@@ -107,10 +109,10 @@ export default function RegisterPage() {
 
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 24 }}>
           <p style={{ color: 'rgba(255,255,255,0.38)', fontSize: 13, lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>
-            "{t.auth.registerQuote}"
+            <span {...marker('auth.registerQuote')}>"{t.auth.registerQuote}"</span>
           </p>
           <p style={{ color: 'rgba(255,255,255,0.25)', fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.1em', marginTop: 8, textTransform: 'uppercase' }}>
-            {t.auth.registerQuoteMeta}
+            <span {...marker('auth.registerQuoteMeta')}>{t.auth.registerQuoteMeta}</span>
           </p>
         </div>
       </div>
@@ -133,12 +135,12 @@ export default function RegisterPage() {
             fontSize: 'clamp(28px, 4vw, 38px)', lineHeight: 1,
             letterSpacing: '-0.03em', fontWeight: 800, margin: '0 0 8px',
           }}>
-            {t.auth.register}
+            <span {...marker('auth.register')}>{t.auth.register}</span>
           </h1>
           <p style={{ color: 'rgba(0,0,0,0.42)', fontSize: 14, margin: '0 0 32px', lineHeight: 1.5 }}>
-            {t.auth.haveAccount}{' '}
+            <span {...marker('auth.haveAccount')}>{t.auth.haveAccount}</span>{' '}
             <Link href="/login" style={{ color: '#0A0A0F', fontWeight: 600, textDecoration: 'none', borderBottom: '1.5px solid #FFD700' }}>
-              {t.auth.login}
+              <span {...marker('auth.login')}>{t.auth.login}</span>
             </Link>
           </p>
 
@@ -146,22 +148,22 @@ export default function RegisterPage() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <label style={labelStyle}>{t.auth.name}</label>
+                <label {...marker('auth.name')} style={labelStyle}>{t.auth.name}</label>
                 <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Alex" style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
               </div>
               <div>
-                <label style={labelStyle}>{t.auth.phone}</label>
+                <label {...marker('auth.phone')} style={labelStyle}>{t.auth.phone}</label>
                 <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1234567890" style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
               </div>
             </div>
 
             <div>
-              <label style={labelStyle}>{t.auth.email}</label>
+              <label {...marker('auth.email')} style={labelStyle}>{t.auth.email}</label>
               <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
             </div>
 
             <div>
-              <label style={labelStyle}>{t.auth.password}</label>
+              <label {...marker('auth.password')} style={labelStyle}>{t.auth.password}</label>
               <div style={{ position: 'relative' }}>
                 <input
                   type={showPass ? 'text' : 'password'} required autoComplete="new-password"
@@ -185,11 +187,11 @@ export default function RegisterPage() {
 
             <button type="submit" disabled={submitting}
               style={{ width: '100%', height: 54, borderRadius: 14, background: '#FFD700', color: '#0A0A0F', fontFamily: 'var(--br-display)', fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em', border: 'none', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1, boxShadow: '0 8px 28px -8px rgba(255,215,0,0.55)', transition: 'opacity 160ms, transform 160ms', marginTop: 4 }}>
-              {submitting ? t.common.loading : t.auth.registerCta}
+              <span {...marker(submitting ? 'common.loading' : 'auth.registerCta')}>{submitting ? t.common.loading : t.auth.registerCta}</span>
             </button>
 
             <p style={{ fontSize: 12, color: 'rgba(0,0,0,0.32)', textAlign: 'center', lineHeight: 1.6, margin: 0 }}>
-              {t.auth.termsNote}
+              <span {...marker('auth.termsNote')}>{t.auth.termsNote}</span>
             </p>
           </form>
         </div>

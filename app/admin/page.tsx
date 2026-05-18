@@ -45,7 +45,7 @@ import {
   unwrapList,
 } from '@/lib/endpoints';
 import { useAuth } from '@/lib/i18n/AuthProvider';
-import { SITE_CONTENT_FIELDS, SITE_CONTENT_LANGUAGES, SITE_CONTENT_PAGES, getDefaultSiteContentValue } from '@/lib/siteContentSchema';
+import { SITE_CONTENT_FIELDS, SITE_CONTENT_LANGUAGES, SITE_CONTENT_PAGES, getDefaultSiteContentValue, pageMatchesField } from '@/lib/siteContentSchema';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 function useWindowWidth() {
@@ -410,6 +410,20 @@ function parsePreviewJson(value: string) {
   }
 }
 
+function collectPreviewStrings(value: unknown, output: string[]) {
+  if (typeof value === 'string') {
+    output.push(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectPreviewStrings(item, output);
+    return;
+  }
+  if (isPreviewObject(value)) {
+    for (const item of Object.values(value)) collectPreviewStrings(item, output);
+  }
+}
+
 function isPreviewObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -688,12 +702,33 @@ function SiteContentValuePreview({
 const SITE_PREVIEW_ROUTES: Record<string, string> = {
   home: '/',
   catalog: '/catalog',
+  how: '/how-it-works',
   detail: '/scooter/pcx160',
   booking: '/booking?scooter_id=1&route_id=pcx160&slug=pcx160&name=Honda%20PCX%20160&price=18',
   payment: '/payment',
   auth: '/login',
+  register: '/register',
   news: '/news',
   shared: '/',
+  navbar: '/',
+};
+
+const SITE_PREVIEW_VARIANTS: Record<string, Array<{ key: string; label: string; route: string }>> = {
+  home: [
+    { key: 'home-main', label: 'Home', route: '/' },
+    { key: 'home-how', label: 'How It Works', route: '/how-it-works' },
+    { key: 'home-locations', label: 'Locations', route: '/locations' },
+  ],
+  auth: [
+    { key: 'auth-login', label: 'Login', route: '/login' },
+    { key: 'auth-register', label: 'Register', route: '/register' },
+  ],
+  navbar: [
+    { key: 'navbar-home', label: 'Home header', route: '/' },
+    { key: 'navbar-catalog', label: 'Catalog header', route: '/catalog' },
+    { key: 'navbar-how', label: 'How It Works header', route: '/how-it-works' },
+    { key: 'navbar-register', label: 'Register header', route: '/register' },
+  ],
 };
 
 function setPreviewValue(target: Record<string, unknown>, path: string, value: unknown) {
@@ -710,7 +745,12 @@ function setPreviewValue(target: Record<string, unknown>, path: string, value: u
 }
 
 function normalizePreviewText(value: string) {
-  return value.replace(/\s+/g, ' ').trim().toLowerCase();
+  return value
+    .replace(/[\u2190-\u21ff\u2600-\u27bf]/g, ' ')
+    .replace(/[`~!@#$%^&*()_=+[{\]}\\|;:'",.<>/?-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
 }
 
 function formatMoney(value: string | number | undefined | null) {
@@ -2419,6 +2459,7 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [activePage, setActivePage] = useState<string>(SITE_CONTENT_PAGES[0]?.key || 'home');
   const [activeLanguage, setActiveLanguage] = useState<string>('en');
+  const [activePreviewVariant, setActivePreviewVariant] = useState<string>('');
   const [selectedFieldKey, setSelectedFieldKey] = useState<string | null>(null);
   const [previewReloadKey, setPreviewReloadKey] = useState(0);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -2451,32 +2492,50 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
     [activePage],
   );
 
+  const matchesActivePage = useCallback(
+    (field: SiteContentFieldMeta) => Boolean(activePageMeta && pageMatchesField(activePageMeta, field)),
+    [activePageMeta],
+  );
+
   const pageFields = useMemo(
-    () => SITE_CONTENT_FIELDS.filter((field) => field.pageKey === activePage),
-    [activePage],
+    () => SITE_CONTENT_FIELDS.filter((field) => matchesActivePage(field)),
+    [matchesActivePage],
   );
 
   const previewFields = useMemo(
-    () => SITE_CONTENT_FIELDS.filter((field) => field.pageKey === activePage || field.pageKey === 'shared'),
-    [activePage],
+    () => pageFields,
+    [pageFields],
   );
 
-  const previewTextFields = useMemo(
-    () => previewFields.filter((field) => field.valueType === 'text' || field.valueType === 'textarea'),
+  const previewSelectableFields = useMemo(
+    () => previewFields.filter((field) => field.valueType === 'text' || field.valueType === 'textarea' || field.valueType === 'json'),
     [previewFields],
   );
+
+  const previewVariants = useMemo(() => {
+    const variants = SITE_PREVIEW_VARIANTS[activePage];
+    if (variants?.length) return variants;
+    const fallbackRoute = SITE_PREVIEW_ROUTES[activePage] || activePageMeta?.route || '/';
+    return [{ key: `${activePage}-default`, label: activePageMeta?.label || 'Preview', route: fallbackRoute }];
+  }, [activePage, activePageMeta]);
 
   const pageCounts = useMemo(() => {
     const counts = new Map<string, { total: number; customized: number; clickable: number }>();
     for (const page of SITE_CONTENT_PAGES) {
       counts.set(page.key, { total: 0, customized: 0, clickable: 0 });
     }
-    for (const field of SITE_CONTENT_FIELDS) {
-      const current = counts.get(field.pageKey);
-      if (current) current.total += 1;
-      if (current && (field.valueType === 'text' || field.valueType === 'textarea')) current.clickable += 1;
-      const entry = entryMap.get(`${field.shared ? 'all' : activeLanguage}:${field.key}`);
-      if (entry && current) current.customized += 1;
+    for (const page of SITE_CONTENT_PAGES) {
+      const current = counts.get(page.key);
+      if (!current) continue;
+      for (const field of SITE_CONTENT_FIELDS) {
+        if (!pageMatchesField(page, field)) continue;
+        current.total += 1;
+        if (field.valueType === 'text' || field.valueType === 'textarea' || field.valueType === 'json') {
+          current.clickable += 1;
+        }
+        const entry = entryMap.get(`${field.shared ? 'all' : activeLanguage}:${field.key}`);
+        if (entry) current.customized += 1;
+      }
     }
     return counts;
   }, [entryMap, activeLanguage]);
@@ -2525,20 +2584,29 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
     }
   }, [previewFields, selectedFieldKey]);
 
+  useEffect(() => {
+    if (!previewVariants.some((variant) => variant.key === activePreviewVariant)) {
+      setActivePreviewVariant(previewVariants[0]?.key || '');
+    }
+  }, [activePreviewVariant, previewVariants]);
+
   const selectedField = useMemo(
     () => previewFields.find((field) => field.key === selectedFieldKey) || null,
     [previewFields, selectedFieldKey],
   );
 
   const previewUrl = useMemo(() => {
-    const route = SITE_PREVIEW_ROUTES[activePage] || activePageMeta?.route || '/';
+    const route = previewVariants.find((variant) => variant.key === activePreviewVariant)?.route
+      || SITE_PREVIEW_ROUTES[activePage]
+      || activePageMeta?.route
+      || '/';
     const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
     const url = new URL(route, base);
     url.searchParams.set('sitePreview', '1');
     url.searchParams.set('previewLocale', activeLanguage);
     url.searchParams.set('previewRev', String(previewReloadKey));
     return `${url.pathname}${url.search}`;
-  }, [activeLanguage, activePage, activePageMeta, previewReloadKey]);
+  }, [activeLanguage, activePage, activePageMeta, activePreviewVariant, previewReloadKey, previewVariants]);
 
   const previewOverrides = useMemo(() => {
     const overrides: Record<string, unknown> = {};
@@ -2559,9 +2627,18 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
   }, [previewFields, drafts, entries, activeLanguage]);
 
   const comparableValuesForField = useCallback((field: SiteContentFieldMeta) => {
+    if (field.valueType === 'json') {
+      const values = [resolveDraftValue(field, activeLanguage), defaultTextValue(field, activeLanguage)];
+      const strings: string[] = [];
+      for (const rawValue of values) {
+        const parsed = parsePreviewJson(rawValue);
+        collectPreviewStrings(parsed, strings);
+      }
+      return Array.from(new Set(strings.map((value) => normalizePreviewText(value)).filter(Boolean)));
+    }
     if (!['text', 'textarea'].includes(field.valueType)) return [] as string[];
     const values = [resolveDraftValue(field, activeLanguage), defaultTextValue(field, activeLanguage)];
-    return Array.from(new Set(values.map((value) => normalizePreviewText(value)).filter((value) => value.length >= 2)));
+    return Array.from(new Set(values.map((value) => normalizePreviewText(value)).filter(Boolean)));
   }, [drafts, entries, activeLanguage]);
 
   const pushPreviewOverrides = useCallback(() => {
@@ -2576,7 +2653,9 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
 
     const rawCandidates = [
       element.textContent || '',
+      element.innerText || '',
       element.getAttribute('aria-label') || '',
+      element.getAttribute('title') || '',
       element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement ? element.placeholder || '' : '',
       element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement ? element.value || '' : '',
     ];
@@ -2585,7 +2664,7 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
 
     let bestMatch: { fieldKey: string; score: number } | null = null;
 
-    for (const field of previewTextFields) {
+    for (const field of previewSelectableFields) {
       const variants = comparableValuesForField(field);
       if (!variants.length) continue;
 
@@ -2604,13 +2683,13 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
     }
 
     return bestMatch && bestMatch.score > 0 ? bestMatch.fieldKey : null;
-  }, [comparableValuesForField, previewTextFields]);
+  }, [comparableValuesForField, previewSelectableFields]);
 
   const clearPreviewHighlights = useCallback(() => {
     const doc = previewFrameRef.current?.contentDocument;
     if (!doc) return;
 
-    doc.querySelectorAll('[data-admin-preview-field-key]').forEach((node) => {
+    doc.querySelectorAll('[data-admin-preview-field-key], [data-site-content-key]').forEach((node) => {
       const element = node as HTMLElement;
       element.style.outline = '';
       element.style.outlineOffset = '';
@@ -2628,7 +2707,7 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
 
     if (!selectedField) return;
 
-    doc.querySelectorAll(`[data-admin-preview-field-key="${selectedField.key}"]`).forEach((node) => {
+    doc.querySelectorAll(`[data-admin-preview-field-key="${selectedField.key}"], [data-site-content-key="${selectedField.key}"]`).forEach((node) => {
       const element = node as HTMLElement;
       element.style.outline = `2px solid ${A.gold}`;
       element.style.outlineOffset = '4px';
@@ -2650,11 +2729,20 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
       element.style.cursor = '';
     });
 
+    doc.querySelectorAll('[data-site-content-key]').forEach((node) => {
+      const element = node as HTMLElement;
+      const key = element.getAttribute('data-site-content-key');
+      if (!key) return;
+      element.setAttribute('data-admin-preview-field-key', key);
+      element.style.cursor = 'pointer';
+    });
+
     const nodes = Array.from(
       doc.body.querySelectorAll('h1,h2,h3,h4,h5,h6,p,span,a,button,li,label,small,strong,em,input,textarea'),
     ) as HTMLElement[];
 
     for (const node of nodes) {
+      if (node.closest('[data-site-content-key]')) continue;
       const fieldKey = resolveFieldFromElement(node);
       if (fieldKey) {
         node.setAttribute('data-admin-preview-field-key', fieldKey);
@@ -2775,13 +2863,22 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
     const language = storageLanguage(field, languageCode);
     const existing = fieldEntry(field, languageCode);
     const draftValue = resolveDraftValue(field, languageCode);
-    const body = {
-      key: field.key,
-      language,
-      value_type: field.valueType,
-      value: draftValue,
-      is_active: true,
-    };
+    const body = field.valueType === 'json'
+      ? {
+          key: field.key,
+          language,
+          value_type: field.valueType,
+          value: '',
+          json_value: draftValue.trim() ? JSON.parse(draftValue) : null,
+          is_active: true,
+        }
+      : {
+          key: field.key,
+          language,
+          value_type: field.valueType,
+          value: draftValue,
+          is_active: true,
+        };
     const saved = existing
       ? await endpoints.adminUpdateSiteContent(existing.id, body)
       : await endpoints.adminCreateSiteContent(body);
@@ -2964,6 +3061,36 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
                 ))}
               </div>
             </div>
+
+            {previewVariants.length > 1 ? (
+              <div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
+                  Preview screen
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {previewVariants.map((variant) => (
+                    <button
+                      key={variant.key}
+                      type="button"
+                      onClick={() => setActivePreviewVariant(variant.key)}
+                      style={{
+                        borderRadius: 999,
+                        border: `1px solid ${activePreviewVariant === variant.key ? A.black : A.g200}`,
+                        background: activePreviewVariant === variant.key ? A.black : A.white,
+                        color: activePreviewVariant === variant.key ? A.white : A.black,
+                        cursor: 'pointer',
+                        padding: '8px 12px',
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: 13,
+                        fontWeight: activePreviewVariant === variant.key ? 700 : 500,
+                      }}
+                    >
+                      {variant.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         </Panel>
 
@@ -2982,7 +3109,7 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
             </div>
 
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <Badge color="blue">{previewTextFields.length} clickable text fields</Badge>
+              <Badge color="blue">{previewSelectableFields.length} clickable content fields</Badge>
               <Badge color="green">{pageFields.length} total content entries</Badge>
               <Badge color="orange">Preview: {activeLanguage.toUpperCase()}</Badge>
             </div>
@@ -3028,8 +3155,8 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
 
       {loading ? (
         <EmptyState label="Loading site content…" />
-      ) : previewTextFields.length === 0 ? (
-        <EmptyState label="No clickable text fields found for this page." />
+      ) : previewSelectableFields.length === 0 ? (
+        <EmptyState label="No clickable content fields found for this page." />
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.4fr) minmax(340px, 0.8fr)', gap: 16, alignItems: 'start' }}>
           <div style={{ display: 'grid', gap: 16, position: isMobile ? 'static' : 'sticky', top: 20 }}>
@@ -3063,7 +3190,7 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <Badge color="blue">{activePageMeta?.label}</Badge>
                   <Badge color="orange">{activeLanguage.toUpperCase()}</Badge>
-                  <Badge color="green">{previewTextFields.length} clickable texts</Badge>
+                  <Badge color="green">{previewSelectableFields.length} clickable texts</Badge>
                 </div>
 
                 <div style={{ border: `1px solid ${A.g200}`, borderRadius: 18, overflow: 'hidden', background: A.white }}>
@@ -3114,7 +3241,7 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <Badge color="blue">{activePageMeta?.label}</Badge>
-                    <Badge color="green">{previewTextFields.length} text elements ready</Badge>
+                    <Badge color="green">{previewSelectableFields.length} text elements ready</Badge>
                     <Badge color="orange">Preview in {activeLanguage.toUpperCase()}</Badge>
                   </div>
                 </div>
@@ -3165,6 +3292,12 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
                       />
                     </div>
                   </div>
+
+                  {selectedField.valueType === 'json' ? (
+                    <div style={{ border: `1px solid ${A.g200}`, borderRadius: 12, padding: '12px 14px', background: A.g100, fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700, lineHeight: 1.6 }}>
+                      This content block is stored as structured JSON. Clicking a small text from lists, cards, benefits, steps, or FAQ often opens this kind of field.
+                    </div>
+                  ) : null}
 
                   <div style={{ display: 'grid', gap: 8 }}>
                     <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
@@ -3224,7 +3357,13 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
                             </div>
 
                             <Field label="Text">
-                              {selectedField.valueType === 'textarea' ? (
+                              {selectedField.valueType === 'json' ? (
+                                <textarea
+                                  value={draftValue}
+                                  onChange={(event) => setDraftValue(selectedField, lang.code, event.target.value)}
+                                  style={{ ...inputStyle, minHeight: 220, resize: 'vertical', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
+                                />
+                              ) : selectedField.valueType === 'textarea' ? (
                                 <textarea
                                   value={draftValue}
                                   onChange={(event) => setDraftValue(selectedField, lang.code, event.target.value)}
@@ -3248,7 +3387,7 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
                                 border: `1px solid ${A.g200}`,
                                 borderRadius: 10,
                                 padding: '10px 12px',
-                                fontFamily: 'Inter, sans-serif',
+                                fontFamily: selectedField.valueType === 'json' ? 'ui-monospace, SFMono-Regular, Menlo, monospace' : 'Inter, sans-serif',
                                 fontSize: 12,
                                 color: A.g700,
                                 whiteSpace: 'pre-wrap',

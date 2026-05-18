@@ -7,9 +7,11 @@ import SiteFooter from '@/components/SiteFooter';
 import { endpoints, unwrapList } from '@/lib/endpoints';
 import { DisplayScooter, fallbackScooters, mapApiScooter } from '@/lib/displayScooter';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
+import { useSiteContentPreview } from '@/lib/siteContentPreview';
 
 export default function CatalogPage() {
   const { t, locale, tr } = useLocale();
+  const { marker } = useSiteContentPreview();
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('featured');
@@ -62,15 +64,16 @@ export default function CatalogPage() {
       <SiteHeader />
 
       <div className="br-catalog-hero" style={{ padding: '64px 40px 32px' }}>
-        <BREyebrow>{tr(t.catalog.eyebrow, { n: visible.length })}</BREyebrow>
+        <BREyebrow><span {...marker('catalog.eyebrow')}>{tr(t.catalog.eyebrow, { n: visible.length })}</span></BREyebrow>
         <h1 className="br-display" style={{ fontSize: 'clamp(48px, 8vw, 96px)', lineHeight: 0.95, letterSpacing: '-0.04em', margin: '16px 0 8px' }}>
-          {t.catalog.title}
+          <span {...marker('catalog.title')}>{t.catalog.title}</span>
         </h1>
-        <p style={{ fontSize: 18, color: sub, maxWidth: 540, margin: 0, lineHeight: 1.55 }}>{t.catalog.desc}</p>
-        {error && <div className="br-mono" style={{ marginTop: 12, fontSize: 12, color: '#B45309' }}>{error}</div>}
+        <p {...marker('catalog.desc')} style={{ fontSize: 18, color: sub, maxWidth: 540, margin: 0, lineHeight: 1.55 }}>{t.catalog.desc}</p>
+        {error && <div {...marker('catalog.error')} className="br-mono" style={{ marginTop: 12, fontSize: 12, color: '#B45309' }}>{error}</div>}
         <div style={{ position: 'relative', marginTop: 24, maxWidth: 480 }}>
           <span aria-hidden style={{ position: 'absolute', left: 18, top: '50%', transform: 'translateY(-50%)', color: sub, fontSize: 16, pointerEvents: 'none' }}>⌕</span>
           <input
+            {...marker('catalog.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t.catalog.searchPlaceholder}
@@ -92,6 +95,7 @@ export default function CatalogPage() {
           />
           {search && (
             <button
+              {...marker('catalog.clear')}
               onClick={() => setSearch('')}
               aria-label={t.catalog.clear}
               style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', border: 0, background: 'rgba(0,0,0,0.06)', borderRadius: 999, width: 28, height: 28, cursor: 'pointer', color: fg, fontSize: 14 }}
@@ -104,6 +108,7 @@ export default function CatalogPage() {
         <div className="br-scroll-x" style={{ display: 'flex', gap: 8, flex: 1 }}>
           {types.map((f) => (
             <button
+              {...marker('catalog.types')}
               key={f}
               onClick={() => setFilter(f)}
               className={`br-filter-chip${filter === f ? ' active' : ''}`}
@@ -113,7 +118,7 @@ export default function CatalogPage() {
           ))}
         </div>
         <div className="br-catalog-sort" style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-          <span className="br-mono" style={{ fontSize: 11, color: sub, letterSpacing: '0.1em' }}>{t.catalog.sort}</span>
+          <span {...marker('catalog.sort')} className="br-mono" style={{ fontSize: 11, color: sub, letterSpacing: '0.1em' }}>{t.catalog.sort}</span>
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value)}
@@ -145,9 +150,10 @@ export default function CatalogPage() {
         ) : visible.length === 0 ? (
           <div style={{ padding: 80, textAlign: 'center' }}>
             <div style={{ fontSize: 48, opacity: 0.25 }}>⌕</div>
-            <div className="br-mono" style={{ color: sub, marginTop: 12, letterSpacing: '0.12em', fontSize: 12 }}>{t.catalog.empty}</div>
+            <div {...marker('catalog.empty')} className="br-mono" style={{ color: sub, marginTop: 12, letterSpacing: '0.12em', fontSize: 12 }}>{t.catalog.empty}</div>
             {(search || filter !== 'All') && (
               <button
+                {...marker('catalog.resetFilters')}
                 onClick={() => { setSearch(''); setFilter('All'); }}
                 className="br-btn br-btn-outline"
                 style={{ marginTop: 20 }}

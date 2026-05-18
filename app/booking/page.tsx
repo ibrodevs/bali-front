@@ -21,6 +21,8 @@ import {
 import { bookingDraftStore } from '@/lib/bookingDraft';
 import { convertAmount, formatCurrencyAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
+import { type BookingExtraContent, BOOKING_COPY } from '@/lib/siteContentExtras';
+import { useSiteContentPreview } from '@/lib/siteContentPreview';
 
 type AddonOption = {
   id: number;
@@ -29,101 +31,6 @@ type AddonOption = {
 };
 
 const quoteCache = new Map<string, ApiBookingQuote>();
-
-const BOOKING_COPY = {
-  en: {
-    pageEyebrow: 'STEP 2 OF 3',
-    pageTitle: 'Dates and delivery address',
-    pageDesc: 'Green days are available, red ones are already booked. Choose the rental period and add your delivery address.',
-    noScooter: 'Choose a scooter from the catalog first.',
-    selectedScooter: 'SELECTED SCOOTER',
-    photo: 'PHOTO',
-    changeScooter: 'Change scooter',
-    timeTitle: 'PICKUP / RETURN TIME',
-    startTime: 'Start time',
-    endTime: 'End time',
-    invalidRange: 'End date/time must be later than start date/time.',
-    addressTitle: 'DELIVERY ADDRESS',
-    addressLabel: 'Delivery address',
-    addressPlaceholder: 'Villa, hotel, or exact delivery address',
-    promoCode: 'Promo code',
-    optional: 'Optional',
-    addonsTitle: 'ADD-ONS',
-    addonsHelp: 'Extra options can be added to the booking right away.',
-    addonsUnavailable: 'Extra options are not available.',
-    summaryTitle: 'STEP 2 SUMMARY',
-    pickDates: 'Select dates in the calendar',
-    datesNotSelected: 'Dates are not selected',
-    noOptions: 'No options selected',
-    base: 'Base',
-    addons: 'Add-ons',
-    delivery: 'Delivery',
-    estimatedTotal: 'Estimated total',
-    continueToPayment: 'Continue to payment',
-    nextStepHint: 'On the next step you will choose the payment method.',
-    calendarTitle: 'AVAILABILITY CALENDAR',
-    legendAvailable: 'Available',
-    legendBooked: 'Booked',
-    legendSelected: 'Selected',
-    loadAvailabilityFailed: 'Failed to load availability',
-    pickEndDate: 'Selected {date} — click the end date.',
-    weekdays: ['M', 'T', 'W', 'T', 'F', 'S', 'S'],
-    selectedAddons: '{n} add-ons · ${amount}',
-  },
-  ru: {
-    pageEyebrow: 'ШАГ 2 ИЗ 3',
-    pageTitle: 'Даты и адрес доставки',
-    pageDesc: 'Зелёные дни свободны, красные уже заняты. Выберите период аренды и укажите адрес доставки.',
-    noScooter: 'Сначала выберите скутер в каталоге.',
-    selectedScooter: 'ВЫБРАННЫЙ СКУТЕР',
-    photo: 'ФОТО',
-    changeScooter: 'Изменить скутер',
-    timeTitle: 'ВРЕМЯ ПОЛУЧЕНИЯ / ВОЗВРАТА',
-    startTime: 'Время начала',
-    endTime: 'Время окончания',
-    invalidRange: 'Дата и время окончания должны быть позже начала.',
-    addressTitle: 'АДРЕС ДОСТАВКИ',
-    addressLabel: 'Адрес доставки',
-    addressPlaceholder: 'Вилла, отель или точный адрес доставки',
-    promoCode: 'Промокод',
-    optional: 'Необязательно',
-    addonsTitle: 'ДОПОЛНЕНИЯ',
-    addonsHelp: 'Дополнительные опции можно добавить сразу к бронированию.',
-    addonsUnavailable: 'Дополнительные опции недоступны.',
-    summaryTitle: 'СВОДКА ШАГА 2',
-    pickDates: 'Выберите даты в календаре',
-    datesNotSelected: 'Даты не выбраны',
-    noOptions: 'Опции не выбраны',
-    base: 'База',
-    addons: 'Допы',
-    delivery: 'Доставка',
-    estimatedTotal: 'Примерный итог',
-    continueToPayment: 'Перейти к оплате',
-    nextStepHint: 'На следующем шаге вы выберете способ оплаты.',
-    calendarTitle: 'КАЛЕНДАРЬ ДОСТУПНОСТИ',
-    legendAvailable: 'Свободно',
-    legendBooked: 'Занято',
-    legendSelected: 'Выбрано',
-    loadAvailabilityFailed: 'Не удалось загрузить доступность',
-    pickEndDate: 'Выбран {date} — нажмите на дату окончания.',
-    weekdays: ['П', 'В', 'С', 'Ч', 'П', 'С', 'В'],
-    selectedAddons: '{n} допов · ${amount}',
-  },
-  zh: { pageEyebrow: '第 2 步 / 共 3 步', pageTitle: '日期和送车地址', pageDesc: '绿色日期可用，红色日期已被预订。请选择租期并填写送车地址。', noScooter: '请先在车型页面选择一辆车。', selectedScooter: '已选车型', photo: '照片', changeScooter: '更换车型', timeTitle: '取车 / 还车时间', startTime: '开始时间', endTime: '结束时间', invalidRange: '结束日期和时间必须晚于开始时间。', addressTitle: '送车地址', addressLabel: '送车地址', addressPlaceholder: '别墅、酒店或准确地址', promoCode: '优惠码', optional: '可选', addonsTitle: '附加项', addonsHelp: '可以立即把附加项加入预订。', addonsUnavailable: '暂无附加项。', summaryTitle: '第 2 步摘要', pickDates: '请在日历中选择日期', datesNotSelected: '尚未选择日期', noOptions: '未选择附加项', base: '基础价', addons: '附加项', delivery: '送车', estimatedTotal: '预估总价', continueToPayment: '继续付款', nextStepHint: '下一步选择支付方式。', calendarTitle: '可用日期日历', legendAvailable: '可用', legendBooked: '已订', legendSelected: '已选', loadAvailabilityFailed: '加载可用日期失败', pickEndDate: '已选 {date}，请点击结束日期。', weekdays: ['一', '二', '三', '四', '五', '六', '日'], selectedAddons: '{n} 个附加项 · ${amount}' },
-  id: { pageEyebrow: 'LANGKAH 2 DARI 3', pageTitle: 'Tanggal dan alamat pengantaran', pageDesc: 'Hari hijau tersedia, hari merah sudah dipesan. Pilih masa sewa dan isi alamat pengantaran.', noScooter: 'Pilih skuter dari katalog terlebih dahulu.', selectedScooter: 'SKUTER TERPILIH', photo: 'FOTO', changeScooter: 'Ganti skuter', timeTitle: 'WAKTU AMBIL / KEMBALI', startTime: 'Waktu mulai', endTime: 'Waktu selesai', invalidRange: 'Tanggal/waktu selesai harus setelah mulai.', addressTitle: 'ALAMAT PENGANTARAN', addressLabel: 'Alamat pengantaran', addressPlaceholder: 'Vila, hotel, atau alamat lengkap', promoCode: 'Kode promo', optional: 'Opsional', addonsTitle: 'TAMBAHAN', addonsHelp: 'Tambahan bisa langsung dimasukkan ke pesanan.', addonsUnavailable: 'Tambahan tidak tersedia.', summaryTitle: 'RINGKASAN LANGKAH 2', pickDates: 'Pilih tanggal di kalender', datesNotSelected: 'Tanggal belum dipilih', noOptions: 'Belum ada tambahan', base: 'Dasar', addons: 'Tambahan', delivery: 'Antar', estimatedTotal: 'Perkiraan total', continueToPayment: 'Lanjut ke pembayaran', nextStepHint: 'Pada langkah berikutnya Anda memilih metode pembayaran.', calendarTitle: 'KALENDER KETERSEDIAAN', legendAvailable: 'Tersedia', legendBooked: 'Dipesan', legendSelected: 'Dipilih', loadAvailabilityFailed: 'Gagal memuat ketersediaan', pickEndDate: 'Dipilih {date} — klik tanggal akhir.', weekdays: ['S', 'S', 'R', 'K', 'J', 'S', 'M'], selectedAddons: '{n} tambahan · ${amount}' },
-  de: { pageEyebrow: 'SCHRITT 2 VON 3', pageTitle: 'Daten und Lieferadresse', pageDesc: 'Grüne Tage sind verfügbar, rote bereits gebucht. Wähle den Mietzeitraum und gib die Lieferadresse ein.', noScooter: 'Bitte zuerst einen Roller im Katalog wählen.', selectedScooter: 'AUSGEWÄHLTER ROLLER', photo: 'FOTO', changeScooter: 'Roller wechseln', timeTitle: 'ABHOL- / RÜCKGABEZEIT', startTime: 'Startzeit', endTime: 'Endzeit', invalidRange: 'Enddatum/-zeit muss nach dem Start liegen.', addressTitle: 'LIEFERADRESSE', addressLabel: 'Lieferadresse', addressPlaceholder: 'Villa, Hotel oder genaue Lieferadresse', promoCode: 'Promocode', optional: 'Optional', addonsTitle: 'EXTRAS', addonsHelp: 'Extras können sofort zur Buchung hinzugefügt werden.', addonsUnavailable: 'Keine Extras verfügbar.', summaryTitle: 'SCHRITT-2-ZUSAMMENFASSUNG', pickDates: 'Bitte Daten im Kalender wählen', datesNotSelected: 'Keine Daten gewählt', noOptions: 'Keine Extras gewählt', base: 'Basis', addons: 'Extras', delivery: 'Lieferung', estimatedTotal: 'Geschätzte Summe', continueToPayment: 'Weiter zur Zahlung', nextStepHint: 'Im nächsten Schritt wählst du die Zahlungsmethode.', calendarTitle: 'VERFÜGBARKEITSKALENDER', legendAvailable: 'Verfügbar', legendBooked: 'Gebucht', legendSelected: 'Ausgewählt', loadAvailabilityFailed: 'Verfügbarkeit konnte nicht geladen werden', pickEndDate: '{date} gewählt — Enddatum anklicken.', weekdays: ['M', 'D', 'M', 'D', 'F', 'S', 'S'], selectedAddons: '{n} Extras · ${amount}' },
-  fr: { pageEyebrow: 'ÉTAPE 2 SUR 3', pageTitle: 'Dates et adresse de livraison', pageDesc: 'Les jours verts sont disponibles, les rouges sont déjà réservés. Choisissez la période et ajoutez votre adresse.', noScooter: 'Choisissez d’abord un scooter dans le catalogue.', selectedScooter: 'SCOOTER SÉLECTIONNÉ', photo: 'PHOTO', changeScooter: 'Changer de scooter', timeTitle: 'HEURE DE PRISE / RETOUR', startTime: 'Heure de début', endTime: 'Heure de fin', invalidRange: 'La date/heure de fin doit être après le début.', addressTitle: 'ADRESSE DE LIVRAISON', addressLabel: 'Adresse de livraison', addressPlaceholder: 'Villa, hôtel ou adresse exacte', promoCode: 'Code promo', optional: 'Optionnel', addonsTitle: 'OPTIONS', addonsHelp: 'Les options peuvent être ajoutées immédiatement à la réservation.', addonsUnavailable: 'Aucune option disponible.', summaryTitle: 'RÉSUMÉ DE L’ÉTAPE 2', pickDates: 'Choisissez les dates dans le calendrier', datesNotSelected: 'Dates non choisies', noOptions: 'Aucune option choisie', base: 'Base', addons: 'Options', delivery: 'Livraison', estimatedTotal: 'Total estimé', continueToPayment: 'Continuer vers le paiement', nextStepHint: 'À l’étape suivante, vous choisirez le mode de paiement.', calendarTitle: 'CALENDRIER DE DISPONIBILITÉ', legendAvailable: 'Disponible', legendBooked: 'Réservé', legendSelected: 'Sélectionné', loadAvailabilityFailed: 'Impossible de charger la disponibilité', pickEndDate: '{date} sélectionné — cliquez sur la date de fin.', weekdays: ['L', 'M', 'M', 'J', 'V', 'S', 'D'], selectedAddons: '{n} options · ${amount}' },
-} as const;
-type BookingCopy = (typeof BOOKING_COPY)[keyof typeof BOOKING_COPY];
-
-const ADDRESS_REQUIRED_COPY = {
-  en: 'Enter the delivery address to continue.',
-  ru: 'Укажите адрес доставки, чтобы перейти дальше.',
-  zh: '请填写送车地址后再继续。',
-  id: 'Isi alamat pengantaran untuk melanjutkan.',
-  de: 'Bitte Lieferadresse eingeben, um fortzufahren.',
-  fr: 'Veuillez saisir l’adresse de livraison pour continuer.',
-} as const;
 
 function numberParam(value: string | null) {
   if (!value) return null;
@@ -178,10 +85,14 @@ export default function BookingPage() {
 
 function BookingPageInner() {
   const { t, locale } = useLocale();
+  const { marker } = useSiteContentPreview();
   const { currency: selectedCurrency, convertPrice } = useCurrency();
-  const copy = BOOKING_COPY[locale as keyof typeof BOOKING_COPY] || BOOKING_COPY.en;
-  const addressRequiredMessage =
-    ADDRESS_REQUIRED_COPY[locale as keyof typeof ADDRESS_REQUIRED_COPY] || ADDRESS_REQUIRED_COPY.en;
+  const copy = {
+    ...BOOKING_COPY.en,
+    ...(BOOKING_COPY[locale as keyof typeof BOOKING_COPY] || BOOKING_COPY.en),
+    ...(t.booking as Partial<BookingExtraContent>),
+  } as BookingExtraContent;
+  const addressRequiredMessage = copy.addressRequired;
   const router = useRouter();
   const search = useSearchParams();
 
@@ -404,11 +315,11 @@ function BookingPageInner() {
       <SiteHeader />
 
       <section className="br-booking-hero" style={{ padding: '56px 48px 28px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
-        <BREyebrow>{copy.pageEyebrow}</BREyebrow>
+        <BREyebrow><span {...marker('booking.pageEyebrow')}>{copy.pageEyebrow}</span></BREyebrow>
         <h1 className="br-display" style={{ fontSize: 'clamp(40px, 7vw, 76px)', lineHeight: 0.94, letterSpacing: '-0.04em', margin: '12px 0 14px' }}>
-          {copy.pageTitle}
+          <span {...marker('booking.pageTitle')}>{copy.pageTitle}</span>
         </h1>
-        <p style={{ margin: 0, maxWidth: 760, color: 'rgba(0,0,0,0.62)', lineHeight: 1.65 }}>
+        <p {...marker('booking.pageDesc')} style={{ margin: 0, maxWidth: 760, color: 'rgba(0,0,0,0.62)', lineHeight: 1.65 }}>
           {copy.pageDesc}
         </p>
       </section>
@@ -418,7 +329,7 @@ function BookingPageInner() {
           <div className="br-booking-main-column" style={{ display: 'grid', gap: 24 }}>
             <div className="br-booking-card" style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
               <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
-                {copy.selectedScooter}
+                <span {...marker('booking.selectedScooter')}>{copy.selectedScooter}</span>
               </div>
               {loadingScooter ? (
                 <div className="br-mono" style={{ marginTop: 16, color: 'rgba(0,0,0,0.55)' }}>{t.common.loading}</div>
@@ -429,7 +340,7 @@ function BookingPageInner() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={displayImage} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 12 }} />
                     ) : (
-                      <div className="br-mono" style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>{copy.photo}</div>
+                      <div className="br-mono" style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}><span {...marker('booking.photo')}>{copy.photo}</span></div>
                     )}
                   </div>
                   <div>
@@ -445,7 +356,7 @@ function BookingPageInner() {
                     </div>
                     <div style={{ marginTop: 14 }}>
                       <Link href={routeId ? `/scooter/${routeId}` : '/catalog'} className="br-mono" style={{ color: '#000', fontSize: 12 }}>
-                        {copy.changeScooter}
+                        <span {...marker('booking.changeScooter')}>{copy.changeScooter}</span>
                       </Link>
                     </div>
                   </div>
@@ -468,18 +379,18 @@ function BookingPageInner() {
 
             <div className="br-booking-card" style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
               <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
-                {copy.timeTitle}
+                <span {...marker('booking.timeTitle')}>{copy.timeTitle}</span>
               </div>
               <div className="br-booking-time-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14, marginTop: 18 }}>
-                <Field label={copy.startTime}>
+                <Field label={copy.startTime} contentKey="booking.startTime">
                   <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} style={inputStyle} />
                 </Field>
-                <Field label={copy.endTime}>
+                <Field label={copy.endTime} contentKey="booking.endTime">
                   <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} style={inputStyle} />
                 </Field>
               </div>
               {startDateKey && endDateKey && !isDateRangeValid ? (
-                <div className="br-mono" style={{ marginTop: 14, color: '#B91C1C', fontSize: 12 }}>
+                <div className="br-mono" {...marker('booking.invalidRange')} style={{ marginTop: 14, color: '#B91C1C', fontSize: 12 }}>
                   {copy.invalidRange}
                 </div>
               ) : null}
@@ -487,11 +398,12 @@ function BookingPageInner() {
 
             <div className="br-booking-card" style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
               <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
-                {copy.addressTitle}
+                <span {...marker('booking.addressTitle')}>{copy.addressTitle}</span>
               </div>
               <div style={{ display: 'grid', gap: 14, marginTop: 18 }}>
-                <Field label={copy.addressLabel}>
+                <Field label={copy.addressLabel} contentKey="booking.addressLabel">
                   <textarea
+                    {...marker('booking.addressPlaceholder')}
                     value={deliveryAddress}
                     onChange={(e) => setDeliveryAddress(e.target.value)}
                     rows={3}
@@ -500,20 +412,20 @@ function BookingPageInner() {
                   />
                 </Field>
                 {!hasDeliveryAddress && isDateRangeValid ? (
-                  <div className="br-mono" style={{ color: '#B91C1C', fontSize: 12 }}>
+                  <div className="br-mono" {...marker('booking.addressRequired')} style={{ color: '#B91C1C', fontSize: 12 }}>
                     {addressRequiredMessage}
                   </div>
                 ) : null}
-                <Field label={copy.promoCode}>
-                  <input value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())} placeholder={copy.optional} style={inputStyle} />
+                <Field label={copy.promoCode} contentKey="booking.promoCode">
+                  <input {...marker('booking.optional')} value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())} placeholder={copy.optional} style={inputStyle} />
                   {promoCode.trim() && !quoteLoading && (
                     promoApplied
-                      ? <div className="br-mono" style={{ marginTop: 8, color: '#16A34A', fontSize: 12 }}>
-                          ✓ Applied — {formatCurrencyAmount(discountTotal, selectedCurrency)} discount
+                      ? <div className="br-mono" {...marker('booking.promoApplied')} style={{ marginTop: 8, color: '#16A34A', fontSize: 12 }}>
+                          {copy.promoApplied.replace('{amount}', formatCurrencyAmount(discountTotal, selectedCurrency))}
                         </div>
                       : quote
-                        ? <div className="br-mono" style={{ marginTop: 8, color: '#B91C1C', fontSize: 12 }}>
-                            Invalid or expired promo code
+                        ? <div className="br-mono" {...marker('booking.promoInvalid')} style={{ marginTop: 8, color: '#B91C1C', fontSize: 12 }}>
+                            {copy.promoInvalid}
                           </div>
                         : null
                   )}
@@ -523,9 +435,9 @@ function BookingPageInner() {
 
             <div className="br-booking-card" style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
               <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
-                {copy.addonsTitle}
+                <span {...marker('booking.addonsTitle')}>{copy.addonsTitle}</span>
               </div>
-              <p style={{ margin: '12px 0 0', color: 'rgba(0,0,0,0.62)', lineHeight: 1.55 }}>
+              <p {...marker('booking.addonsHelp')} style={{ margin: '12px 0 0', color: 'rgba(0,0,0,0.62)', lineHeight: 1.55 }}>
                 {copy.addonsHelp}
               </p>
               {addons.length > 0 ? (
@@ -565,7 +477,7 @@ function BookingPageInner() {
                   })}
                 </div>
               ) : (
-                <div className="br-mono" style={{ marginTop: 16, color: 'rgba(0,0,0,0.55)', fontSize: 12 }}>
+                <div className="br-mono" {...marker('booking.addonsUnavailable')} style={{ marginTop: 16, color: 'rgba(0,0,0,0.55)', fontSize: 12 }}>
                   {copy.addonsUnavailable}
                 </div>
               )}
@@ -575,7 +487,7 @@ function BookingPageInner() {
           <aside className="br-booking-summary-aside" style={{ position: 'sticky', top: 90, display: 'grid', gap: 18 }}>
             <div className="br-booking-summary-card" style={{ borderRadius: 22, background: '#F5F5F5', padding: 24 }}>
               <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
-                {copy.summaryTitle}
+                <span {...marker('booking.summaryTitle')}>{copy.summaryTitle}</span>
               </div>
               <div className="br-display" style={{ marginTop: 12, fontSize: 28, lineHeight: 1 }}>
                 {displayName}
@@ -583,31 +495,31 @@ function BookingPageInner() {
               <div style={{ marginTop: 10, color: 'rgba(0,0,0,0.58)', lineHeight: 1.55 }}>
                 {startDateKey && endDateKey
                   ? `${startDateKey} ${startTime} — ${endDateKey} ${endTime}`
-                  : copy.pickDates}
+                  : <span {...marker('booking.pickDates')}>{copy.pickDates}</span>}
               </div>
               <div style={{ marginTop: 8, color: 'rgba(0,0,0,0.58)', lineHeight: 1.55 }}>
-                {rentalDays ? `${rentalDays} ${t.common.day}` : copy.datesNotSelected}
+                {rentalDays ? `${rentalDays} ${t.common.day}` : <span {...marker('booking.datesNotSelected')}>{copy.datesNotSelected}</span>}
               </div>
               <div style={{ marginTop: 8, color: 'rgba(0,0,0,0.58)', lineHeight: 1.55 }}>
                 {selectedAddOnIds.length
                   ? selectedAddonsLabel
-                  : copy.noOptions}
+                  : <span {...marker('booking.noOptions')}>{copy.noOptions}</span>}
               </div>
 
               <div style={{ display: 'grid', gap: 10, marginTop: 22 }}>
-                <PriceRow label={copy.base} value={formatCurrencyAmount(baseTotal, currency)} />
-                <PriceRow label={copy.addons} value={formatCurrencyAmount(addonsTotal, currency)} />
-                <PriceRow label={copy.delivery} value={formatCurrencyAmount(deliveryTotal, currency)} />
+                <PriceRow contentKey="booking.base" label={copy.base} value={formatCurrencyAmount(baseTotal, currency)} />
+                <PriceRow contentKey="booking.addons" label={copy.addons} value={formatCurrencyAmount(addonsTotal, currency)} />
+                <PriceRow contentKey="booking.delivery" label={copy.delivery} value={formatCurrencyAmount(deliveryTotal, currency)} />
                 {discountTotal > 0 ? (
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
-                    <span style={{ color: '#16A34A', fontSize: 13 }}>Discount ({promoCode})</span>
+                    <span {...marker('booking.discountLabel')} style={{ color: '#16A34A', fontSize: 13 }}>{copy.discountLabel} ({promoCode})</span>
                     <span className="br-mono" style={{ color: '#16A34A', fontWeight: 700 }}>−{formatCurrencyAmount(discountTotal, currency)}</span>
                   </div>
                 ) : null}
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
-                <span className="br-display" style={{ fontSize: 20 }}>{copy.estimatedTotal}</span>
+                <span className="br-display" {...marker('booking.estimatedTotal')} style={{ fontSize: 20 }}>{copy.estimatedTotal}</span>
                 <span className="br-mono" style={{ fontSize: 28, fontWeight: 700 }}>{formatCurrencyAmount(grandTotal, currency)}</span>
               </div>
 
@@ -615,10 +527,10 @@ function BookingPageInner() {
               {quoteError ? <div className="br-mono" style={{ marginTop: 16, color: '#B91C1C' }}>{quoteError}</div> : null}
 
               <BRPrimary onClick={handleContinueToPayment} disabled={!canConfirmDates} full style={{ marginTop: 22 }}>
-                {copy.continueToPayment}
+                <span {...marker('booking.continueToPayment')}>{copy.continueToPayment}</span>
               </BRPrimary>
 
-              <div style={{ marginTop: 14, color: 'rgba(0,0,0,0.58)', fontSize: 13, lineHeight: 1.55 }}>
+              <div {...marker('booking.nextStepHint')} style={{ marginTop: 14, color: 'rgba(0,0,0,0.58)', fontSize: 13, lineHeight: 1.55 }}>
                 {copy.nextStepHint}
               </div>
             </div>
@@ -647,12 +559,13 @@ function AvailabilityCalendarBlock({
 }: {
   scooterId: number | null;
   locale: string;
-  copy: BookingCopy;
+  copy: BookingExtraContent;
   startDateKey: string;
   endDateKey: string;
   onPick: (start: string, end: string) => void;
 }) {
   const { t } = useLocale();
+  const { marker } = useSiteContentPreview();
   const today = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -765,7 +678,7 @@ function AvailabilityCalendarBlock({
     <div className="br-booking-card br-booking-calendar-panel" style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
       <div className="br-booking-calendar-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
-          {copy.calendarTitle}
+          <span {...marker('booking.calendarTitle')}>{copy.calendarTitle}</span>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button type="button" onClick={() => shiftMonth(-1)} className="br-mono" style={navButtonStyle}>←</button>
@@ -774,9 +687,9 @@ function AvailabilityCalendarBlock({
       </div>
 
       <div className="br-booking-calendar-legend" style={{ display: 'flex', gap: 16, marginTop: 14, color: 'rgba(0,0,0,0.62)', fontSize: 12 }}>
-        <Legend color="#16A34A" label={copy.legendAvailable} />
-        <Legend color="#DC2626" label={copy.legendBooked} />
-        <Legend color="#FFD700" label={copy.legendSelected} />
+        <Legend color="#16A34A" label={copy.legendAvailable} contentKey="booking.legendAvailable" />
+        <Legend color="#DC2626" label={copy.legendBooked} contentKey="booking.legendBooked" />
+        <Legend color="#FFD700" label={copy.legendSelected} contentKey="booking.legendSelected" />
       </div>
 
       {loading && <div className="br-mono" style={{ marginTop: 14, color: 'rgba(0,0,0,0.55)', fontSize: 12 }}>{t.common.loading}</div>}
@@ -800,7 +713,7 @@ function AvailabilityCalendarBlock({
       </div>
 
       {startDateKey && !endDateKey ? (
-        <div className="br-mono" style={{ marginTop: 14, color: 'rgba(0,0,0,0.62)', fontSize: 12 }}>
+        <div className="br-mono" {...marker('booking.pickEndDate')} style={{ marginTop: 14, color: 'rgba(0,0,0,0.62)', fontSize: 12 }}>
           {copy.pickEndDate.replace('{date}', startDateKey)}
         </div>
       ) : null}
@@ -909,19 +822,21 @@ function MonthGrid({
   );
 }
 
-function Legend({ color, label }: { color: string; label: string }) {
+function Legend({ color, label, contentKey }: { color: string; label: string; contentKey?: string }) {
+  const { marker } = useSiteContentPreview();
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
       <span style={{ width: 10, height: 10, borderRadius: 3, background: color, display: 'inline-block' }} />
-      {label}
+      <span {...(contentKey ? marker(contentKey) : {})}>{label}</span>
     </span>
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({ label, children, contentKey }: { label: string; children: ReactNode; contentKey?: string }) {
+  const { marker } = useSiteContentPreview();
   return (
     <label style={{ display: 'grid', gap: 8 }}>
-      <span className="br-mono" style={{ fontSize: 11, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.55)' }}>
+      <span {...(contentKey ? marker(contentKey) : {})} className="br-mono" style={{ fontSize: 11, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.55)' }}>
         {label.toUpperCase()}
       </span>
       {children}
@@ -929,10 +844,11 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function PriceRow({ label, value }: { label: string; value: string }) {
+function PriceRow({ label, value, contentKey }: { label: string; value: string; contentKey?: string }) {
+  const { marker } = useSiteContentPreview();
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
-      <span style={{ color: 'rgba(0,0,0,0.58)' }}>{label}</span>
+      <span {...(contentKey ? marker(contentKey) : {})} style={{ color: 'rgba(0,0,0,0.58)' }}>{label}</span>
       <span className="br-mono">{value}</span>
     </div>
   );

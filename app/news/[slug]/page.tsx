@@ -10,6 +10,7 @@ import { ApiNewsArticle, endpoints } from '@/lib/endpoints';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { mediaUrl } from '@/lib/api';
 import { ArrowRightIcon } from '@/components/Icons';
+import { useSiteContentPreview } from '@/lib/siteContentPreview';
 
 function formatDate(dateStr: string, locale: string): string {
   try {
@@ -40,6 +41,7 @@ function SkeletonArticle() {
 
 export default function NewsArticlePage() {
   const { locale, t } = useLocale();
+  const { marker } = useSiteContentPreview();
   const params = useParams<{ slug: string }>();
   const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug;
 
@@ -79,7 +81,7 @@ export default function NewsArticlePage() {
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
                 <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              {t.news.backToNews}
+              <span {...marker('news.backToNews')}>{t.news.backToNews}</span>
             </Link>
           </div>
         </div>
@@ -106,7 +108,7 @@ export default function NewsArticlePage() {
                 lineHeight: 1.05, letterSpacing: '-0.03em', color: '#0A0A0F',
                 margin: '0 0 12px',
               }}>
-                {t.news.error}
+                <span {...marker('news.error')}>{t.news.error}</span>
               </h1>
               <p style={{ fontFamily: 'var(--br-body)', fontSize: 15, color: 'rgba(0,0,0,0.48)', lineHeight: 1.65, margin: '0 0 28px' }}>
                 Article not found or unavailable right now.
@@ -117,7 +119,7 @@ export default function NewsArticlePage() {
                 fontFamily: 'var(--br-body)', fontSize: 14, fontWeight: 600,
                 padding: '12px 24px', borderRadius: 999, textDecoration: 'none',
               }}>
-                {t.news.backToNews}
+                <span {...marker('news.backToNews')}>{t.news.backToNews}</span>
               </Link>
             </motion.div>
           ) : (
@@ -201,7 +203,7 @@ export default function NewsArticlePage() {
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                       <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    {t.news.backToNews}
+                    <span {...marker('news.backToNews')}>{t.news.backToNews}</span>
                   </Link>
 
                   <Link href="/catalog" style={{

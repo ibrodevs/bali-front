@@ -14,9 +14,11 @@ import {
   SupportIcon,
 } from '@/components/Icons';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
+import { useSiteContentPreview } from '@/lib/siteContentPreview';
 
 export default function HowItWorksPage() {
   const { t } = useLocale();
+  const { marker } = useSiteContentPreview();
   const bg = '#fff';
   const fg = '#000';
   const sub = 'rgba(0,0,0,0.6)';
@@ -98,7 +100,7 @@ export default function HowItWorksPage() {
             <span style={{ width: 28, height: 1, background: '#000' }} />
             <span>00 / 04</span>
             <span>·</span>
-            <span style={{ color: '#000', fontWeight: 600 }}>{t.process.eyebrow}</span>
+            <span {...marker('process.eyebrow')} style={{ color: '#000', fontWeight: 600 }}>{t.process.eyebrow}</span>
           </div>
           <h1
             className="br-display"
@@ -110,7 +112,7 @@ export default function HowItWorksPage() {
               fontWeight: 700,
             }}
           >
-            {t.nav.how}
+            <span {...marker('nav.how')}>{t.nav.how}</span>
           </h1>
           <p
             style={{
@@ -167,7 +169,7 @@ export default function HowItWorksPage() {
               <span style={{ width: 28, height: 1, background: '#000' }} />
               <span>01 / 04</span>
               <span>·</span>
-              <span style={{ color: '#000', fontWeight: 600 }}>{t.process.eyebrow}</span>
+              <span {...marker('process.eyebrow')} style={{ color: '#000', fontWeight: 600 }}>{t.process.eyebrow}</span>
             </div>
             <h2
               className="br-display"
@@ -178,7 +180,7 @@ export default function HowItWorksPage() {
                 letterSpacing: '-0.035em',
               }}
             >
-              {t.process.title}
+              <span {...marker('process.title')}>{t.process.title}</span>
             </h2>
           </div>
           <div
@@ -263,9 +265,9 @@ export default function HowItWorksPage() {
                     position: 'relative',
                   }}
                 >
-                  {step.title}
+                  <span {...marker('process.steps')}>{step.title}</span>
                 </div>
-                <p style={{ fontSize: 15, lineHeight: 1.6, color: sub, margin: 0, position: 'relative' }}>
+                <p {...marker('process.steps')} style={{ fontSize: 15, lineHeight: 1.6, color: sub, margin: 0, position: 'relative' }}>
                   {step.desc}
                 </p>
                 {i < steps.length - 1 && (
@@ -357,7 +359,7 @@ export default function HowItWorksPage() {
               <span style={{ width: 28, height: 1, background: '#FFD700' }} />
               <span>02 / 04</span>
               <span>·</span>
-              <span style={{ fontWeight: 600 }}>{t.pricing.eyebrow}</span>
+              <span {...marker('pricing.eyebrow')} style={{ fontWeight: 600 }}>{t.pricing.eyebrow}</span>
             </div>
             <h2
               className="br-display"
@@ -368,9 +370,10 @@ export default function HowItWorksPage() {
                 margin: '0 0 12px',
               }}
             >
-              {t.pricing.title} <span style={{ color: '#FFD700' }}>$25</span> {t.pricing.titleSuffix}
+              <span {...marker('pricing.title')}>{t.pricing.title}</span> <span style={{ color: '#FFD700' }}>$25</span> <span {...marker('pricing.titleSuffix')}>{t.pricing.titleSuffix}</span>
             </h2>
             <p
+              {...marker('pricing.desc')}
               style={{
                 fontSize: 17,
                 color: 'rgba(255,255,255,0.65)',
@@ -417,7 +420,7 @@ export default function HowItWorksPage() {
                   className="br-display"
                   style={{ fontSize: 22, letterSpacing: '-0.02em', lineHeight: 1.15 }}
                 >
-                  {item.label}
+                  <span {...marker('pricing.inc')}>{item.label}</span>
                 </div>
                 <div
                   aria-hidden
@@ -470,7 +473,7 @@ export default function HowItWorksPage() {
               <span style={{ width: 28, height: 1, background: '#000' }} />
               <span>03 / 04</span>
               <span>·</span>
-              <span style={{ color: '#000', fontWeight: 600 }}>{t.delivery.eyebrow}</span>
+              <span {...marker('delivery.eyebrow')} style={{ color: '#000', fontWeight: 600 }}>{t.delivery.eyebrow}</span>
             </div>
             <h2
               className="br-display"
@@ -481,9 +484,9 @@ export default function HowItWorksPage() {
                 letterSpacing: '-0.035em',
               }}
             >
-              {t.delivery.title1} <span style={{ color: '#FFD700' }}>{t.delivery.title2}</span>
+              <span {...marker('delivery.title1')}>{t.delivery.title1}</span> <span {...marker('delivery.title2')} style={{ color: '#FFD700' }}>{t.delivery.title2}</span>
             </h2>
-            <p style={{ margin: '20px 0 0', fontSize: 17, lineHeight: 1.6, color: sub, maxWidth: 620 }}>
+            <p {...marker('delivery.desc')} style={{ margin: '20px 0 0', fontSize: 17, lineHeight: 1.6, color: sub, maxWidth: 620 }}>
               {t.delivery.desc}
             </p>
           </div>
@@ -519,7 +522,7 @@ export default function HowItWorksPage() {
                 >
                   <item.icon size={20} color="#000" />
                 </div>
-                <span style={{ fontSize: 15, color: fg, lineHeight: 1.4 }}>{item.text}</span>
+                <span {...marker(i === 0 ? 'delivery.free' : i === 1 ? 'stats.support' : 'why.items')} style={{ fontSize: 15, color: fg, lineHeight: 1.4 }}>{item.text}</span>
               </div>
             ))}
           </div>
@@ -583,7 +586,7 @@ export default function HowItWorksPage() {
               <span style={{ width: 28, height: 1, background: '#FFD700' }} />
               <span>04 / 04</span>
               <span>·</span>
-              <span style={{ fontWeight: 600 }}>{t.why.eyebrow}</span>
+              <span {...marker('why.eyebrow')} style={{ fontWeight: 600 }}>{t.why.eyebrow}</span>
             </div>
             <h2
               className="br-display"
@@ -594,7 +597,7 @@ export default function HowItWorksPage() {
                 letterSpacing: '-0.035em',
               }}
             >
-              {t.why.title}
+              <span {...marker('why.title')}>{t.why.title}</span>
             </h2>
           </div>
           <div
@@ -648,9 +651,10 @@ export default function HowItWorksPage() {
                   className="br-display"
                   style={{ fontSize: 24, letterSpacing: '-0.02em', lineHeight: 1.1 }}
                 >
-                  {item.title}
+                  <span {...marker('why.items')}>{item.title}</span>
                 </div>
                 <p
+                  {...marker('why.items')}
                   style={{
                     fontSize: 14,
                     lineHeight: 1.6,
@@ -690,7 +694,7 @@ export default function HowItWorksPage() {
           overflow: 'hidden',
         }}
       >
-        <BREyebrow style={{ color: 'rgba(0,0,0,0.6)' }}>{t.cta.eyebrow}</BREyebrow>
+        <BREyebrow style={{ color: 'rgba(0,0,0,0.6)' }}><span {...marker('cta.eyebrow')}>{t.cta.eyebrow}</span></BREyebrow>
         <div
           className="br-display"
           style={{
@@ -700,27 +704,27 @@ export default function HowItWorksPage() {
             margin: '12px 0 28px',
           }}
         >
-          {t.cta.title}
+          <span {...marker('cta.title')}>{t.cta.title}</span>
         </div>
-        <p style={{ fontSize: 19, maxWidth: 600, margin: '0 auto 36px', lineHeight: 1.5 }}>
+        <p {...marker('cta.desc')} style={{ fontSize: 19, maxWidth: 600, margin: '0 auto 36px', lineHeight: 1.5 }}>
           {t.cta.desc}
         </p>
         <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
           <BRSecondary href="/booking" style={{ height: 72, padding: '0 44px', fontSize: 18 }}>
-            {t.cta.primary}
+            <span {...marker('cta.primary')}>{t.cta.primary}</span>
           </BRSecondary>
           <BROutline
             href="/catalog"
             style={{ height: 72, padding: '0 32px', fontSize: 16, borderColor: '#000' }}
           >
-            {t.cta.secondary}
+            <span {...marker('cta.secondary')}>{t.cta.secondary}</span>
           </BROutline>
         </div>
         <div
           className="br-mono"
           style={{ fontSize: 11, marginTop: 32, letterSpacing: '0.14em', opacity: 0.7 }}
         >
-          {t.cta.terms}
+          <span {...marker('cta.terms')}>{t.cta.terms}</span>
         </div>
       </div>
 

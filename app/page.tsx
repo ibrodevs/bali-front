@@ -24,9 +24,11 @@ import {
   resolveScooterImage,
   resolveScooterImageObjectPosition,
 } from '@/lib/displayScooter';
+import { useSiteContentPreview } from '@/lib/siteContentPreview';
 
 function FAQItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
+  const { marker } = useSiteContentPreview();
   return (
     <div style={{ borderBottom: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden' }}>
       <button
@@ -37,7 +39,7 @@ function FAQItem({ q, a }: { q: string; a: string }) {
           cursor: 'pointer', textAlign: 'left', gap: 16,
         }}
       >
-        <span style={{ fontFamily: 'var(--br-display)', fontSize: 'clamp(15px, 1.8vw, 19px)', fontWeight: 600, letterSpacing: '-0.01em', color: '#0A0A0F', lineHeight: 1.3 }}>{q}</span>
+        <span {...marker('home.faqs')} style={{ fontFamily: 'var(--br-display)', fontSize: 'clamp(15px, 1.8vw, 19px)', fontWeight: 600, letterSpacing: '-0.01em', color: '#0A0A0F', lineHeight: 1.3 }}>{q}</span>
         <span style={{
           width: 32, height: 32, borderRadius: 999, flexShrink: 0,
           background: open ? '#0A0A0F' : 'rgba(0,0,0,0.07)',
@@ -58,7 +60,7 @@ function FAQItem({ q, a }: { q: string; a: string }) {
             transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
             style={{ overflow: 'hidden' }}
           >
-            <p style={{ margin: '0 0 24px', fontSize: 15, lineHeight: 1.7, color: 'rgba(0,0,0,0.55)', maxWidth: 680, paddingRight: 48 }}>
+            <p {...marker('home.faqs')} style={{ margin: '0 0 24px', fontSize: 15, lineHeight: 1.7, color: 'rgba(0,0,0,0.55)', maxWidth: 680, paddingRight: 48 }}>
               {a}
             </p>
           </motion.div>
@@ -81,6 +83,7 @@ const WA_LINK = 'https://wa.me/628135915173?text=Hi%2C%20I%E2%80%99d%20like%20to
 
 export default function LandingPage() {
   const { t, locale } = useLocale();
+  const { marker } = useSiteContentPreview();
   const { convertPrice, symbol } = useCurrency();
   const [featured, setFeatured] = useState<DisplayScooter[]>(fallbackScooters().slice(0, 3));
   const [zones, setZones] = useState<Array<{ id: number; name: string; freeDelivery?: boolean }>>([]);
@@ -168,8 +171,8 @@ export default function LandingPage() {
               color: '#fff', margin: '0 0 28px', fontWeight: 800,
             }}
           >
-            {t.home.title1}<br />
-            <span style={{ color: '#FFD700' }}>{t.home.title2}</span>
+            <span {...marker('home.title1')}>{t.home.title1}</span><br />
+            <span {...marker('home.title2')} style={{ color: '#FFD700' }}>{t.home.title2}</span>
           </motion.h1>
 
           <motion.div
@@ -187,7 +190,7 @@ export default function LandingPage() {
               boxShadow: '0 12px 40px -8px rgba(255,215,0,0.55)',
             }}>
               <ScooterIcon size={20} color="#0A0A0F" strokeWidth={2.2} />
-              {t.hero.cta}
+              <span {...marker('hero.cta')}>{t.hero.cta}</span>
               <ArrowRightIcon size={17} color="#0A0A0F" strokeWidth={2.5} />
             </a>
 
@@ -248,7 +251,7 @@ export default function LandingPage() {
           >
             <StarIcon size={13} color="#FFD700" />
             <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, fontFamily: 'var(--br-mono)' }}>
-              4.97 · 12 000+ riders · {t.home.priceFrom} <strong style={{ color: '#FFD700' }}>{minPriceLabel}/{t.common.day}</strong>
+              4.97 · 12 000+ riders · <span {...marker('home.priceFrom')}>{t.home.priceFrom}</span> <strong style={{ color: '#FFD700' }}>{minPriceLabel}/<span {...marker('common.day')}>{t.common.day}</span></strong>
             </span>
           </motion.div>
         </div>
@@ -265,13 +268,13 @@ export default function LandingPage() {
             margin: '0 0 12px', fontSize: 'clamp(28px, 5vw, 58px)',
             lineHeight: 0.97, letterSpacing: '-0.035em', color: '#0A0A0F',
           }}>
-            {t.process.title}
+            <span {...marker('process.title')}>{t.process.title}</span>
           </motion.h2>
           <motion.p variants={fadeUp} style={{
             fontSize: 'clamp(14px, 1.4vw, 16px)', color: 'rgba(0,0,0,0.48)',
             margin: '0 auto', lineHeight: 1.55, maxWidth: 400,
           }}>
-            {t.home.subtitle}
+            <span {...marker('home.subtitle')}>{t.home.subtitle}</span>
           </motion.p>
         </motion.div>
 
@@ -308,9 +311,9 @@ export default function LandingPage() {
                 0{i + 1}
               </div>
               <div className="br-display" style={{ fontSize: 'clamp(17px, 1.9vw, 22px)', lineHeight: 1.1, letterSpacing: '-0.02em', color: '#0A0A0F', marginBottom: 10 }}>
-                {title}
+                <span {...marker('process.steps')}>{title}</span>
               </div>
-              <p style={{ fontSize: 'clamp(13px, 1.2vw, 14px)', lineHeight: 1.65, color: 'rgba(0,0,0,0.52)', margin: 0 }}>
+              <p {...marker('process.steps')} style={{ fontSize: 'clamp(13px, 1.2vw, 14px)', lineHeight: 1.65, color: 'rgba(0,0,0,0.52)', margin: 0 }}>
                 {desc}
               </p>
               {i < 2 && (
@@ -338,10 +341,10 @@ export default function LandingPage() {
         >
           <motion.div variants={fadeUp}>
             <h2 className="br-display" style={{ margin: 0, fontSize: 'clamp(28px, 5.5vw, 64px)', lineHeight: 0.97, letterSpacing: '-0.035em', color: '#0A0A0F' }}>
-              {t.fleet.title}
+              <span {...marker('fleet.title')}>{t.fleet.title}</span>
             </h2>
             <p style={{ marginTop: 10, fontSize: 'clamp(13px, 1.3vw, 15px)', color: 'rgba(0,0,0,0.48)', maxWidth: 340, lineHeight: 1.55 }}>
-              {t.home.priceFrom} {minPriceLabel}/{t.common.day} · {t.home.trustBadges[1]}
+              <span {...marker('home.priceFrom')}>{t.home.priceFrom}</span> {minPriceLabel}/<span {...marker('common.day')}>{t.common.day}</span> · <span {...marker('home.trustBadges')}>{t.home.trustBadges[1]}</span>
             </p>
           </motion.div>
           <motion.div variants={fadeUp}>
@@ -352,7 +355,7 @@ export default function LandingPage() {
               padding: '11px 20px', border: '1.5px solid rgba(0,0,0,0.14)',
               borderRadius: 999,
             }}>
-              {t.fleet.viewAll}
+              <span {...marker('fleet.viewAll')}>{t.fleet.viewAll}</span>
               <ArrowRightIcon size={14} color="#0A0A0F" strokeWidth={2.5} />
             </a>
           </motion.div>
@@ -385,7 +388,7 @@ export default function LandingPage() {
             boxShadow: '0 12px 36px -12px rgba(255,215,0,0.5)',
           }}>
             <ScooterIcon size={18} color="#0A0A0F" strokeWidth={2} />
-            {t.home.viewFullFleet}
+            <span {...marker('home.viewFullFleet')}>{t.home.viewFullFleet}</span>
             <ArrowRightIcon size={15} color="#0A0A0F" strokeWidth={2.5} />
           </a>
         </motion.div>
@@ -402,10 +405,10 @@ export default function LandingPage() {
             margin: '0 0 10px', fontSize: 'clamp(28px, 5.5vw, 64px)',
             lineHeight: 0.97, letterSpacing: '-0.035em', color: '#0A0A0F',
           }}>
-            {t.reviews.title}
+            <span {...marker('reviews.title')}>{t.reviews.title}</span>
           </motion.h2>
           <motion.p variants={fadeUp} style={{ fontSize: 14, color: 'rgba(0,0,0,0.42)', margin: 0 }}>
-            {t.reviews.verified}
+            <span {...marker('reviews.verified')}>{t.reviews.verified}</span>
           </motion.p>
         </motion.div>
 
@@ -430,16 +433,16 @@ export default function LandingPage() {
               <div style={{ display: 'flex', gap: 3, marginBottom: 16 }}>
                 {Array.from({ length: 5 }).map((_, si) => <StarIcon key={si} size={13} color="#FFD700" />)}
               </div>
-              <p style={{ fontSize: 'clamp(13px, 1.3vw, 16px)', lineHeight: 1.62, color: '#0A0A0F', margin: '0 0 24px', position: 'relative' }}>
+              <p {...marker('home.reviews')} style={{ fontSize: 'clamp(13px, 1.3vw, 16px)', lineHeight: 1.62, color: '#0A0A0F', margin: '0 0 24px', position: 'relative' }}>
                 "{rev.quote}"
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 18, borderTop: '1px solid rgba(0,0,0,0.07)' }}>
                 <BRPhoto tone={rev.tone} style={{ width: 42, height: 42, borderRadius: 999, flexShrink: 0 }} />
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#0A0A0F' }}>{rev.name}</div>
-                  <div style={{ fontFamily: 'var(--br-mono)', fontSize: 10, color: 'rgba(0,0,0,0.38)', marginTop: 2 }}>{rev.meta}</div>
+                  <div {...marker('home.reviews')} style={{ fontSize: 14, fontWeight: 600, color: '#0A0A0F' }}>{rev.name}</div>
+                  <div {...marker('home.reviews')} style={{ fontFamily: 'var(--br-mono)', fontSize: 10, color: 'rgba(0,0,0,0.38)', marginTop: 2 }}>{rev.meta}</div>
                 </div>
-                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(34,197,94,0.09)', color: '#16A34A', fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.1em', padding: '5px 9px', borderRadius: 999, border: '1px solid rgba(34,197,94,0.18)', flexShrink: 0 }}>
+                <div {...marker('home.reviewVerified')} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(34,197,94,0.09)', color: '#16A34A', fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.1em', padding: '5px 9px', borderRadius: 999, border: '1px solid rgba(34,197,94,0.18)', flexShrink: 0 }}>
                   <CheckIcon size={11} color="#16A34A" strokeWidth={2.5} />
                   {t.home.reviewVerified}
                 </div>
@@ -454,10 +457,10 @@ export default function LandingPage() {
         <div className="br-home-delivery-copy" style={{ padding: 'clamp(40px, 6vw, 80px) clamp(16px, 5vw, 60px)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <motion.div variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true }}>
             <motion.h2 variants={fadeUp} className="br-display" style={{ margin: '0 0 14px', fontSize: 'clamp(26px, 4.5vw, 56px)', lineHeight: 0.97, letterSpacing: '-0.03em' }}>
-              {locationSection?.title1 || t.delivery.title1}<br /><span style={{ color: '#FFD700' }}>{locationSection?.title2 || t.delivery.title2}</span>
+              <span {...marker('delivery.title1')}>{locationSection?.title1 || t.delivery.title1}</span><br /><span {...marker('delivery.title2')} style={{ color: '#FFD700' }}>{locationSection?.title2 || t.delivery.title2}</span>
             </motion.h2>
             <motion.p variants={fadeUp} style={{ fontSize: 'clamp(13px, 1.3vw, 16px)', color: 'rgba(255,255,255,0.58)', margin: '0 0 28px', maxWidth: 400, lineHeight: 1.6 }}>
-              {locationSection?.desc || t.delivery.desc}
+              <span {...marker('delivery.desc')}>{locationSection?.desc || t.delivery.desc}</span>
             </motion.p>
             <motion.div variants={fadeUp} className="br-home-delivery-zones" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {activeZones.slice(0, 8).map((l) => (
@@ -465,7 +468,7 @@ export default function LandingPage() {
                   <span>{l}</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <CheckIcon size={10} color="#22C55E" strokeWidth={2.5} />
-                    <span style={{ color: '#22C55E', fontSize: 10 }}>{t.home.deliveryFree}</span>
+                    <span {...marker('home.deliveryFree')} style={{ color: '#22C55E', fontSize: 10 }}>{t.home.deliveryFree}</span>
                   </span>
                 </div>
               ))}
@@ -481,8 +484,8 @@ export default function LandingPage() {
           />
           <div aria-hidden style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(12,12,18,0.42) 0%, transparent 35%)', pointerEvents: 'none' }} />
           <div style={{ position: 'absolute', top: 18, left: 18, background: 'rgba(12,12,18,0.82)', backdropFilter: 'blur(12px)', color: '#fff', padding: '12px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)' }}>
-            <div style={{ fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.16em', color: '#FFD700', marginBottom: 4, textTransform: 'uppercase' }}>{locationSection?.mapEyebrow || t.home.mapEyebrow}</div>
-            <div className="br-display" style={{ fontSize: 16 }}>{locationSection?.mapRegion || t.home.mapRegion}</div>
+            <div {...marker('home.mapEyebrow')} style={{ fontFamily: 'var(--br-mono)', fontSize: 10, letterSpacing: '0.16em', color: '#FFD700', marginBottom: 4, textTransform: 'uppercase' }}>{locationSection?.mapEyebrow || t.home.mapEyebrow}</div>
+            <div {...marker('home.mapRegion')} className="br-display" style={{ fontSize: 16 }}>{locationSection?.mapRegion || t.home.mapRegion}</div>
           </div>
         </div>
       </div>
@@ -496,10 +499,10 @@ export default function LandingPage() {
             className="br-display"
             style={{ margin: '0 0 40px', fontSize: 'clamp(28px, 5vw, 58px)', lineHeight: 0.97, letterSpacing: '-0.035em', color: '#0A0A0F' }}
           >
-            {t.home.faqTitle1}<br />{t.home.faqTitle2}
+            <span {...marker('home.faqTitle1')}>{t.home.faqTitle1}</span><br /><span {...marker('home.faqTitle2')}>{t.home.faqTitle2}</span>
           </motion.h2>
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.15 }}>
-            <div style={{ borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+            <div {...marker('home.faqs')} style={{ borderTop: '1px solid rgba(0,0,0,0.08)' }}>
               {faqs.map((item, i) => <FAQItem key={i} q={item.q} a={item.a} />)}
             </div>
           </motion.div>
@@ -513,9 +516,9 @@ export default function LandingPage() {
           viewport={{ once: true }} transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
         >
           <h2 className="br-display" style={{ fontSize: 'clamp(42px, 9vw, 108px)', lineHeight: 0.92, letterSpacing: '-0.04em', margin: '0 0 16px', color: '#0A0A0F' }}>
-            {t.cta.title}
+            <span {...marker('cta.title')}>{t.cta.title}</span>
           </h2>
-          <p style={{ fontSize: 'clamp(14px, 1.7vw, 18px)', maxWidth: 440, margin: '0 auto 44px', lineHeight: 1.55, color: 'rgba(0,0,0,0.58)' }}>
+          <p {...marker('cta.desc')} style={{ fontSize: 'clamp(14px, 1.7vw, 18px)', maxWidth: 440, margin: '0 auto 44px', lineHeight: 1.55, color: 'rgba(0,0,0,0.58)' }}>
             {t.cta.desc}
           </p>
           <div className="br-cta-btns" style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -528,7 +531,7 @@ export default function LandingPage() {
               boxShadow: '0 16px 48px -16px rgba(0,0,0,0.42)',
             }}>
               <ScooterIcon size={18} color="#FFD700" strokeWidth={2} />
-              {t.cta.primary}
+              <span {...marker('cta.primary')}>{t.cta.primary}</span>
               <ArrowRightIcon size={15} color="#FFD700" strokeWidth={2.5} />
             </a>
             <a href={WA_LINK} target="_blank" rel="noopener noreferrer" style={{
@@ -539,11 +542,11 @@ export default function LandingPage() {
               textDecoration: 'none',
             }}>
               <WhatsAppIcon size={17} color="#fff" />
-              {t.home.whatsappUs}
+              <span {...marker('home.whatsappUs')}>{t.home.whatsappUs}</span>
             </a>
           </div>
           <p style={{ fontFamily: 'var(--br-mono)', fontSize: 10, marginTop: 28, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.40)', textTransform: 'uppercase' }}>
-            {t.cta.terms}
+            <span {...marker('cta.terms')}>{t.cta.terms}</span>
           </p>
         </motion.div>
       </section>

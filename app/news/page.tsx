@@ -9,6 +9,7 @@ import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { endpoints, ApiNewsArticle, unwrapList } from '@/lib/endpoints';
 import { mediaUrl } from '@/lib/api';
 import { ArrowRightIcon } from '@/components/Icons';
+import { useSiteContentPreview } from '@/lib/siteContentPreview';
 
 function formatDate(dateStr: string, locale: string): string {
   try {
@@ -134,6 +135,7 @@ function SkeletonCard() {
 
 export default function NewsPage() {
   const { t, locale } = useLocale();
+  const { marker } = useSiteContentPreview();
   const d = t.news;
 
   const [articles, setArticles] = useState<ApiNewsArticle[]>([]);
@@ -168,7 +170,7 @@ export default function NewsPage() {
               letterSpacing: '0.16em', color: 'rgba(0,0,0,0.36)',
               textTransform: 'uppercase', marginBottom: 18,
             }}>
-              {d.eyebrow}
+              <span {...marker('news.eyebrow')}>{d.eyebrow}</span>
             </motion.p>
 
             <motion.h1 variants={fadeUp} style={{
@@ -177,14 +179,14 @@ export default function NewsPage() {
               letterSpacing: '-0.04em', color: '#0A0A0F',
               margin: '0 0 22px',
             }}>
-              {d.title}
+              <span {...marker('news.title')}>{d.title}</span>
             </motion.h1>
 
             <motion.p variants={fadeUp} style={{
               fontFamily: 'var(--br-body)', fontSize: 'clamp(14px, 1.5vw, 17px)',
               color: 'rgba(0,0,0,0.48)', maxWidth: 500, lineHeight: 1.6, margin: 0,
             }}>
-              {d.desc}
+              <span {...marker('news.desc')}>{d.desc}</span>
             </motion.p>
           </motion.div>
         </section>
@@ -206,12 +208,12 @@ export default function NewsPage() {
           ) : error ? (
             <div style={{ textAlign: 'center', padding: 'clamp(60px, 8vw, 100px) 0' }}>
               <p style={{ fontFamily: 'var(--br-mono)', fontSize: 11, letterSpacing: '0.14em', color: '#dc2626', textTransform: 'uppercase', marginBottom: 12 }}>Error</p>
-              <p style={{ fontFamily: 'var(--br-display)', fontSize: 'clamp(22px, 3vw, 32px)', color: '#0A0A0F', letterSpacing: '-0.02em' }}>{d.error}</p>
+              <p style={{ fontFamily: 'var(--br-display)', fontSize: 'clamp(22px, 3vw, 32px)', color: '#0A0A0F', letterSpacing: '-0.02em' }}><span {...marker('news.error')}>{d.error}</span></p>
             </div>
           ) : articles.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 'clamp(60px, 8vw, 100px) 0' }}>
               <p style={{ fontFamily: 'var(--br-mono)', fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.36)', textTransform: 'uppercase', marginBottom: 12 }}>Nothing here</p>
-              <p style={{ fontFamily: 'var(--br-display)', fontSize: 'clamp(22px, 3vw, 32px)', color: '#0A0A0F', letterSpacing: '-0.02em' }}>{d.empty}</p>
+              <p style={{ fontFamily: 'var(--br-display)', fontSize: 'clamp(22px, 3vw, 32px)', color: '#0A0A0F', letterSpacing: '-0.02em' }}><span {...marker('news.empty')}>{d.empty}</span></p>
             </div>
           ) : (
             <motion.div

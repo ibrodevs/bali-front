@@ -2,6 +2,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { dictionaries, Dict, Locale, LOCALES } from './dictionaries';
 import { endpoints } from '@/lib/endpoints';
+import { SITE_CONTENT_EXTRAS } from '@/lib/siteContentExtras';
 
 type Ctx = {
   locale: Locale;
@@ -116,7 +117,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   }, [previewMode]);
 
   const t = useMemo(
-    () => deepMerge(deepMerge(dictionaries[locale], dictionaryOverrides), previewOverrides),
+    () => deepMerge(deepMerge(deepMerge(dictionaries[locale], SITE_CONTENT_EXTRAS[locale]), dictionaryOverrides), previewOverrides),
     [locale, dictionaryOverrides, previewOverrides],
   );
   const tr = useCallback((template: string, vars?: Record<string, string | number>) => {

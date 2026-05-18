@@ -1,4 +1,5 @@
 import { dictionaries, LOCALES } from './i18n/dictionaries';
+import { SITE_CONTENT_EXTRAS } from './siteContentExtras';
 
 import type { Locale } from './i18n/dictionaries';
 import type { SiteContentValueType } from './endpoints';
@@ -9,6 +10,10 @@ export type SiteContentPage = {
   description: string;
   route: string;
   routeLabel: string;
+  includeSectionKeys?: string[];
+  includeFieldKeys?: string[];
+  includeFieldPrefixes?: string[];
+  includeShared?: boolean;
 };
 
 export type SiteContentField = {
@@ -46,6 +51,15 @@ const PAGES: SiteContentPage[] = [
     routeLabel: 'Open Catalog',
   },
   {
+    key: 'how',
+    label: 'How It Works',
+    description: 'Экран "Как это работает": шаги, цены, доставка, trust-блок и CTA.',
+    route: '/how-it-works',
+    routeLabel: 'Open How It Works',
+    includeSectionKeys: ['process', 'pricing', 'delivery', 'why', 'cta'],
+    includeShared: true,
+  },
+  {
     key: 'detail',
     label: 'Scooter Page',
     description: 'Карточка конкретного скутера: спецификации, описание, условия аренды.',
@@ -72,6 +86,28 @@ const PAGES: SiteContentPage[] = [
     description: 'Тексты входа, регистрации, onboarding-блоки и подписи форм.',
     route: '/login',
     routeLabel: 'Open Login',
+    includeShared: true,
+  },
+  {
+    key: 'register',
+    label: 'Register Page',
+    description: 'Экран регистрации: hero, benefits, цитата и подписи полей формы.',
+    route: '/register',
+    routeLabel: 'Open Register',
+    includeFieldKeys: [
+      'auth.haveAccount',
+      'auth.login',
+      'auth.name',
+      'auth.phone',
+      'auth.email',
+      'auth.password',
+      'auth.termsNote',
+      'common.loading',
+    ],
+    includeFieldPrefixes: [
+      'auth.register',
+    ],
+    includeShared: true,
   },
   {
     key: 'news',
@@ -86,6 +122,15 @@ const PAGES: SiteContentPage[] = [
     description: 'Общие тексты шапки, футера и повторяющихся UI-элементов.',
     route: '/',
     routeLabel: 'Open Site',
+    includeSectionKeys: ['nav', 'footer', 'common'],
+  },
+  {
+    key: 'navbar',
+    label: 'Navbar',
+    description: 'Отдельный экран для редактирования текстов верхней навигации сайта.',
+    route: '/',
+    routeLabel: 'Open Navbar',
+    includeSectionKeys: ['nav'],
   },
 ];
 
@@ -147,6 +192,21 @@ function titleCaseFromKey(input: string) {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function deepMerge<T>(base: T, override: unknown): T {
+  if (!isPlainObject(base) || !isPlainObject(override)) {
+    return (override as T) ?? base;
+  }
+
+  const result: Record<string, unknown> = { ...base };
+  for (const [key, value] of Object.entries(override)) {
+    const current = result[key];
+    result[key] = isPlainObject(current) && isPlainObject(value)
+      ? deepMerge(current, value)
+      : value;
+  }
+  return result as T;
 }
 
 function getFieldLabel(path: string, rootKey: string) {
@@ -211,9 +271,10 @@ function getByPath(source: unknown, path: string) {
 }
 
 const generatedFields: SiteContentField[] = [];
+const defaultDictionary = deepMerge(dictionaries.en, SITE_CONTENT_EXTRAS.en);
 
 for (const rootKey of EDITABLE_ROOTS) {
-  const source = (dictionaries.en as Record<string, unknown>)[rootKey];
+  const source = (defaultDictionary as Record<string, unknown>)[rootKey];
   if (!source) continue;
   collectFields(source, rootKey, rootKey, generatedFields);
 }
@@ -244,7 +305,16 @@ export const SITE_CONTENT_FIELDS = generatedFields.sort((a, b) => {
 export const SITE_CONTENT_PAGES = PAGES;
 export const SITE_CONTENT_LANGUAGES = LOCALES;
 
+export function pageMatchesField(page: SiteContentPage, field: SiteContentField) {
+  if (field.pageKey === page.key) return true;
+  if (page.includeShared && field.pageKey === 'shared') return true;
+  if (page.includeSectionKeys?.includes(field.sectionKey)) return true;
+  if (page.includeFieldKeys?.includes(field.key)) return true;
+  if (page.includeFieldPrefixes?.some((prefix) => field.key.startsWith(prefix))) return true;
+  return false;
+}
+
 export function getDefaultSiteContentValue(key: string, locale: Locale) {
   if (key === 'media.home.heroVideo') return '/hero.mp4';
-  return getByPath(dictionaries[locale], key);
+  return getByPath(deepMerge(dictionaries[locale], SITE_CONTENT_EXTRAS[locale]), key);
 }

@@ -8,6 +8,7 @@ import LanguageSwitcher from './LanguageSwitcher';
 import CurrencySwitcher from './CurrencySwitcher';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { useAuth } from '@/lib/i18n/AuthProvider';
+import { useSiteContentPreview } from '@/lib/siteContentPreview';
 
 const WA_LINK = 'https://wa.me/628135915173?text=Hi%2C%20I%E2%80%99d%20like%20to%20rent%20a%20scooter%20in%20Bali!';
 
@@ -19,6 +20,7 @@ export default function SiteHeader({
   transparent?: boolean;
 }) {
   const { t } = useLocale();
+  const { marker } = useSiteContentPreview();
   const { user, signOut } = useAuth();
   const pathname = usePathname();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -111,10 +113,10 @@ export default function SiteHeader({
 
   const navLinks = (
     <>
-      <Link href="/catalog" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.catalog}</Link>
-      <Link href="/how-it-works" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.how}</Link>
-      <Link href="/locations" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.locations}</Link>
-      <Link href="/news" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.news}</Link>
+      <Link {...marker('nav.catalog')} href="/catalog" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.catalog}</Link>
+      <Link {...marker('nav.how')} href="/how-it-works" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.how}</Link>
+      <Link {...marker('nav.locations')} href="/locations" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.locations}</Link>
+      <Link {...marker('nav.news')} href="/news" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.news}</Link>
       {isAdmin && (
         <Link
           href="/admin" onClick={closeAll}
@@ -159,9 +161,9 @@ export default function SiteHeader({
               boxShadow: 'var(--br-shadow-lg)', zIndex: 50,
             }}>
               <Link href="/profile" onClick={closeAll} style={{ display: 'block', padding: '10px 12px', borderRadius: 8, color: dark ? '#fff' : '#0A0A0F', textDecoration: 'none', fontSize: 13 }}>
-                {t.nav.profile}
+                <span {...marker('nav.profile')}>{t.nav.profile}</span>
               </Link>
-              <button onClick={() => { closeAll(); signOut(); }} style={{ display: 'block', width: '100%', padding: '10px 12px', borderRadius: 8, border: 0, background: 'transparent', color: dark ? '#fff' : '#0A0A0F', textAlign: 'left', cursor: 'pointer', fontSize: 13 }}>
+              <button {...marker('nav.logout')} onClick={() => { closeAll(); signOut(); }} style={{ display: 'block', width: '100%', padding: '10px 12px', borderRadius: 8, border: 0, background: 'transparent', color: dark ? '#fff' : '#0A0A0F', textAlign: 'left', cursor: 'pointer', fontSize: 13 }}>
                 {t.nav.logout}
               </button>
             </div>
@@ -178,7 +180,7 @@ export default function SiteHeader({
             minHeight: 40, display: 'inline-flex', alignItems: 'center',
           }}
         >
-          {t.nav.login}
+          <span {...marker('nav.login')}>{t.nav.login}</span>
         </Link>
       )}
 
@@ -196,7 +198,7 @@ export default function SiteHeader({
         }}
         className="br-header-book-btn"
       >
-        {t.nav.book} ↗
+        <span {...marker('nav.book')}>{t.nav.book}</span> ↗
       </a>
     </>
   );

@@ -4,9 +4,11 @@ import { BRPhoto, BRChip, BRPrice } from './BR';
 import { GaugeIcon, LightningIcon, WeightIcon } from './Icons';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { DisplayScooter, resolveScooterRouteId } from '@/lib/displayScooter';
+import { useSiteContentPreview } from '@/lib/siteContentPreview';
 
 export default function ScooterCard({ s, dark = false, large = false }: { s: DisplayScooter; dark?: boolean; large?: boolean }) {
   const { t } = useLocale();
+  const { marker } = useSiteContentPreview();
   const fg = dark ? '#fff' : '#000';
   const sub = dark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.55)';
   const isAvail = s.status === 'available';
@@ -87,7 +89,7 @@ export default function ScooterCard({ s, dark = false, large = false }: { s: Dis
             <div className="br-display" style={{ fontSize: 22, marginTop: 4, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div className="br-mono" style={{ fontSize: 10, color: sub }}>{t.catalog.from}</div>
+            <div {...marker('catalog.from')} className="br-mono" style={{ fontSize: 10, color: sub }}>{t.catalog.from}</div>
             <BRPrice amount={s.price} size={20} />
           </div>
         </div>
@@ -101,11 +103,11 @@ export default function ScooterCard({ s, dark = false, large = false }: { s: Dis
         <div style={{ marginTop: 'auto', paddingTop: 18 }}>
           {isAvail ? (
             <div className="br-btn br-btn-primary br-scooter-card-cta" style={{ width: '100%', padding: '14px', display: 'flex', justifyContent: 'center', minHeight: 48 }}>
-              {t.catalog.reserve} <span aria-hidden>→</span>
+              <span {...marker('catalog.reserve')}>{t.catalog.reserve}</span> <span aria-hidden>→</span>
             </div>
           ) : (
             <div className="br-mono" style={{ width: '100%', padding: '14px', textAlign: 'center', fontSize: 11, letterSpacing: '0.14em', color: sub, border: `1px dashed ${dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`, borderRadius: 999 }}>
-              {t.catalog.reserve.toUpperCase()} · —
+              <span {...marker('catalog.reserve')}>{t.catalog.reserve.toUpperCase()}</span> · —
             </div>
           )}
         </div>
