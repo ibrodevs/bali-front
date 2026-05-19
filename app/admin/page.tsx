@@ -146,7 +146,7 @@ function Button({
   children: ReactNode;
   variant?: ButtonVariant;
   size?: ButtonSize;
-  onClick?: () => void;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
   style?: CSSProperties;
   disabled?: boolean;
   type?: 'button' | 'submit';

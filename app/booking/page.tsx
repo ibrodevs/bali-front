@@ -278,7 +278,7 @@ function BookingPageInner() {
   const addonsSubtotal = useMemo(() => {
     return selectedAddOnIds.reduce((sum, id) => {
       const found = addons.find((a) => a.id === id);
-      return sum + (found?.price || 0);
+      return sum + (found ? addonPriceValue(found) : 0);
     }, 0);
   }, [addons, selectedAddOnIds]);
 
