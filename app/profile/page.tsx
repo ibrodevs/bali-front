@@ -17,6 +17,7 @@ const PROFILE_CURRENCIES = [
   { value: 'EUR', label: 'EUR' },
   { value: 'CNY', label: 'CNY' },
   { value: 'AUD', label: 'AUD' },
+  { value: 'IDR', label: 'IDR' },
 ] as const;
 
 const PROFILE_LANGUAGES = [

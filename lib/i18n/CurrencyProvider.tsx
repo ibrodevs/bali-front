@@ -8,6 +8,7 @@ export const CURRENCY_RATES: Record<string, number> = {
   'EUR': 0.92,
   'CNY': 7.24,
   'AUD': 1.52,
+  'IDR': 15650,
 };
 
 export const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -16,6 +17,7 @@ export const CURRENCY_SYMBOLS: Record<string, string> = {
   'EUR': '€',
   'CNY': '¥',
   'AUD': 'A$',
+  'IDR': 'Rp',
 };
 
 export function isSupportedCurrency(currency?: string | null): currency is string {
