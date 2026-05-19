@@ -1132,6 +1132,7 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
   const [activeLang, setActiveLang] = useState<Record<number, string>>({});
   const [drafts, setDrafts] = useState<Record<number, AddonDraft>>({});
   const [saving, setSaving] = useState<Record<number, boolean>>({});
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newAddon, setNewAddon] = useState<AddonDraft>({
@@ -1242,6 +1243,30 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
     }
   };
 
+  const handleDelete = async (addon: ApiAddon) => {
+    const confirmed = typeof window === 'undefined'
+      ? false
+      : window.confirm(`Delete add-on "${addon.name}"? This action cannot be undone.`);
+    if (!confirmed) return;
+
+    setDeletingId(addon.id);
+    try {
+      await endpoints.adminDeleteAddon(addon.id);
+      if (expandedId === addon.id) {
+        setExpandedId(null);
+      }
+      setDrafts((p) => {
+        const next = { ...p };
+        delete next[addon.id];
+        return next;
+      });
+      load();
+    } catch {
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const inputStyle: CSSProperties = {
     width: '100%', padding: '9px 12px', border: `1px solid ${A.g200}`, borderRadius: 8,
     fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.black, outline: 'none', background: A.white,
@@ -1340,6 +1365,7 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
             const isExpanded = expandedId === addon.id;
             const draft = drafts[addon.id];
             const isSaving = saving[addon.id];
+            const isDeleting = deletingId === addon.id;
             return (
               <div key={addon.id} style={{ background: A.white, border: `1px solid ${isExpanded ? A.black : A.g200}`, borderRadius: 12, overflow: 'hidden', transition: 'border-color 0.15s' }}>
                 <div
@@ -1354,6 +1380,16 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Button
+                      variant="ghost"
+                      disabled={isDeleting || isSaving}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleDelete(addon);
+                      }}
+                    >
+                      {isDeleting ? 'Deleting…' : 'Delete'}
+                    </Button>
                     {(addon.translations?.length ?? 0) > 0 && (
                       <Badge color="green">{addon.translations!.length} langs</Badge>
                     )}
@@ -1370,8 +1406,11 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
                       onTransChange={(lang, field, value) => setTransField(addon.id, lang, field, value)}
                     />
                     <div style={{ padding: '12px 20px 16px', display: 'flex', gap: 10, justifyContent: 'flex-end', borderTop: `1px solid ${A.g200}` }}>
+                      <Button variant="ghost" disabled={isDeleting || isSaving} onClick={() => handleDelete(addon)}>
+                        {isDeleting ? 'Deleting…' : 'Delete'}
+                      </Button>
                       <Button variant="outline" onClick={() => { setExpandedId(null); setDrafts((p) => { const n = { ...p }; delete n[addon.id]; return n; }); }}>Cancel</Button>
-                      <Button variant="primary" disabled={isSaving} onClick={() => handleSave(addon)}>{isSaving ? 'Saving…' : 'Save'}</Button>
+                      <Button variant="primary" disabled={isSaving || isDeleting} onClick={() => handleSave(addon)}>{isSaving ? 'Saving…' : 'Save'}</Button>
                     </div>
                   </>
                 )}

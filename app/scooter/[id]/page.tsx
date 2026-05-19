@@ -32,6 +32,14 @@ function addonPriceValue(addon: ApiAddon): number {
   return Number(addon.priceUSD ?? addon.price_usd ?? addon.price ?? 0);
 }
 
+function getAddonName(addon: ApiAddon, locale: string): string {
+  if (addon.translations && addon.translations.length > 0) {
+    const translation = addon.translations.find((t) => t.language === locale);
+    if (translation?.name) return translation.name;
+  }
+  return addon.name;
+}
+
 export default function ScooterDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -80,12 +88,12 @@ export default function ScooterDetailPage() {
         setGallery(Array.from(new Set(imgs)));
         setPhotoIdx(0);
         const apiAddons: AddonView[] = (detail.available_addons || []).map((a: ApiAddon) => ({
-          id: a.id, apiId: a.id, name: a.name, icon: a.icon || 'spark', price: addonPriceValue(a),
+          id: a.id, apiId: a.id, name: getAddonName(a, locale), icon: a.icon || 'spark', price: addonPriceValue(a),
         }));
         if (apiAddons.length === 0) {
           try {
             const all = unwrapList(await endpoints.addons(locale)).map((a) => ({
-              id: a.id, apiId: a.id, name: a.name, icon: a.icon || 'spark', price: addonPriceValue(a),
+              id: a.id, apiId: a.id, name: getAddonName(a, locale), icon: a.icon || 'spark', price: addonPriceValue(a),
             }));
             setAddons(all);
           } catch {

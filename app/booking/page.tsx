@@ -24,12 +24,6 @@ import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { type BookingExtraContent, BOOKING_COPY } from '@/lib/siteContentExtras';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
 
-type AddonOption = {
-  id: number;
-  name: string;
-  price: number;
-};
-
 const quoteCache = new Map<string, ApiBookingQuote>();
 
 function numberParam(value: string | null) {
@@ -50,12 +44,16 @@ function addonPriceValue(addon: ApiAddon) {
   return Number(addon.priceUSD ?? addon.price_usd ?? addon.price ?? 0);
 }
 
-function toAddonOptions(addons: ApiAddon[]) {
-  return addons.map((addon) => ({
-    id: addon.id,
-    name: addon.name,
-    price: addonPriceValue(addon),
-  }));
+function getAddonName(addon: ApiAddon, locale: string): string {
+  if (addon.translations && addon.translations.length > 0) {
+    const translation = addon.translations.find((t) => t.language === locale);
+    if (translation?.name) return translation.name;
+  }
+  return addon.name;
+}
+
+function toAddonOptions(addons: ApiAddon[], locale: string) {
+  return addons;
 }
 
 function formatDateKey(year: number, month: number, day: number) {
@@ -103,7 +101,7 @@ function BookingPageInner() {
   const initialPrice = Number(search.get('price') || '0') || 0;
 
   const [scooter, setScooter] = useState<ApiScooterDetail | null>(null);
-  const [addons, setAddons] = useState<AddonOption[]>([]);
+  const [addons, setAddons] = useState<ApiAddon[]>([]);
   const [loadingScooter, setLoadingScooter] = useState(Boolean(scooterId || routeId));
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -142,17 +140,17 @@ function BookingPageInner() {
         if (cancelled) return;
         setScooter(detail);
         if (detail.available_addons?.length) {
-          setAddons(toAddonOptions(detail.available_addons));
+          setAddons(toAddonOptions(detail.available_addons, locale));
         } else {
           const addonList = unwrapList(await endpoints.addons(locale));
-          if (!cancelled) setAddons(toAddonOptions(addonList));
+          if (!cancelled) setAddons(toAddonOptions(addonList, locale));
         }
       })
       .catch(async (error) => {
         if (cancelled) return;
         try {
           const addonList = unwrapList(await endpoints.addons(locale));
-          if (!cancelled) setAddons(toAddonOptions(addonList));
+          if (!cancelled) setAddons(toAddonOptions(addonList, locale));
         } catch {}
         setLoadError(error instanceof ApiError ? error.message : t.auth.error);
       })
@@ -470,8 +468,8 @@ function BookingPageInner() {
                           cursor: 'pointer',
                         }}
                       >
-                        <span>{addon.name}</span>
-                        <span className="br-mono">{formatCurrencyAmount(convertPrice(addon.price), selectedCurrency)}</span>
+                        <span>{getAddonName(addon, locale)}</span>
+                        <span className="br-mono">{formatCurrencyAmount(convertPrice(addonPriceValue(addon)), selectedCurrency)}</span>
                       </button>
                     );
                   })}
