@@ -8,9 +8,55 @@ import { useAuth } from '@/lib/i18n/AuthProvider';
 import { ApiError } from '@/lib/api';
 import { CheckIcon, ScooterIcon, StarIcon } from '@/components/Icons';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
+import { endpoints } from '@/lib/endpoints';
+
+const RESET_COPY = {
+  en: {
+    forgot: 'Forgot password?',
+    title: 'Set a new password',
+    hint: 'We found your account. Enter a new password to continue.',
+    request: 'Prepare reset →',
+    submit: 'Save new password →',
+  },
+  ru: {
+    forgot: 'Забыли пароль?',
+    title: 'Введите новый пароль',
+    hint: 'Мы нашли ваш аккаунт. Введите новый пароль, чтобы продолжить.',
+    request: 'Подготовить сброс →',
+    submit: 'Сохранить новый пароль →',
+  },
+  zh: {
+    forgot: '忘记密码？',
+    title: '设置新密码',
+    hint: '我们已找到您的账户。请输入新密码继续。',
+    request: '准备重置 →',
+    submit: '保存新密码 →',
+  },
+  id: {
+    forgot: 'Lupa kata sandi?',
+    title: 'Masukkan kata sandi baru',
+    hint: 'Akun Anda ditemukan. Masukkan kata sandi baru untuk melanjutkan.',
+    request: 'Siapkan reset →',
+    submit: 'Simpan kata sandi baru →',
+  },
+  de: {
+    forgot: 'Passwort vergessen?',
+    title: 'Neues Passwort festlegen',
+    hint: 'Dein Konto wurde gefunden. Gib ein neues Passwort ein, um fortzufahren.',
+    request: 'Reset vorbereiten →',
+    submit: 'Neues Passwort speichern →',
+  },
+  fr: {
+    forgot: 'Mot de passe oublié ?',
+    title: 'Définir un nouveau mot de passe',
+    hint: 'Nous avons trouvé votre compte. Saisissez un nouveau mot de passe pour continuer.',
+    request: 'Préparer la réinitialisation →',
+    submit: 'Enregistrer le nouveau mot de passe →',
+  },
+} as const;
 
 export default function LoginPage() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { marker } = useSiteContentPreview();
   const { signIn } = useAuth();
   const router = useRouter();
@@ -19,14 +65,38 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resetSession, setResetSession] = useState<{ uid: string; token: string } | null>(null);
+  const resetCopy = RESET_COPY[locale as keyof typeof RESET_COPY] || RESET_COPY.en;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
+      if (resetSession) {
+        await endpoints.confirmPasswordReset({
+          uid: resetSession.uid,
+          token: resetSession.token,
+          new_password: password,
+        });
+      }
+
       await signIn(email, password);
       router.push('/');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t.auth.error);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleForgotPassword() {
+    setError(null);
+    setSubmitting(true);
+    try {
+      const response = await endpoints.requestPasswordReset({ email });
+      setResetSession({ uid: response.uid, token: response.token });
+      setPassword('');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t.auth.error);
     } finally {
@@ -111,13 +181,19 @@ export default function LoginPage() {
             fontSize: 'clamp(28px, 4vw, 38px)', lineHeight: 1,
             letterSpacing: '-0.03em', fontWeight: 800, margin: '0 0 8px',
           }}>
-            <span {...marker('auth.login')}>{t.auth.login}</span>
+            <span {...marker(resetSession ? 'auth.password' : 'auth.login')}>{resetSession ? resetCopy.title : t.auth.login}</span>
           </h1>
           <p style={{ color: 'rgba(0,0,0,0.42)', fontSize: 14, margin: '0 0 36px', lineHeight: 1.5 }}>
-            <span {...marker('auth.noAccount')}>{t.auth.noAccount}</span>{' '}
-            <Link href="/register" style={{ color: '#0A0A0F', fontWeight: 600, textDecoration: 'none', borderBottom: '1.5px solid #FFD700' }}>
-              <span {...marker('auth.register')}>{t.auth.register}</span>
-            </Link>
+            {resetSession ? (
+              <span>{resetCopy.hint}</span>
+            ) : (
+              <>
+                <span {...marker('auth.noAccount')}>{t.auth.noAccount}</span>{' '}
+                <Link href="/register" style={{ color: '#0A0A0F', fontWeight: 600, textDecoration: 'none', borderBottom: '1.5px solid #FFD700' }}>
+                  <span {...marker('auth.register')}>{t.auth.register}</span>
+                </Link>
+              </>
+            )}
           </p>
 
           <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -130,6 +206,7 @@ export default function LoginPage() {
                 type="email" required autoComplete="email"
                 value={email} onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
+                readOnly={Boolean(resetSession)}
                 style={{ width: '100%', fontSize: 15, fontFamily: 'var(--br-body)', padding: '14px 16px', borderRadius: 12, border: '1.5px solid rgba(0,0,0,0.12)', background: '#fff', color: '#0A0A0F', outline: 'none', transition: 'border-color 160ms, box-shadow 160ms' }}
                 onFocus={(e) => { e.target.style.borderColor = '#FFD700'; e.target.style.boxShadow = '0 0 0 3px rgba(255,215,0,0.2)'; }}
                 onBlur={(e) => { e.target.style.borderColor = 'rgba(0,0,0,0.12)'; e.target.style.boxShadow = 'none'; }}
@@ -156,6 +233,17 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {!resetSession ? (
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={submitting}
+                style={{ alignSelf: 'flex-end', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#0A0A0F', fontSize: 13, fontFamily: 'var(--br-body)' }}
+              >
+                {resetCopy.forgot}
+              </button>
+            ) : null}
+
             {error && (
               <div style={{ background: 'rgba(185,28,28,0.07)', border: '1px solid rgba(185,28,28,0.2)', borderRadius: 10, padding: '12px 16px', color: '#B91C1C', fontSize: 13, lineHeight: 1.5 }}>
                 {error}
@@ -164,7 +252,9 @@ export default function LoginPage() {
 
             <button type="submit" disabled={submitting}
               style={{ width: '100%', height: 54, borderRadius: 14, background: '#FFD700', color: '#0A0A0F', fontFamily: 'var(--br-display)', fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em', border: 'none', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1, boxShadow: '0 8px 28px -8px rgba(255,215,0,0.55)', transition: 'opacity 160ms, transform 160ms', marginTop: 4 }}>
-              <span {...marker(submitting ? 'common.loading' : 'auth.loginCta')}>{submitting ? t.common.loading : t.auth.loginCta}</span>
+              <span {...marker(submitting ? 'common.loading' : resetSession ? 'common.save' : 'auth.loginCta')}>
+                {submitting ? t.common.loading : resetSession ? resetCopy.submit : t.auth.loginCta}
+              </span>
             </button>
           </form>
         </div>

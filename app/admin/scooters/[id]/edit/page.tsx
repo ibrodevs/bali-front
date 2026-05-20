@@ -7,6 +7,7 @@ import {
   AdminScooterPayload,
   ApiScooterDetail,
   ApiVehicleModel,
+  ApiVehicleType,
   ApiVehicleTranslation,
   endpoints,
   unwrapList,
@@ -170,6 +171,7 @@ type DraftScooter = {
 };
 
 type ModelDraft = {
+  type: string;
   engine_cc: string;
   transmission: string;
   fuel_consumption: string;
@@ -219,6 +221,7 @@ export default function AdminEditScooterPage() {
 
   const [scooter, setScooter] = useState<ApiScooterDetail | null>(null);
   const [scooterModels, setScooterModels] = useState<ApiVehicleModel[]>([]);
+  const [vehicleTypes, setVehicleTypes] = useState<ApiVehicleType[]>([]);
   const [draft, setDraft] = useState<DraftScooter>({
     model: '',
     title: '',
@@ -242,6 +245,7 @@ export default function AdminEditScooterPage() {
   const [translations, setTranslations] = useState<Record<string, TranslationDraft>>(emptyTranslations());
   const [activeLang, setActiveLang] = useState('en');
   const [modelDraft, setModelDraft] = useState<ModelDraft>({
+    type: '',
     engine_cc: '',
     transmission: '',
     fuel_consumption: '',
@@ -268,14 +272,16 @@ export default function AdminEditScooterPage() {
     let cancelled = false;
     (async () => {
       try {
-        const [scooterRes, modelsRes] = await Promise.all([
+        const [scooterRes, modelsRes, typesRes] = await Promise.all([
           endpoints.scooter(scooterId),
           endpoints.scooterModels(),
+          endpoints.scooterTypes(),
         ]);
         if (cancelled) return;
 
         const models = unwrapList(modelsRes);
         setScooterModels(models);
+        setVehicleTypes(unwrapList(typesRes));
         setScooter(scooterRes);
         setExistingImages(scooterRes.gallery || []);
 
@@ -295,6 +301,7 @@ export default function AdminEditScooterPage() {
         // Load model characteristics
         const mi = scooterRes.model_info;
         setModelDraft({
+          type: mi?.type != null ? String(mi.type) : '',
           engine_cc: mi?.engine_cc != null ? String(mi.engine_cc) : '',
           transmission: mi?.transmission || '',
           fuel_consumption: mi?.fuel_consumption != null ? String(mi.fuel_consumption) : '',
@@ -328,6 +335,24 @@ export default function AdminEditScooterPage() {
   function updateDraft<K extends keyof DraftScooter>(key: K, value: DraftScooter[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
   }
+
+  useEffect(() => {
+    if (!draft.model) return;
+    const currentModel = scooterModels.find((item) => String(item.id) === draft.model);
+    if (!currentModel) return;
+    setModelDraft((prev) => ({
+      ...prev,
+      type: currentModel.type != null ? String(currentModel.type) : prev.type,
+      engine_cc: currentModel.engine_cc != null ? String(currentModel.engine_cc) : '',
+      transmission: currentModel.transmission || '',
+      fuel_consumption: currentModel.fuel_consumption != null ? String(currentModel.fuel_consumption) : '',
+      year: currentModel.year != null ? String(currentModel.year) : '',
+      trunk: currentModel.trunk || '',
+      helmets_count: currentModel.helmets_count != null ? String(currentModel.helmets_count) : '',
+      description: currentModel.description || '',
+      rental_terms: currentModel.rental_terms || '',
+    }));
+  }, [draft.model, scooterModels]);
 
   function handleNewPhotoPick(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files || []);
@@ -424,6 +449,7 @@ export default function AdminEditScooterPage() {
       // Save model characteristics if model is selected
       if (draft.model) {
         const modelPayload: Record<string, string | number> = {};
+        if (modelDraft.type) modelPayload.type = Number(modelDraft.type);
         if (modelDraft.engine_cc) modelPayload.engine_cc = Number(modelDraft.engine_cc);
         if (modelDraft.transmission) modelPayload.transmission = modelDraft.transmission.trim();
         if (modelDraft.fuel_consumption) modelPayload.fuel_consumption = modelDraft.fuel_consumption.trim();
@@ -451,6 +477,11 @@ export default function AdminEditScooterPage() {
   const selectedModel = useMemo(
     () => scooterModels.find((m) => String(m.id) === draft.model),
     [draft.model, scooterModels],
+  );
+
+  const selectedTypeLabel = useMemo(
+    () => vehicleTypes.find((item) => String(item.id) === modelDraft.type)?.name || selectedModel?.type_name || 'Category',
+    [modelDraft.type, selectedModel?.type_name, vehicleTypes],
   );
 
   const mainPreviewUrl = useMemo(() => {
@@ -559,7 +590,7 @@ export default function AdminEditScooterPage() {
                   <option value="">Select model</option>
                   {scooterModels.map((m) => (
                     <option key={m.id} value={m.id}>
-                      {m.brand} {m.name} · {m.type_name || 'Type'} · {m.engine_cc}cc
+                      {m.brand} {m.name} · {m.type_name || 'Category'} · {m.engine_cc}cc
                     </option>
                   ))}
                 </select>
@@ -726,6 +757,20 @@ export default function AdminEditScooterPage() {
                       style={inputStyle}
                       placeholder="2.5"
                     />
+                  </Field>
+                  <Field label="Category">
+                    <select
+                      value={modelDraft.type}
+                      onChange={(e) => setModelDraft((p) => ({ ...p, type: e.target.value }))}
+                      style={inputStyle}
+                    >
+                      <option value="">Select category</option>
+                      {vehicleTypes.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </select>
                   </Field>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
@@ -1018,7 +1063,7 @@ export default function AdminEditScooterPage() {
                       {draft.title || 'Title'}
                     </div>
                     <div style={{ fontSize: 12, color: A.g500 }}>
-                      {selectedModel?.type_name || 'Type'} · {selectedModel?.engine_cc || 0}cc
+                      {selectedTypeLabel} · {modelDraft.engine_cc || selectedModel?.engine_cc || 0}cc
                     </div>
                   </div>
                   <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 800, fontSize: 20 }}>

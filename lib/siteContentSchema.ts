@@ -110,6 +110,13 @@ const PAGES: SiteContentPage[] = [
     includeShared: true,
   },
   {
+    key: 'app',
+    label: 'Mobile App',
+    description: 'Тексты мобильного приложения: онбординг, главная, бронирование, профиль и поддержка.',
+    route: '/',
+    routeLabel: 'App Content',
+  },
+  {
     key: 'news',
     label: 'News Page',
     description: 'Системные тексты страницы новостей и блока новостей.',
@@ -157,6 +164,7 @@ const ROOT_CONFIG: Record<string, RootConfig> = {
   booking: { pageKey: 'booking', sectionLabel: 'Booking Content' },
   payment: { pageKey: 'payment', sectionLabel: 'Payment Content' },
   auth: { pageKey: 'auth', sectionLabel: 'Auth Content' },
+  app: { pageKey: 'app', sectionLabel: 'Mobile App Content' },
   news: { pageKey: 'news', sectionLabel: 'News Content' },
 };
 
@@ -272,6 +280,42 @@ function getByPath(source: unknown, path: string) {
 
 const generatedFields: SiteContentField[] = [];
 const defaultDictionary = deepMerge(dictionaries.en, SITE_CONTENT_EXTRAS.en);
+const APP_DEFAULTS = {
+  continue: 'Continue',
+  home: 'Home',
+  fleet: 'Fleet',
+  profile: 'Profile',
+  checkIn: 'Check-in',
+  checkOut: 'Check-out',
+  onboardingBadge: 'Scoot Bali guide',
+  onboarding1Title: 'Pick the right\nride for Bali',
+  onboarding1Sub: 'Compare scooters by style, price, engine, and comfort before you book.',
+  onboarding2Title: 'Choose dates,\ndelivery, extras',
+  onboarding2Sub: 'Set your rental dates, delivery time, address, and add-ons in one smooth flow.',
+  onboarding3Title: 'Track rides,\nupdates, support',
+  onboarding3Sub: 'Open your bookings, read updates, and message support whenever you need help.',
+  topPicks: 'Top Picks',
+  searchFleet: 'Search vehicles...',
+  selectDates: 'Select dates',
+  deliveryExtras: 'Delivery & Extras',
+  payment: 'Payment',
+  contactDetails: 'Contact details',
+  messengerHint: 'Mark where we can contact you faster about the booking.',
+  supportHint: 'Ask a question in chat or read the FAQ before your ride.',
+  accountSettings: 'Account settings',
+  bookings: 'Bookings',
+  notifications: 'Notifications',
+  signInHint: 'Sign in to sync your bookings, notifications, and support chat.',
+  registerHint: 'Create an account to save your bookings and travel details.',
+  passwordResetSent: 'Reset verified. Enter your new password to continue.',
+  bookingReserved: 'Booking reserved',
+  bookingConfirmed: 'Booking confirmed',
+  readyMvp: 'Island-ready scooter rental',
+  myBookings: 'My Bookings',
+  openLiveChat: 'Open live chat',
+  helpSupport: 'Help & Support',
+  defaultUserName: 'Scoot Bali User',
+} as const;
 
 for (const rootKey of EDITABLE_ROOTS) {
   const source = (defaultDictionary as Record<string, unknown>)[rootKey];
@@ -296,6 +340,24 @@ if (homePage) {
   });
 }
 
+const appPage = PAGE_MAP.get('app');
+if (appPage) {
+  for (const [key, value] of Object.entries(APP_DEFAULTS)) {
+    generatedFields.push({
+      key: `app.${key}`,
+      label: titleCaseFromKey(key),
+      pageKey: appPage.key,
+      pageLabel: appPage.label,
+      pageDescription: appPage.description,
+      pageRoute: appPage.route,
+      pageRouteLabel: appPage.routeLabel,
+      sectionKey: 'app',
+      sectionLabel: ROOT_CONFIG.app.sectionLabel,
+      valueType: value.length > 80 ? 'textarea' : 'text',
+    });
+  }
+}
+
 export const SITE_CONTENT_FIELDS = generatedFields.sort((a, b) => {
   if (a.pageLabel !== b.pageLabel) return a.pageLabel.localeCompare(b.pageLabel);
   if (a.sectionLabel !== b.sectionLabel) return a.sectionLabel.localeCompare(b.sectionLabel);
@@ -316,5 +378,9 @@ export function pageMatchesField(page: SiteContentPage, field: SiteContentField)
 
 export function getDefaultSiteContentValue(key: string, locale: Locale) {
   if (key === 'media.home.heroVideo') return '/hero.mp4';
+  if (key.startsWith('app.')) {
+    const appKey = key.slice(4) as keyof typeof APP_DEFAULTS;
+    return APP_DEFAULTS[appKey];
+  }
   return getByPath(deepMerge(dictionaries[locale], SITE_CONTENT_EXTRAS[locale]), key);
 }

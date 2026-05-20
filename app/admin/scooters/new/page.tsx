@@ -458,7 +458,7 @@ export default function AdminNewScooterPage() {
                     <option value="">Select model</option>
                     {scooterModels.map((item) => (
                       <option key={item.id} value={item.id}>
-                        {item.brand} {item.name} · {item.type_name || 'Type'} · {item.engine_cc}cc
+                        {item.brand} {item.name} · {item.type_name || 'Category'} · {item.engine_cc}cc
                       </option>
                     ))}
                   </select>
@@ -467,9 +467,9 @@ export default function AdminNewScooterPage() {
                 <div style={{ display: 'grid', gap: 14 }}>
                   <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18, color: A.black }}>Model Details</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <Field label="Vehicle type">
+                    <Field label="Category">
                       <select value={modelDraft.type} onChange={(event) => updateModelDraft('type', event.target.value)} style={inputStyle}>
-                        <option value="">Select type</option>
+                        <option value="">Select category</option>
                         {vehicleTypes.map((item) => (
                           <option key={item.id} value={item.id}>
                             {item.name}
@@ -622,7 +622,7 @@ export default function AdminNewScooterPage() {
                   <div>
                     <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18 }}>{scooterDraft.title || 'Title pending'}</div>
                     <div style={{ fontSize: 12, color: A.g500 }}>
-                      {(modelMode === 'existing' ? selectedModel?.type_name : vehicleTypes.find((item) => String(item.id) === modelDraft.type)?.name) || 'Type'}
+                      {(modelMode === 'existing' ? selectedModel?.type_name : vehicleTypes.find((item) => String(item.id) === modelDraft.type)?.name) || 'Category'}
                       {' · '}
                       {(modelMode === 'existing' ? selectedModel?.engine_cc : modelDraft.engine_cc) || '0'}cc
                     </div>

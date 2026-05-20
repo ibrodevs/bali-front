@@ -571,17 +571,9 @@ function AvailabilityCalendarBlock({
   }, []);
 
   const [cursor, setCursor] = useState({ year: today.getFullYear(), month: today.getMonth() });
-  const [calendars, setCalendars] = useState<CalendarMonth[]>([]);
+  const [calendar, setCalendar] = useState<CalendarMonth | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const monthsToShow = useMemo(() => {
-    const second = new Date(cursor.year, cursor.month + 1, 1);
-    return [
-      { year: cursor.year, month: cursor.month },
-      { year: second.getFullYear(), month: second.getMonth() },
-    ];
-  }, [cursor]);
 
   useEffect(() => {
     if (!scooterId) return;
@@ -589,23 +581,17 @@ function AvailabilityCalendarBlock({
     setLoading(true);
     setError(null);
 
-    Promise.all(
-      monthsToShow.map(async (m) => {
-        try {
-          const data = await endpoints.scooterAvailability(scooterId, {
-            year: m.year,
-            month: m.month + 1,
-          });
-          if ('days' in data) return { ...m, data: data as ApiAvailabilityCalendar };
-          return { ...m, data: null };
-        } catch {
-          return { ...m, data: null };
-        }
-      })
-    )
-      .then((result) => {
+    endpoints.scooterAvailability(scooterId, {
+      year: cursor.year,
+      month: cursor.month + 1,
+    })
+      .then((data) => {
         if (cancelled) return;
-        setCalendars(result);
+        setCalendar({
+          year: cursor.year,
+          month: cursor.month,
+          data: 'days' in data ? (data as ApiAvailabilityCalendar) : null,
+        });
       })
       .catch((e) => {
         if (cancelled) return;
@@ -618,18 +604,17 @@ function AvailabilityCalendarBlock({
     return () => {
       cancelled = true;
     };
-  }, [copy.loadAvailabilityFailed, monthsToShow, scooterId]);
+  }, [copy.loadAvailabilityFailed, cursor.month, cursor.year, scooterId]);
 
   const dayStatusMap = useMemo(() => {
     const map = new Map<string, AvailabilityDayStatus>();
-    for (const cal of calendars) {
-      if (!cal.data) continue;
-      for (const day of cal.data.days) {
+    if (calendar?.data) {
+      for (const day of calendar.data.days) {
         map.set(day.date, day.status);
       }
     }
     return map;
-  }, [calendars]);
+  }, [calendar]);
 
   const handleDayClick = useCallback(
     (key: string) => {
@@ -693,12 +678,12 @@ function AvailabilityCalendarBlock({
       {loading && <div className="br-mono" style={{ marginTop: 14, color: 'rgba(0,0,0,0.55)', fontSize: 12 }}>{t.common.loading}</div>}
       {error && <div className="br-mono" style={{ marginTop: 14, color: '#B91C1C', fontSize: 12 }}>{error}</div>}
 
-      <div className="br-booking-calendar-months" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 18, marginTop: 18 }}>
-        {monthsToShow.map((m) => (
+      <div className="br-booking-calendar-months" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 18, marginTop: 18 }}>
+        {calendar ? (
           <MonthGrid
-            key={`${m.year}-${m.month}`}
-            year={m.year}
-            month={m.month}
+            key={`${calendar.year}-${calendar.month}`}
+            year={calendar.year}
+            month={calendar.month}
             locale={locale}
             weekdays={copy.weekdays}
             today={today}
@@ -707,7 +692,7 @@ function AvailabilityCalendarBlock({
             statusMap={dayStatusMap}
             onPick={handleDayClick}
           />
-        ))}
+        ) : null}
       </div>
 
       {startDateKey && !endDateKey ? (

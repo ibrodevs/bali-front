@@ -40,6 +40,8 @@ import {
   ApiQuickReply,
   ApiScooterDetail,
   ApiVehicleModel,
+  ApiVehicleType,
+  ApiVehicleTypeTranslation,
   ApiWebhookLog,
   endpoints,
   unwrapList,
@@ -80,7 +82,8 @@ const A = {
   orangeBg: '#fff7ed',
 };
 
-type AdminView = 'overview' | 'bookings' | 'fleet' | 'calendar' | 'crm' | 'analytics' | 'support' | 'news' | 'addons' | 'locations' | 'site' | 'promocodes';
+type AdminView = 'overview' | 'bookings' | 'fleet' | 'calendar' | 'crm' | 'analytics' | 'support' | 'news' | 'addons' | 'categories' | 'locations' | 'site' | 'appContent' | 'users' | 'promocodes';
+type AdminPermission = AdminView | 'team';
 
 const NAV: { id: AdminView; icon: ReactNode; label: string }[] = [
   { id: 'overview', icon: <OverviewIcon size={18} />, label: 'Overview' },
@@ -92,10 +95,89 @@ const NAV: { id: AdminView; icon: ReactNode; label: string }[] = [
   { id: 'support', icon: <MessageIcon size={18} />, label: 'Support' },
   { id: 'news', icon: <TagIcon size={18} />, label: 'News' },
   { id: 'addons', icon: <DiamondIcon size={18} />, label: 'Add-ons' },
+  { id: 'categories', icon: <TagIcon size={18} />, label: 'Categories' },
   { id: 'locations', icon: <EyeIcon size={18} />, label: 'Locations' },
   { id: 'site', icon: <EyeIcon size={18} />, label: 'Site Content' },
+  { id: 'users', icon: <UsersIcon size={18} />, label: 'Users & Team' },
   { id: 'promocodes', icon: <DollarIcon size={18} />, label: 'Promo Codes' },
 ];
+
+const ADMIN_PERMISSION_LABELS: Record<AdminPermission, string> = {
+  overview: 'Overview',
+  bookings: 'Bookings',
+  fleet: 'Fleet',
+  calendar: 'Calendar',
+  crm: 'CRM',
+  analytics: 'Analytics',
+  support: 'Support',
+  news: 'News',
+  addons: 'Add-ons',
+  categories: 'Categories',
+  locations: 'Locations',
+  site: 'Site Content',
+  appContent: 'App Content',
+  users: 'Users & Team',
+  promocodes: 'Promo Codes',
+  team: 'Team Access',
+};
+
+const ADMIN_PERMISSION_OPTIONS: AdminPermission[] = [
+  'overview',
+  'bookings',
+  'fleet',
+  'calendar',
+  'crm',
+  'analytics',
+  'support',
+  'news',
+  'addons',
+  'categories',
+  'locations',
+  'site',
+  'promocodes',
+  'team',
+];
+
+function defaultAdminPermissionsForRole(role?: string | null): AdminPermission[] {
+  const normalizedRole = (role || '').toLowerCase();
+  if (normalizedRole === 'admin') {
+    return [...ADMIN_PERMISSION_OPTIONS];
+  }
+  if (normalizedRole === 'manager') {
+    return ['overview', 'bookings', 'fleet', 'calendar', 'crm', 'analytics', 'support', 'news', 'addons', 'categories', 'locations', 'site', 'promocodes'];
+  }
+  if (normalizedRole === 'staff') {
+    return ['overview', 'bookings', 'calendar', 'support'];
+  }
+  return [];
+}
+
+function normalizeAdminPermissions(raw: unknown, role?: string | null, isSuperuser?: boolean | null): AdminPermission[] {
+  if (isSuperuser) {
+    return [...ADMIN_PERMISSION_OPTIONS];
+  }
+
+  const fallback = defaultAdminPermissionsForRole(role);
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return fallback;
+  }
+
+  const normalized = raw
+    .map((item) => String(item || '').trim().toLowerCase())
+    .filter((item): item is AdminPermission => ADMIN_PERMISSION_OPTIONS.includes(item as AdminPermission));
+
+  return normalized.length ? Array.from(new Set(normalized)) : fallback;
+}
+
+function permissionForView(view: AdminView): AdminPermission {
+  if (view === 'appContent') {
+    return 'site';
+  }
+  if (view === 'users') {
+    return 'team';
+  }
+  return view;
+}
 
 type BadgeColor = 'default' | 'gold' | 'green' | 'red' | 'blue' | 'orange';
 
@@ -347,6 +429,258 @@ function ErrorBanner({ error, onClose }: { error: string | null; onClose?: () =>
 }
 
 type SiteContentFieldMeta = (typeof SITE_CONTENT_FIELDS)[number];
+type AppPreviewScreenKey = 'onboarding' | 'home' | 'booking' | 'profile' | 'support';
+type AppPreviewTextVariant = 'badge' | 'title' | 'body' | 'button' | 'label' | 'input' | 'tab';
+
+const APP_CONTENT_PREVIEW_SCREENS: { key: AppPreviewScreenKey; label: string }[] = [
+  { key: 'onboarding', label: 'Onboarding' },
+  { key: 'home', label: 'Home' },
+  { key: 'booking', label: 'Booking' },
+  { key: 'profile', label: 'Profile' },
+  { key: 'support', label: 'Support' },
+];
+
+function AppPreviewText({
+  fieldKey,
+  value,
+  selected,
+  variant = 'body',
+  onSelect,
+}: {
+  fieldKey: string;
+  value: string;
+  selected: boolean;
+  variant?: AppPreviewTextVariant;
+  onSelect: (fieldKey: string) => void;
+}) {
+  const variantStyle: Record<AppPreviewTextVariant, CSSProperties> = {
+    badge: { alignSelf: 'flex-start', borderRadius: 999, background: 'rgba(255,215,0,0.18)', color: A.black, fontSize: 11, fontWeight: 800, padding: '7px 10px', textTransform: 'uppercase' },
+    title: { color: A.black, fontSize: 26, lineHeight: 1.05, fontWeight: 900, whiteSpace: 'pre-wrap' },
+    body: { color: A.g700, fontSize: 13, lineHeight: 1.45, whiteSpace: 'pre-wrap' },
+    button: { borderRadius: 999, background: A.black, color: A.white, fontSize: 13, fontWeight: 800, padding: '12px 14px', textAlign: 'center' },
+    label: { color: A.g500, fontSize: 11, fontWeight: 800, textTransform: 'uppercase' },
+    input: { borderRadius: 14, border: `1px solid ${A.g200}`, background: A.white, color: A.g500, fontSize: 13, padding: '12px 14px' },
+    tab: { color: A.black, fontSize: 11, fontWeight: 800, textAlign: 'center' },
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(fieldKey)}
+      title={fieldKey}
+      style={{
+        border: selected ? `2px solid ${A.gold}` : '2px solid transparent',
+        outline: 'none',
+        boxShadow: selected ? '0 0 0 5px rgba(255,215,0,0.18)' : 'none',
+        cursor: 'pointer',
+        fontFamily: 'Inter, sans-serif',
+        transition: 'border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease',
+        ...variantStyle[variant],
+      }}
+    >
+      {value}
+    </button>
+  );
+}
+
+function AppContentPhonePreview({
+  activeScreen,
+  activeLanguage,
+  selectedFieldKey,
+  getValue,
+  onSelectField,
+  onSelectScreen,
+}: {
+  activeScreen: AppPreviewScreenKey;
+  activeLanguage: string;
+  selectedFieldKey: string | null;
+  getValue: (fieldKey: string) => string;
+  onSelectField: (fieldKey: string) => void;
+  onSelectScreen: (screen: AppPreviewScreenKey) => void;
+}) {
+  const text = (key: string) => getValue(`app.${key}`);
+  const textNode = (key: string, variant?: AppPreviewTextVariant) => {
+    const fieldKey = `app.${key}`;
+    return (
+      <AppPreviewText
+        fieldKey={fieldKey}
+        value={text(key)}
+        selected={selectedFieldKey === fieldKey}
+        variant={variant}
+        onSelect={onSelectField}
+      />
+    );
+  };
+
+  const screenBody = (() => {
+    if (activeScreen === 'onboarding') {
+      return (
+        <div style={{ display: 'grid', gap: 14, minHeight: 520, alignContent: 'space-between' }}>
+          <div style={{ display: 'grid', gap: 16 }}>
+            {textNode('onboardingBadge', 'badge')}
+            <div style={{ borderRadius: 26, minHeight: 190, background: 'linear-gradient(145deg, #111 0%, #303030 100%)', position: 'relative', overflow: 'hidden', padding: 20 }}>
+              <div style={{ position: 'absolute', width: 190, height: 190, borderRadius: 999, background: 'rgba(255,215,0,0.24)', right: -60, bottom: -70 }} />
+              <div style={{ position: 'absolute', inset: 20, borderRadius: 20, border: '1px solid rgba(255,255,255,0.12)' }} />
+              <div style={{ position: 'relative', color: A.gold, fontFamily: 'Sora, sans-serif', fontWeight: 900, fontSize: 54, lineHeight: 1 }}>SB</div>
+            </div>
+            {textNode('onboarding1Title', 'title')}
+            {textNode('onboarding1Sub', 'body')}
+          </div>
+          {textNode('continue', 'button')}
+        </div>
+      );
+    }
+
+    if (activeScreen === 'home') {
+      return (
+        <div style={{ display: 'grid', gap: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'grid', gap: 6 }}>
+              {textNode('readyMvp', 'badge')}
+              <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 900, fontSize: 24, color: A.black }}>{text('defaultUserName')}</div>
+            </div>
+            <div style={{ width: 42, height: 42, borderRadius: 14, background: A.black, color: A.gold, display: 'grid', placeItems: 'center', fontFamily: 'Sora, sans-serif', fontWeight: 900 }}>S</div>
+          </div>
+          {textNode('searchFleet', 'input')}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {textNode('topPicks', 'label')}
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 800, color: A.g500 }}>USD</div>
+          </div>
+          {[0, 1].map((index) => (
+            <div key={index} style={{ display: 'grid', gridTemplateColumns: '74px 1fr', gap: 12, padding: 10, border: `1px solid ${A.g200}`, borderRadius: 18, background: A.white }}>
+              <div style={{ borderRadius: 16, background: index ? A.g100 : 'linear-gradient(145deg,#111,#3a3a3a)', minHeight: 76 }} />
+              <div style={{ display: 'grid', gap: 8, alignContent: 'center' }}>
+                <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 800, fontSize: 15, color: A.black }}>{index ? 'Yamaha NMAX' : 'Honda PCX'}</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <Badge color="default">155cc</Badge>
+                  <Badge color="gold">$12/day</Badge>
+                </div>
+              </div>
+            </div>
+          ))}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginTop: 4 }}>
+            {textNode('home', 'tab')}
+            {textNode('fleet', 'tab')}
+            {textNode('bookings', 'tab')}
+            {textNode('profile', 'tab')}
+          </div>
+        </div>
+      );
+    }
+
+    if (activeScreen === 'booking') {
+      return (
+        <div style={{ display: 'grid', gap: 14 }}>
+          {textNode('selectDates', 'title')}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div style={{ border: `1px solid ${A.g200}`, borderRadius: 16, padding: 12, background: A.white }}>
+              {textNode('checkIn', 'label')}
+              <div style={{ marginTop: 8, fontFamily: 'Sora, sans-serif', fontWeight: 800 }}>May 21</div>
+            </div>
+            <div style={{ border: `1px solid ${A.g200}`, borderRadius: 16, padding: 12, background: A.white }}>
+              {textNode('checkOut', 'label')}
+              <div style={{ marginTop: 8, fontFamily: 'Sora, sans-serif', fontWeight: 800 }}>May 24</div>
+            </div>
+          </div>
+          {textNode('deliveryExtras', 'button')}
+          <div style={{ display: 'grid', gap: 10, padding: 14, borderRadius: 18, background: A.g100 }}>
+            {textNode('contactDetails', 'label')}
+            {textNode('messengerHint', 'body')}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Badge color="green">Telegram</Badge>
+              <Badge color="blue">WeChat</Badge>
+              <Badge color="orange">WhatsApp</Badge>
+            </div>
+          </div>
+          {textNode('payment', 'button')}
+          <div style={{ display: 'grid', gap: 8 }}>
+            {textNode('bookingReserved', 'body')}
+            {textNode('bookingConfirmed', 'body')}
+          </div>
+        </div>
+      );
+    }
+
+    if (activeScreen === 'profile') {
+      return (
+        <div style={{ display: 'grid', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 58, height: 58, borderRadius: 22, background: A.black, color: A.gold, display: 'grid', placeItems: 'center', fontFamily: 'Sora, sans-serif', fontWeight: 900 }}>SB</div>
+            <div style={{ display: 'grid', gap: 5 }}>
+              {textNode('defaultUserName', 'title')}
+              {textNode('signInHint', 'body')}
+            </div>
+          </div>
+          {[['myBookings', 'bookingReserved'], ['notifications', 'bookingConfirmed'], ['accountSettings', 'registerHint']].map(([titleKey, bodyKey]) => (
+            <div key={titleKey} style={{ display: 'grid', gap: 8, border: `1px solid ${A.g200}`, borderRadius: 18, background: A.white, padding: 14 }}>
+              {textNode(titleKey, 'label')}
+              {textNode(bodyKey, 'body')}
+            </div>
+          ))}
+          {textNode('passwordResetSent', 'body')}
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ display: 'grid', gap: 14 }}>
+        {textNode('helpSupport', 'title')}
+        {textNode('supportHint', 'body')}
+        {textNode('openLiveChat', 'button')}
+        <div style={{ display: 'grid', gap: 10 }}>
+          <div style={{ justifySelf: 'start', maxWidth: '82%', borderRadius: '18px 18px 18px 6px', background: A.g100, padding: 12 }}>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700 }}>Hi, how can we help?</div>
+          </div>
+          <div style={{ justifySelf: 'end', maxWidth: '82%', borderRadius: '18px 18px 6px 18px', background: A.black, color: A.white, padding: 12 }}>
+            {textNode('openLiveChat', 'body')}
+          </div>
+        </div>
+        {textNode('accountSettings', 'label')}
+      </div>
+    );
+  })();
+
+  return (
+    <div style={{ display: 'grid', gap: 16 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {APP_CONTENT_PREVIEW_SCREENS.map((screen) => (
+          <button
+            key={screen.key}
+            type="button"
+            onClick={() => onSelectScreen(screen.key)}
+            style={{
+              borderRadius: 999,
+              border: `1px solid ${activeScreen === screen.key ? A.black : A.g200}`,
+              background: activeScreen === screen.key ? A.black : A.white,
+              color: activeScreen === screen.key ? A.white : A.black,
+              cursor: 'pointer',
+              padding: '8px 11px',
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 12,
+              fontWeight: activeScreen === screen.key ? 800 : 600,
+            }}
+          >
+            {screen.label}
+          </button>
+        ))}
+      </div>
+      <div style={{ maxWidth: 390, margin: '0 auto', width: '100%', borderRadius: 38, background: '#121212', padding: 12, boxShadow: '0 24px 70px rgba(0,0,0,0.18)' }}>
+        <div style={{ borderRadius: 30, background: '#fafafa', minHeight: 650, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.18)' }}>
+          <div style={{ height: 30, display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#fafafa' }}>
+            <div style={{ width: 86, height: 7, borderRadius: 999, background: '#171717' }} />
+          </div>
+          <div style={{ padding: '18px 18px 22px', display: 'grid', gap: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: A.g500, fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 800 }}>
+              <span>Scoot Bali</span>
+              <span>{activeLanguage.toUpperCase()}</span>
+            </div>
+            {screenBody}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function getSiteFieldTail(key: string) {
   const parts = key.split('.');
@@ -830,6 +1164,14 @@ function isAdminLike(user: { role?: string; is_staff?: boolean; is_superuser?: b
   return ['admin', 'manager', 'staff'].includes((user.role || '').toLowerCase());
 }
 
+function hasAdminPermission(
+  user: { role?: string; is_superuser?: boolean; admin_permissions?: string[] } | null | undefined,
+  permission: AdminPermission,
+) {
+  if (!user) return false;
+  return normalizeAdminPermissions(user.admin_permissions, user.role, user.is_superuser).includes(permission);
+}
+
 function monthKey(value?: string | Date | null) {
   const date = value ? new Date(value) : new Date();
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
@@ -849,6 +1191,28 @@ function addDays(date: Date, amount: number) {
   copy.setDate(copy.getDate() + amount);
   return copy;
 }
+
+function toDateTimeLocalValue(date: Date) {
+  const copy = new Date(date);
+  copy.setSeconds(0, 0);
+  const timezoneOffset = copy.getTimezoneOffset();
+  const local = new Date(copy.getTime() - timezoneOffset * 60 * 1000);
+  return local.toISOString().slice(0, 16);
+}
+
+const inputBaseStyle: CSSProperties = {
+  width: '100%',
+  minHeight: 42,
+  padding: '9px 12px',
+  border: `1px solid ${A.g200}`,
+  borderRadius: 8,
+  fontFamily: 'Inter, sans-serif',
+  fontSize: 13,
+  color: A.black,
+  outline: 'none',
+  background: A.white,
+  boxSizing: 'border-box',
+};
 
 type AdminData = {
   bookings: ApiBooking[];
@@ -1123,6 +1487,12 @@ type AddonDraft = {
   is_active: boolean;
   sort_order: number;
   translations: { language: string; name: string; description: string }[];
+};
+
+type CategoryDraft = {
+  code: string;
+  name: string;
+  translations: { language: string; name: string }[];
 };
 
 function AddonsView({ isMobile }: { isMobile: boolean }) {
@@ -1470,6 +1840,393 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
             <div style={{ display: 'flex', gap: 10, marginTop: 24, justifyContent: 'flex-end' }}>
               <Button variant="outline" onClick={() => setShowCreateForm(false)}>Cancel</Button>
               <Button variant="primary" onClick={handleCreate} disabled={creating || !newAddon.name.trim()}>{creating ? 'Creating…' : 'Create'}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CategoriesView({ isMobile }: { isMobile: boolean }) {
+  const [categories, setCategories] = useState<ApiVehicleType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [activeLang, setActiveLang] = useState<Record<number, string>>({});
+  const [drafts, setDrafts] = useState<Record<number, CategoryDraft>>({});
+  const [saving, setSaving] = useState<Record<number, boolean>>({});
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newCategory, setNewCategory] = useState<CategoryDraft>({
+    code: '',
+    name: '',
+    translations: LANGUAGES.map((lang) => ({ language: lang, name: '' })),
+  });
+
+  const inputStyle: CSSProperties = {
+    width: '100%',
+    padding: '9px 12px',
+    border: `1px solid ${A.g200}`,
+    borderRadius: 8,
+    fontFamily: 'Inter, sans-serif',
+    fontSize: 13,
+    color: A.black,
+    outline: 'none',
+    background: A.white,
+    boxSizing: 'border-box',
+  };
+
+  const labelStyle: CSSProperties = {
+    fontFamily: 'Inter, sans-serif',
+    fontSize: 11,
+    fontWeight: 700,
+    color: A.g500,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    display: 'block',
+    marginBottom: 6,
+  };
+
+  const emptyCategory = (): CategoryDraft => ({
+    code: '',
+    name: '',
+    translations: LANGUAGES.map((lang) => ({ language: lang, name: '' })),
+  });
+
+  const load = () => {
+    setLoading(true);
+    endpoints.scooterTypes()
+      .then((res) => setCategories(unwrapList(res)))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const openCategory = (category: ApiVehicleType) => {
+    if (expandedId === category.id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(category.id);
+    if (!activeLang[category.id]) {
+      setActiveLang((prev) => ({ ...prev, [category.id]: 'en' }));
+    }
+    if (!drafts[category.id]) {
+      setDrafts((prev) => ({
+        ...prev,
+        [category.id]: {
+          code: category.code,
+          name: category.name,
+          translations: LANGUAGES.map((lang) => {
+            const translation = category.translations?.find((item) => item.language === lang);
+            return { language: lang, name: translation?.name || '' };
+          }),
+        },
+      }));
+    }
+  };
+
+  const setDraftField = (id: number, field: keyof Omit<CategoryDraft, 'translations'>, value: string) => {
+    setDrafts((prev) => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
+  };
+
+  const setTranslationField = (id: number, lang: string, value: string) => {
+    setDrafts((prev) => ({
+      ...prev,
+      [id]: {
+        ...prev[id],
+        translations: prev[id].translations.map((item) => (
+          item.language === lang ? { ...item, name: value } : item
+        )),
+      },
+    }));
+  };
+
+  const handleSave = async (category: ApiVehicleType) => {
+    const draft = drafts[category.id];
+    if (!draft || !draft.name.trim() || !draft.code.trim()) return;
+    setSaving((prev) => ({ ...prev, [category.id]: true }));
+    try {
+      await endpoints.adminUpdateScooterType(category.id, {
+        code: draft.code.trim(),
+        name: draft.name.trim(),
+      });
+      await endpoints.adminSaveScooterTypeTranslations(
+        category.id,
+        draft.translations.filter((item) => item.name.trim()),
+      );
+      setExpandedId(null);
+      setDrafts((prev) => {
+        const next = { ...prev };
+        delete next[category.id];
+        return next;
+      });
+      load();
+    } catch {
+    } finally {
+      setSaving((prev) => ({ ...prev, [category.id]: false }));
+    }
+  };
+
+  const handleDelete = async (category: ApiVehicleType) => {
+    const confirmed = typeof window === 'undefined'
+      ? false
+      : window.confirm(`Delete category "${category.name}"? This action cannot be undone.`);
+    if (!confirmed) return;
+
+    setDeletingId(category.id);
+    try {
+      await endpoints.adminDeleteScooterType(category.id);
+      if (expandedId === category.id) {
+        setExpandedId(null);
+      }
+      setDrafts((prev) => {
+        const next = { ...prev };
+        delete next[category.id];
+        return next;
+      });
+      load();
+    } catch {
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!newCategory.name.trim() || !newCategory.code.trim()) return;
+    setCreating(true);
+    try {
+      const created = await endpoints.adminCreateScooterType({
+        code: newCategory.code.trim(),
+        name: newCategory.name.trim(),
+      });
+      await endpoints.adminSaveScooterTypeTranslations(
+        created.id,
+        newCategory.translations.filter((item) => item.name.trim()),
+      );
+      setShowCreateForm(false);
+      setNewCategory(emptyCategory());
+      load();
+    } catch {
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const CategoryForm = ({
+    draft,
+    categoryId,
+    onChange,
+    onTranslationChange,
+  }: {
+    draft: CategoryDraft;
+    categoryId: number;
+    onChange: (field: keyof Omit<CategoryDraft, 'translations'>, value: string) => void;
+    onTranslationChange: (lang: string, value: string) => void;
+  }) => {
+    const lang = activeLang[categoryId] || 'en';
+    const translation = draft.translations.find((item) => item.language === lang) || { language: lang, name: '' };
+    return (
+      <div style={{ padding: '16px 20px 20px', borderTop: `1px solid ${A.g200}` }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 16 }}>
+          <div>
+            <label style={labelStyle}>Category name (EN base)</label>
+            <input style={inputStyle} value={draft.name} onChange={(e) => onChange('name', e.target.value)} placeholder="Scooter" />
+          </div>
+          <div>
+            <label style={labelStyle}>Code</label>
+            <input style={inputStyle} value={draft.code} onChange={(e) => onChange('code', e.target.value)} placeholder="scooter" />
+          </div>
+        </div>
+
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
+          Translations
+        </div>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
+          {LANGUAGES.map((langCode) => {
+            const current = draft.translations.find((item) => item.language === langCode);
+            const filled = !!current?.name.trim();
+            return (
+              <button
+                key={langCode}
+                onClick={() => setActiveLang((prev) => ({ ...prev, [categoryId]: langCode }))}
+                style={{
+                  padding: '4px 12px',
+                  borderRadius: 20,
+                  border: `1px solid ${lang === langCode ? A.black : A.g300}`,
+                  background: lang === langCode ? A.black : A.white,
+                  color: lang === langCode ? A.white : A.g700,
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                {langCode.toUpperCase()} {filled && <span style={{ color: lang === langCode ? A.gold : A.green, fontSize: 10 }}>✓</span>}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ background: A.g100, borderRadius: 10, padding: 14 }}>
+          <label style={labelStyle}>Name ({LANG_LABELS[lang]})</label>
+          <input
+            style={inputStyle}
+            value={translation.name}
+            onChange={(e) => onTranslationChange(lang, e.target.value)}
+            placeholder={draft.name || `Category in ${LANG_LABELS[lang]}`}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ padding: isMobile ? 16 : 28, height: '100%', overflowY: 'auto' }}>
+      <SectionHeader
+        title="Categories"
+        subtitle="Manage scooter categories and their names in every language"
+        action={<Button variant="primary" onClick={() => setShowCreateForm(true)}>+ Add category</Button>}
+      />
+
+      {loading ? (
+        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: A.g500 }}>Loading…</p>
+      ) : categories.length === 0 ? (
+        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: A.g500 }}>No categories yet.</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {categories.map((category) => {
+            const isExpanded = expandedId === category.id;
+            const draft = drafts[category.id];
+            const isSaving = saving[category.id];
+            const isDeleting = deletingId === category.id;
+            return (
+              <div
+                key={category.id}
+                style={{
+                  background: A.white,
+                  border: `1px solid ${isExpanded ? A.black : A.g200}`,
+                  borderRadius: 12,
+                  overflow: 'hidden',
+                  transition: 'border-color 0.15s',
+                }}
+              >
+                <div
+                  onClick={() => openCategory(category)}
+                  style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer' }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 14, color: A.black }}>{category.name}</div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginTop: 2 }}>
+                      Code: {category.code}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Button
+                      variant="ghost"
+                      disabled={isDeleting || isSaving}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleDelete(category);
+                      }}
+                    >
+                      {isDeleting ? 'Deleting…' : 'Delete'}
+                    </Button>
+                    {(category.translations?.length ?? 0) > 0 && (
+                      <Badge color="green">{category.translations!.length} langs</Badge>
+                    )}
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 18, color: A.g400, lineHeight: 1 }}>{isExpanded ? '▲' : '▼'}</span>
+                  </div>
+                </div>
+
+                {isExpanded && draft && (
+                  <>
+                    <CategoryForm
+                      draft={draft}
+                      categoryId={category.id}
+                      onChange={(field, value) => setDraftField(category.id, field, value)}
+                      onTranslationChange={(lang, value) => setTranslationField(category.id, lang, value)}
+                    />
+                    <div style={{ padding: '12px 20px 16px', display: 'flex', gap: 10, justifyContent: 'flex-end', borderTop: `1px solid ${A.g200}` }}>
+                      <Button variant="ghost" disabled={isDeleting || isSaving} onClick={() => handleDelete(category)}>
+                        {isDeleting ? 'Deleting…' : 'Delete'}
+                      </Button>
+                      <Button variant="outline" onClick={() => {
+                        setExpandedId(null);
+                        setDrafts((prev) => {
+                          const next = { ...prev };
+                          delete next[category.id];
+                          return next;
+                        });
+                      }}>
+                        Cancel
+                      </Button>
+                      <Button variant="primary" disabled={isSaving || isDeleting || !draft.name.trim() || !draft.code.trim()} onClick={() => handleSave(category)}>
+                        {isSaving ? 'Saving…' : 'Save'}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {showCreateForm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px', overflowY: 'auto' }}>
+          <div style={{ background: A.white, borderRadius: 16, padding: 28, width: '100%', maxWidth: 720, position: 'relative' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <h3 style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18, color: A.black, margin: 0 }}>New Category</h3>
+              <Button variant="ghost" onClick={() => setShowCreateForm(false)}>✕</Button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div>
+                <label style={labelStyle}>Category name (EN base)</label>
+                <input style={inputStyle} value={newCategory.name} onChange={(e) => setNewCategory((prev) => ({ ...prev, name: e.target.value }))} placeholder="Scooter" />
+              </div>
+              <div>
+                <label style={labelStyle}>Code</label>
+                <input style={inputStyle} value={newCategory.code} onChange={(e) => setNewCategory((prev) => ({ ...prev, code: e.target.value }))} placeholder="scooter" />
+              </div>
+            </div>
+
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
+              Translations
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {newCategory.translations.map((translation) => (
+                <div key={translation.language} style={{ background: A.g100, borderRadius: 10, padding: 14 }}>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 700, color: A.g700, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    {translation.language}
+                  </div>
+                  <input
+                    style={inputStyle}
+                    placeholder={`Name in ${translation.language}`}
+                    value={translation.name}
+                    onChange={(e) => setNewCategory((prev) => ({
+                      ...prev,
+                      translations: prev.translations.map((item) => (
+                        item.language === translation.language ? { ...item, name: e.target.value } : item
+                      )),
+                    }))}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 24, justifyContent: 'flex-end' }}>
+              <Button variant="outline" onClick={() => setShowCreateForm(false)}>Cancel</Button>
+              <Button variant="primary" onClick={handleCreate} disabled={creating || !newCategory.name.trim() || !newCategory.code.trim()}>
+                {creating ? 'Creating…' : 'Create'}
+              </Button>
             </div>
           </div>
         </div>
@@ -1987,11 +2744,23 @@ export default function AdminPage() {
   const [busyBookingId, setBusyBookingId] = useState<number | null>(null);
   const [savingScooterId, setSavingScooterId] = useState<number | null>(null);
   const [savingFleetForm, setSavingFleetForm] = useState(false);
+  const [savingAdminUser, setSavingAdminUser] = useState(false);
   const [activeThreadId, setActiveThreadId] = useState<number | null>(null);
   const [threadMessages, setThreadMessages] = useState<ApiChatMessage[]>([]);
   const [sendingReply, setSendingReply] = useState(false);
 
   const canOpenAdmin = isAdminLike(user);
+  const allowedPermissions = useMemo(
+    () => normalizeAdminPermissions(user?.admin_permissions, user?.role, user?.is_superuser),
+    [user?.admin_permissions, user?.is_superuser, user?.role],
+  );
+  const allowedNavItems = useMemo(
+    () => NAV.filter((item) => allowedPermissions.includes(permissionForView(item.id))),
+    [allowedPermissions],
+  );
+  const canManageTeam = allowedPermissions.includes('team');
+  const canAccessAnyAdminSection = allowedNavItems.length > 0;
+  const fallbackView = allowedNavItems[0]?.id || 'overview';
 
   async function loadAdminData() {
     setLoading(true);
@@ -2067,6 +2836,16 @@ export default function AdminPage() {
     }
   }
 
+  async function handleCreateAdminUser(payload: { email: string; full_name?: string; phone?: string; password: string; role: string; admin_permissions: AdminPermission[] }) {
+    setSavingAdminUser(true);
+    try {
+      await endpoints.adminCreateUser(payload);
+      await loadAdminData();
+    } finally {
+      setSavingAdminUser(false);
+    }
+  }
+
   async function loadThreadMessages(threadId: number) {
     if (!threadId) {
       setThreadMessages([]);
@@ -2090,6 +2869,12 @@ export default function AdminPage() {
     loadAdminData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user, canOpenAdmin]);
+
+  useEffect(() => {
+    if (!allowedNavItems.some((item) => item.id === view)) {
+      setView(fallbackView);
+    }
+  }, [allowedNavItems, fallbackView, view]);
 
   useEffect(() => {
     if (view !== 'support' || !activeThreadId) return;
@@ -2232,8 +3017,22 @@ export default function AdminPage() {
     );
   }
 
+  if (!canAccessAnyAdminSection) {
+    return (
+      <FullScreenMessage
+        title="No sections assigned"
+        subtitle="Your staff account is active, but no admin sections are assigned yet. Ask an administrator to enable the parts of the panel you should manage."
+        action={
+          <Button variant="primary" size="md" onClick={() => router.push('/profile')}>
+            Open profile
+          </Button>
+        }
+      />
+    );
+  }
+
   const viewMap: Record<AdminView, ReactNode> = {
-    overview: <OverviewView data={data} onOpenView={setView} isMobile={isMobile} />,
+    overview: <OverviewView data={data} onOpenView={setView} canManageTeam={canManageTeam} isMobile={isMobile} />,
     fleet: (
       <FleetView
         scooters={data.scooters}
@@ -2264,8 +3063,11 @@ export default function AdminPage() {
     ),
     news: <NewsView isMobile={isMobile} />,
     addons: <AddonsView isMobile={isMobile} />,
+    categories: <CategoriesView isMobile={isMobile} />,
     locations: <LocationsView isMobile={isMobile} />,
     site: <SiteContentView isMobile={isMobile} />,
+    appContent: <SiteContentView isMobile={isMobile} initialPage="app" lockedPage="app" />,
+    users: <UsersView users={data.users} onCreateAdminUser={handleCreateAdminUser} savingAdminUser={savingAdminUser} isMobile={isMobile} />,
     promocodes: <PromoCodesView isMobile={isMobile} />,
   };
 
@@ -2287,7 +3089,7 @@ export default function AdminPage() {
         </div>
       </div>
       <nav style={{ flex: 1, overflowY: 'auto', padding: '16px 10px' }}>
-        {NAV.map((item) => (
+        {allowedNavItems.map((item) => (
           <div
             key={item.id}
             onClick={() => { setView(item.id); closeSidebar(); }}
@@ -2416,7 +3218,7 @@ export default function AdminPage() {
 
       <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', background: A.bg }}>
         <div style={{ height: 56, background: A.white, borderBottom: `1px solid ${A.g200}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', flexShrink: 0 }}>
-          <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 16, color: A.black, textTransform: 'capitalize' }}>{view}</div>
+          <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 16, color: A.black }}>{ADMIN_PERMISSION_LABELS[view]}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Button variant="outline" onClick={loadAdminData} disabled={loading}>
               {loading ? 'Refreshing…' : 'Refresh'}
@@ -2492,13 +3294,22 @@ function FullScreenMessage({ title, subtitle, action }: { title: string; subtitl
   );
 }
 
-function SiteContentView({ isMobile }: { isMobile: boolean }) {
+function SiteContentView({
+  isMobile,
+  initialPage,
+  lockedPage,
+}: {
+  isMobile: boolean;
+  initialPage?: string;
+  lockedPage?: string;
+}) {
   const [entries, setEntries] = useState<ApiAdminSiteContentEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
-  const [activePage, setActivePage] = useState<string>(SITE_CONTENT_PAGES[0]?.key || 'home');
+  const [activePage, setActivePage] = useState<string>(initialPage || SITE_CONTENT_PAGES[0]?.key || 'home');
   const [activeLanguage, setActiveLanguage] = useState<string>('en');
   const [activePreviewVariant, setActivePreviewVariant] = useState<string>('');
+  const [activeAppPreviewScreen, setActiveAppPreviewScreen] = useState<AppPreviewScreenKey>('onboarding');
   const [selectedFieldKey, setSelectedFieldKey] = useState<string | null>(null);
   const [previewReloadKey, setPreviewReloadKey] = useState(0);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -2526,6 +3337,12 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (initialPage) {
+      setActivePage(initialPage);
+    }
+  }, [initialPage]);
+
   const activePageMeta = useMemo(
     () => SITE_CONTENT_PAGES.find((page) => page.key === activePage) || SITE_CONTENT_PAGES[0],
     [activePage],
@@ -2539,6 +3356,11 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
   const pageFields = useMemo(
     () => SITE_CONTENT_FIELDS.filter((field) => matchesActivePage(field)),
     [matchesActivePage],
+  );
+
+  const pageFieldMap = useMemo(
+    () => new Map(pageFields.map((field) => [field.key, field])),
+    [pageFields],
   );
 
   const previewFields = useMemo(
@@ -3020,6 +3842,268 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
     ? Boolean(savingKey && (savingKey.includes(selectedField.key) || savingKey === `bulk:${selectedField.key}` || savingKey === `reset:${selectedField.key}`))
     : false;
 
+  function resolveAppPreviewValue(fieldKey: string) {
+    const field = pageFieldMap.get(fieldKey);
+    if (!field) return fieldKey.replace(/^app\./, '');
+    return resolveDraftValue(field, activeLanguage);
+  }
+
+  if (lockedPage === 'app') {
+    return (
+      <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? 16 : '28px 32px' }}>
+        <SectionHeader
+          title="App Content"
+          subtitle="Edit onboarding, home, booking, profile and support texts for the mobile app."
+          action={<Button variant="outline" size="md" onClick={load}>Reload</Button>}
+        />
+
+        <ErrorBanner error={error} onClose={() => setError(null)} />
+
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(340px, 0.95fr) minmax(260px, 0.7fr) minmax(0, 1.2fr)', gap: 16, alignItems: 'start' }}>
+          <Panel style={{ padding: isMobile ? 16 : 20, position: isMobile ? 'static' : 'sticky', top: 20 }}>
+            <div style={{ display: 'grid', gap: 16 }}>
+              <div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  App preview
+                </div>
+                <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 22, color: A.black, marginBottom: 8 }}>
+                  Click text on the phone
+                </div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
+                  The preview uses the selected language and your unsaved drafts, so text changes show here immediately.
+                </div>
+              </div>
+              <AppContentPhonePreview
+                activeScreen={activeAppPreviewScreen}
+                activeLanguage={activeLanguage}
+                selectedFieldKey={selectedFieldKey}
+                getValue={resolveAppPreviewValue}
+                onSelectField={setSelectedFieldKey}
+                onSelectScreen={setActiveAppPreviewScreen}
+              />
+            </div>
+          </Panel>
+
+          <Panel style={{ padding: isMobile ? 16 : 20, position: isMobile ? 'static' : 'sticky', top: 20 }}>
+            <div style={{ display: 'grid', gap: 16 }}>
+              <div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  Mobile app keys
+                </div>
+                <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 22, color: A.black, marginBottom: 8 }}>
+                  {pageFields.length} editable texts
+                </div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
+                  These values are saved as <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>app.*</span> content and are loaded by the mobile app from the public bootstrap API.
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
+                  Preview language
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {SITE_CONTENT_LANGUAGES.map((lang) => (
+                    <button
+                      key={lang.code}
+                      type="button"
+                      onClick={() => setActiveLanguage(lang.code)}
+                      style={{
+                        borderRadius: 999,
+                        border: `1px solid ${activeLanguage === lang.code ? A.black : A.g200}`,
+                        background: activeLanguage === lang.code ? A.black : A.white,
+                        color: activeLanguage === lang.code ? A.white : A.black,
+                        cursor: 'pointer',
+                        padding: '8px 12px',
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: 13,
+                        fontWeight: activeLanguage === lang.code ? 700 : 500,
+                      }}
+                    >
+                      {lang.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {loading ? (
+                <EmptyState label="Loading site content…" />
+              ) : (
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {pageFields.map((field) => {
+                    const selected = selectedFieldKey === field.key;
+                    const customizedCount = SITE_CONTENT_LANGUAGES.reduce((count, lang) => count + (fieldEntry(field, lang.code) ? 1 : 0), 0);
+                    return (
+                      <button
+                        key={field.key}
+                        type="button"
+                        onClick={() => setSelectedFieldKey(field.key)}
+                        style={{
+                          textAlign: 'left',
+                          borderRadius: 14,
+                          border: `1px solid ${selected ? A.gold : A.g200}`,
+                          background: selected ? 'linear-gradient(180deg, rgba(255,215,0,0.14) 0%, rgba(255,215,0,0.05) 100%)' : A.white,
+                          padding: '12px 14px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
+                          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 800, color: A.black }}>
+                            {field.label}
+                          </div>
+                          <Badge color={customizedCount ? 'green' : 'default'}>{customizedCount}/6 filled</Badge>
+                        </div>
+                        <div style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 11, color: A.g500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {field.key}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </Panel>
+
+          {!selectedField ? (
+            <Panel style={{ padding: isMobile ? 16 : 20 }}>
+              <div style={{ display: 'grid', gap: 14 }}>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  Click To Edit
+                </div>
+                <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 24, color: A.black }}>
+                  Choose an app text key
+                </div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: A.g500, lineHeight: 1.65 }}>
+                  Select any mobile app field on the left, then edit and save it for every supported language here.
+                </div>
+              </div>
+            </Panel>
+          ) : (
+            <Panel style={{ padding: isMobile ? 16 : 20 }}>
+              <div style={{ display: 'grid', gap: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                      Selected app text
+                    </div>
+                    <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 24, color: A.black, marginBottom: 6 }}>
+                      {selectedField.label}
+                    </div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
+                      Mobile App / {selectedField.sectionLabel} / {getSiteFieldElementLabel(selectedField)}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <Button variant="outline" onClick={resetSelectedFieldAll} disabled={selectionBusy}>
+                      Reset field
+                    </Button>
+                    <Button variant="dark" onClick={saveSelectedFieldAll} disabled={selectionBusy}>
+                      {selectionBusy ? 'Saving…' : 'Save all languages'}
+                    </Button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <Badge color="blue">localized text</Badge>
+                  <Badge color="default">{selectedField.key}</Badge>
+                </div>
+
+                <div style={{ display: 'grid', gap: 8 }}>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                    Previewed right now
+                  </div>
+                  <div style={{ border: `1px solid ${A.g200}`, borderRadius: 16, background: 'linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(247,247,248,1) 100%)', padding: 16 }}>
+                    <SiteContentValuePreview
+                      field={selectedField}
+                      value={resolveDraftValue(selectedField, activeLanguage)}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {editorLanguages.map((lang) => {
+                    const draftValue = resolveDraftValue(selectedField, lang.code);
+                    const defaultValue = defaultTextValue(selectedField, lang.code === 'all' ? activeLanguage : lang.code);
+                    const currentEntry = fieldEntry(selectedField, lang.code);
+                    const busy = savingKey === fieldStateKey(selectedField, lang.code) || savingKey === `bulk:${selectedField.key}` || savingKey === `reset:${selectedField.key}`;
+
+                    return (
+                      <div key={lang.code} style={{ border: `1px solid ${A.g200}`, borderRadius: 16, padding: 14, background: A.white }}>
+                        <div style={{ display: 'grid', gap: 12 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                                <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 17, color: A.black }}>
+                                  {lang.name}
+                                </div>
+                                <Badge color={currentEntry ? 'green' : 'default'}>
+                                  {currentEntry ? 'custom' : 'default'}
+                                </Badge>
+                              </div>
+                              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
+                                {lang.code === activeLanguage ? 'This language is shown in the preview above.' : 'Edit here even if another language is open in preview.'}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                              <Button variant="ghost" onClick={() => setActiveLanguage(lang.code)} disabled={busy}>
+                                Preview this language
+                              </Button>
+                              <Button variant="outline" onClick={() => resetFieldLanguage(selectedField, lang.code)} disabled={busy}>
+                                Reset
+                              </Button>
+                              <Button variant="dark" onClick={() => saveFieldLanguage(selectedField, lang.code)} disabled={busy}>
+                                {busy ? 'Saving…' : 'Save'}
+                              </Button>
+                            </div>
+                          </div>
+
+                          <Field label="Text">
+                            {selectedField.valueType === 'textarea' ? (
+                              <textarea
+                                value={draftValue}
+                                onChange={(event) => setDraftValue(selectedField, lang.code, event.target.value)}
+                                style={{ ...inputStyle, minHeight: 120, resize: 'vertical' }}
+                              />
+                            ) : (
+                              <input
+                                value={draftValue}
+                                onChange={(event) => setDraftValue(selectedField, lang.code, event.target.value)}
+                                style={inputStyle}
+                              />
+                            )}
+                          </Field>
+
+                          <div style={{ display: 'grid', gap: 6 }}>
+                            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                              Default value
+                            </div>
+                            <div style={{
+                              background: A.g100,
+                              border: `1px solid ${A.g200}`,
+                              borderRadius: 10,
+                              padding: '10px 12px',
+                              fontFamily: 'Inter, sans-serif',
+                              fontSize: 12,
+                              color: A.g700,
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-word',
+                            }}>
+                              {defaultValue || '—'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </Panel>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? 16 : '28px 32px' }}>
       <SectionHeader
@@ -3038,7 +4122,7 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
                 Pages
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
-                {SITE_CONTENT_PAGES.map((page) => {
+                {SITE_CONTENT_PAGES.filter((page) => !lockedPage || page.key === lockedPage).map((page) => {
                   const stats = pageCounts.get(page.key) || { total: 0, customized: 0, clickable: 0 };
                   const selected = activePage === page.key;
                   return (
@@ -3450,7 +4534,181 @@ function SiteContentView({ isMobile }: { isMobile: boolean }) {
   );
 }
 
-function OverviewView({ data, onOpenView, isMobile }: { data: AdminData; onOpenView: (view: AdminView) => void; isMobile: boolean }) {
+function TeamAccessPanel({
+  users,
+  onCreateAdminUser,
+  savingAdminUser,
+  canManageTeam = true,
+  isMobile,
+}: {
+  users: ApiAdminUser[];
+  onCreateAdminUser: (payload: { email: string; full_name?: string; phone?: string; password: string; role: string; admin_permissions: AdminPermission[] }) => Promise<void>;
+  savingAdminUser: boolean;
+  canManageTeam?: boolean;
+  isMobile: boolean;
+}) {
+  const [adminDraft, setAdminDraft] = useState<{ email: string; full_name: string; phone: string; password: string; role: string; admin_permissions: AdminPermission[] }>({
+    email: '',
+    full_name: '',
+    phone: '',
+    password: '',
+    role: 'staff',
+    admin_permissions: defaultAdminPermissionsForRole('staff'),
+  });
+
+  const teamUsers = users.filter((item) => ['admin', 'manager', 'staff'].includes((item.role || '').toLowerCase()));
+
+  return (
+    <Panel style={{ padding: 20 }}>
+      <SectionHeader
+        title="Users & Team"
+        subtitle="Add admins and staff, then assign exactly which parts of the admin panel they can access."
+        action={<Badge color="blue">{teamUsers.length} team members</Badge>}
+      />
+      {canManageTeam ? (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.1fr 1fr 1fr 1fr 0.8fr auto', gap: 10, alignItems: 'end', marginBottom: 14 }}>
+            <input value={adminDraft.email} onChange={(e) => setAdminDraft((current) => ({ ...current, email: e.target.value }))} placeholder="Email" style={inputBaseStyle} />
+            <input value={adminDraft.full_name} onChange={(e) => setAdminDraft((current) => ({ ...current, full_name: e.target.value }))} placeholder="Full name" style={inputBaseStyle} />
+            <input value={adminDraft.phone} onChange={(e) => setAdminDraft((current) => ({ ...current, phone: e.target.value }))} placeholder="Phone" style={inputBaseStyle} />
+            <input value={adminDraft.password} onChange={(e) => setAdminDraft((current) => ({ ...current, password: e.target.value }))} placeholder="Temporary password" style={inputBaseStyle} />
+            <select
+              value={adminDraft.role}
+              onChange={(e) =>
+                setAdminDraft((current) => ({
+                  ...current,
+                  role: e.target.value,
+                  admin_permissions: defaultAdminPermissionsForRole(e.target.value),
+                }))
+              }
+              style={{ ...inputBaseStyle, minHeight: 42 }}
+            >
+              <option value="staff">Staff</option>
+              <option value="manager">Manager</option>
+              <option value="admin">Admin</option>
+            </select>
+            <Button
+              variant="dark"
+              onClick={async () => {
+                if (!adminDraft.email.trim() || !adminDraft.password.trim()) {
+                  window.alert('Enter at least email and password.');
+                  return;
+                }
+                try {
+                  await onCreateAdminUser(adminDraft);
+                  setAdminDraft({ email: '', full_name: '', phone: '', password: '', role: 'staff', admin_permissions: defaultAdminPermissionsForRole('staff') });
+                } catch (err) {
+                  window.alert(err instanceof Error ? err.message : 'Unable to create the team member.');
+                }
+              }}
+              disabled={savingAdminUser}
+            >
+              {savingAdminUser ? 'Saving…' : 'Add member'}
+            </Button>
+          </div>
+          <div style={{ marginBottom: 18, borderRadius: 12, border: `1px solid ${A.g200}`, background: A.white, padding: 14 }}>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
+              Section permissions
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
+              {ADMIN_PERMISSION_OPTIONS.map((permission) => {
+                const checked = adminDraft.admin_permissions.includes(permission);
+                return (
+                  <label key={permission} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 10, background: checked ? A.g100 : A.white, border: `1px solid ${checked ? A.gold : A.g200}`, cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.black }}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) =>
+                        setAdminDraft((current) => ({
+                          ...current,
+                          admin_permissions: e.target.checked
+                            ? [...current.admin_permissions, permission].filter((value, index, source) => source.indexOf(value) === index)
+                            : current.admin_permissions.filter((value) => value !== permission),
+                        }))
+                      }
+                      style={{ width: 15, height: 15 }}
+                    />
+                    <span>{ADMIN_PERMISSION_LABELS[permission]}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      ) : (
+        <div style={{ marginBottom: 18, borderRadius: 12, border: `1px solid ${A.g200}`, background: A.g100, padding: '14px 16px', fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700 }}>
+          Your account can view the team list, but only admins with the <strong>Team Access</strong> permission can create or edit team members.
+        </div>
+      )}
+      <div style={{ display: 'grid', gap: 10 }}>
+        {teamUsers.map((item) => (
+          <div key={item.id} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.8fr 1fr', gap: 10, padding: '12px 14px', borderRadius: 12, background: A.g100, alignItems: 'start' }}>
+            <div>
+              <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 14, color: A.black }}>
+                {item.full_name || item.email}
+              </div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
+                {item.email}
+              </div>
+            </div>
+            <Badge color={(item.role || '').toLowerCase() === 'admin' ? 'red' : (item.role || '').toLowerCase() === 'manager' ? 'blue' : 'orange'}>
+              {item.role || 'staff'}
+            </Badge>
+            <div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginBottom: 8 }}>
+                {normalizeAdminPermissions(item.admin_permissions, item.role, item.is_superuser).length
+                  ? 'Assigned sections'
+                  : 'No sections assigned'}
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {normalizeAdminPermissions(item.admin_permissions, item.role, item.is_superuser).map((permission) => (
+                  <Badge key={`${item.id}-${permission}`} color="default">
+                    {ADMIN_PERMISSION_LABELS[permission]}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
+        {teamUsers.length === 0 ? (
+          <div style={{ padding: '18px 16px', borderRadius: 12, background: A.g100, fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500 }}>
+            No admin or staff users yet.
+          </div>
+        ) : null}
+      </div>
+    </Panel>
+  );
+}
+
+function UsersView({
+  users,
+  onCreateAdminUser,
+  savingAdminUser,
+  isMobile,
+}: {
+  users: ApiAdminUser[];
+  onCreateAdminUser: (payload: { email: string; full_name?: string; phone?: string; password: string; role: string; admin_permissions: AdminPermission[] }) => Promise<void>;
+  savingAdminUser: boolean;
+  isMobile: boolean;
+}) {
+  return (
+    <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? '16px' : '28px 32px' }}>
+      <TeamAccessPanel users={users} onCreateAdminUser={onCreateAdminUser} savingAdminUser={savingAdminUser} isMobile={isMobile} />
+    </div>
+  );
+}
+
+function OverviewView({
+  data,
+  onOpenView,
+  canManageTeam,
+  isMobile,
+}: {
+  data: AdminData;
+  onOpenView: (view: AdminView) => void;
+  canManageTeam: boolean;
+  isMobile: boolean;
+}) {
   const { bookings, scooters, users, revenue, payments } = data;
 
   const paidBookings = bookings.filter(
@@ -3660,6 +4918,21 @@ function OverviewView({ data, onOpenView, isMobile }: { data: AdminData; onOpenV
           </Panel>
         </div>
       </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: isMobile ? 12 : 16 }}>
+        <Panel style={{ padding: 20 }}>
+          <SectionHeader
+            title="Users & Team"
+            subtitle="Add admins and staff from a dedicated screen instead of the overview."
+            action={<Button variant="dark" onClick={() => onOpenView('users')}>Open Users</Button>}
+          />
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, lineHeight: 1.7, color: A.g700 }}>
+            {canManageTeam
+              ? 'The users screen lets you create team members and assign the exact admin sections they can access.'
+              : 'You can see the users screen from the sidebar when your account has Team Access permission.'}
+          </div>
+        </Panel>
+      </div>
     </div>
   );
 }
@@ -3855,7 +5128,7 @@ function FleetView({
                 <option value="">Select model</option>
                 {scooterModels.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {item.brand} {item.name} · {item.type_name || 'Type'}
+                    {item.brand} {item.name} · {item.type_name || 'Category'}
                   </option>
                 ))}
               </select>
@@ -4279,6 +5552,22 @@ function CRMView({
 
 function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]; scooters: ApiScooterDetail[]; isMobile: boolean }) {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
+  const [blocks, setBlocks] = useState<Array<{ id: number; vehicle: number; start_at: string; end_at: string; type: string; comment?: string }>>([]);
+  const [loadingBlocks, setLoadingBlocks] = useState(false);
+  const [savingBlock, setSavingBlock] = useState(false);
+  const [deletingBlockId, setDeletingBlockId] = useState<number | null>(null);
+  const [draft, setDraft] = useState(() => {
+    const start = startOfWeek(new Date());
+    const end = new Date(start);
+    end.setHours(18, 0, 0, 0);
+    start.setHours(9, 0, 0, 0);
+    return {
+      vehicle: '',
+      start_at: toDateTimeLocalValue(start),
+      end_at: toDateTimeLocalValue(end),
+      comment: '',
+    };
+  });
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
   const activeBookings = bookings
@@ -4288,6 +5577,69 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
       startDate: new Date(item.start_datetime),
       endDate: new Date(item.end_datetime),
     }));
+
+  const rangeStartIso = useMemo(() => weekStart.toISOString(), [weekStart]);
+  const rangeEndIso = useMemo(() => {
+    const end = addDays(weekStart, 7);
+    end.setHours(23, 59, 59, 999);
+    return end.toISOString();
+  }, [weekStart]);
+
+  const loadBlocks = useCallback(async () => {
+    setLoadingBlocks(true);
+    try {
+      const response = await endpoints.adminAvailabilityBlocks({
+        start_at: rangeStartIso,
+        end_at: rangeEndIso,
+      });
+      setBlocks(unwrapList(response));
+    } catch {
+      setBlocks([]);
+    } finally {
+      setLoadingBlocks(false);
+    }
+  }, [rangeEndIso, rangeStartIso]);
+
+  useEffect(() => {
+    loadBlocks();
+  }, [loadBlocks]);
+
+  async function createManualBlock() {
+    if (!draft.vehicle || !draft.start_at || !draft.end_at) {
+      window.alert('Choose a scooter, start, and end time.');
+      return;
+    }
+
+    setSavingBlock(true);
+    try {
+      await endpoints.adminCreateAvailabilityBlock({
+        vehicle: Number(draft.vehicle),
+        start_at: new Date(draft.start_at).toISOString(),
+        end_at: new Date(draft.end_at).toISOString(),
+        type: 'manual_block',
+        comment: draft.comment.trim(),
+      });
+      setDraft((current) => ({ ...current, comment: '' }));
+      await loadBlocks();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Unable to save the calendar block.');
+    } finally {
+      setSavingBlock(false);
+    }
+  }
+
+  async function deleteManualBlock(blockId: number) {
+    if (!confirm('Delete this manual block?')) return;
+    setDeletingBlockId(blockId);
+    try {
+      await endpoints.adminDeleteAvailabilityBlock(blockId);
+      await loadBlocks();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Unable to delete the calendar block.');
+    } finally {
+      setDeletingBlockId(null);
+    }
+  }
 
   return (
     <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? '16px' : '28px 32px' }}>
@@ -4302,6 +5654,42 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
           </div>
         }
       />
+      <Panel style={{ padding: 18, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr 1fr 1.2fr auto', gap: 12, alignItems: 'end' }}>
+          <div>
+            <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+              Scooter
+            </label>
+            <select value={draft.vehicle} onChange={(e) => setDraft((current) => ({ ...current, vehicle: e.target.value }))} style={{ ...inputBaseStyle, minHeight: 42 }}>
+              <option value="">Choose scooter</option>
+              {scooters.map((item) => (
+                <option key={item.id} value={item.id}>{item.title}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+              Start
+            </label>
+            <input type="datetime-local" value={draft.start_at} onChange={(e) => setDraft((current) => ({ ...current, start_at: e.target.value }))} style={inputBaseStyle} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+              End
+            </label>
+            <input type="datetime-local" value={draft.end_at} onChange={(e) => setDraft((current) => ({ ...current, end_at: e.target.value }))} style={inputBaseStyle} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+              Reserved by / note
+            </label>
+            <input value={draft.comment} onChange={(e) => setDraft((current) => ({ ...current, comment: e.target.value }))} placeholder="Guest name, maintenance, external booking..." style={inputBaseStyle} />
+          </div>
+          <Button variant="dark" onClick={createManualBlock} disabled={savingBlock}>
+            {savingBlock ? 'Saving…' : 'Add block'}
+          </Button>
+        </div>
+      </Panel>
       {scooters.length === 0 ? (
         <EmptyState label="No fleet records available." />
       ) : (
@@ -4369,49 +5757,95 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
                 const matches = activeBookings.filter(
                   (item) => item.scooter?.id === scooter.id && item.startDate <= dayEnd && item.endDate >= dayStart,
                 );
+                const blockMatches = blocks.filter((item) => {
+                  if (item.vehicle !== scooter.id || item.type !== 'manual_block') return false;
+                  const startAt = new Date(item.start_at);
+                  const endAt = new Date(item.end_at);
+                  return startAt <= dayEnd && endAt >= dayStart;
+                });
                 return (
                   <div
                     key={`${scooter.id}-${day.toISOString()}`}
                     style={{ borderLeft: `1px solid ${A.g200}`, padding: 6 }}
                   >
-                    {matches.length === 0 ? (
+                    {matches.length === 0 && blockMatches.length === 0 ? (
                       <div style={{ height: '100%', minHeight: 60, borderRadius: 10, background: A.g100 }} />
                     ) : (
-                      matches.map((item) => (
-                        <div
-                          key={item.id}
-                          style={{
-                            background:
-                              item.status === 'completed'
-                                ? A.blueBg
-                                : item.status === 'active'
-                                  ? A.greenBg
-                                  : A.orangeBg,
-                            borderLeft: `3px solid ${
-                              item.status === 'completed' ? A.blue : item.status === 'active' ? A.green : A.orange
-                            }`,
-                            borderRadius: '0 8px 8px 0',
-                            padding: '8px 10px',
-                            marginBottom: 4,
-                          }}
-                        >
-                          <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 11, color: A.black }}>
-                            #{item.order_number}
-                          </div>
+                      <>
+                        {matches.map((item) => (
                           <div
+                            key={item.id}
                             style={{
-                              fontFamily: 'Inter, sans-serif',
-                              fontSize: 11,
-                              color: A.g700,
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
+                              background:
+                                item.status === 'completed'
+                                  ? A.blueBg
+                                  : item.status === 'active'
+                                    ? A.greenBg
+                                    : A.orangeBg,
+                              borderLeft: `3px solid ${
+                                item.status === 'completed' ? A.blue : item.status === 'active' ? A.green : A.orange
+                              }`,
+                              borderRadius: '0 8px 8px 0',
+                              padding: '8px 10px',
+                              marginBottom: 4,
                             }}
                           >
-                            {item.user || 'Guest'}
+                            <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 11, color: A.black }}>
+                              #{item.order_number}
+                            </div>
+                            <div
+                              style={{
+                                fontFamily: 'Inter, sans-serif',
+                                fontSize: 11,
+                                color: A.g700,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {item.contact_name || item.user || 'Guest'}
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        ))}
+                        {blockMatches.map((item) => (
+                          <div
+                            key={`block-${item.id}`}
+                            style={{
+                              background: A.redBg,
+                              borderLeft: `3px solid ${A.red}`,
+                              borderRadius: '0 8px 8px 0',
+                              padding: '8px 10px',
+                              marginBottom: 4,
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                              <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 11, color: A.black }}>
+                                Manual block
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => deleteManualBlock(item.id)}
+                                disabled={deletingBlockId === item.id}
+                                style={{ border: 'none', background: 'transparent', color: A.red, cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: 11, padding: 0 }}
+                              >
+                                {deletingBlockId === item.id ? '...' : 'Delete'}
+                              </button>
+                            </div>
+                            <div
+                              style={{
+                                fontFamily: 'Inter, sans-serif',
+                                fontSize: 11,
+                                color: A.g700,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {item.comment || 'Blocked from admin panel'}
+                            </div>
+                          </div>
+                        ))}
+                      </>
                     )}
                   </div>
                 );
@@ -4421,6 +5855,11 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
         </Panel>
         </div>
       )}
+      {loadingBlocks ? (
+        <div style={{ marginTop: 12, fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
+          Loading manual blocks…
+        </div>
+      ) : null}
     </div>
   );
 }

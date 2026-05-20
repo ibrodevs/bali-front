@@ -24,6 +24,12 @@ export type ApiVehicleType = {
   id: number;
   code: string;
   name: string;
+  translations?: ApiVehicleTypeTranslation[];
+};
+
+export type ApiVehicleTypeTranslation = {
+  language: string;
+  name: string;
 };
 
 export type ApiVehicleModel = {
@@ -166,6 +172,7 @@ export type ApiAdminUser = {
   full_name?: string;
   phone?: string;
   role?: string;
+  admin_permissions?: string[];
   is_staff?: boolean;
   is_superuser?: boolean;
   created_at?: string;
@@ -338,6 +345,16 @@ export type ApiAvailabilityCalendar = {
     status: AvailabilityDayStatus;
     slots: Array<{ start: string; end: string; type: string }>;
   }>;
+};
+
+export type ApiAvailabilityBlock = {
+  id: number;
+  vehicle: number;
+  start_at: string;
+  end_at: string;
+  type: 'booking' | 'maintenance' | 'manual_block';
+  source_booking?: number | null;
+  comment?: string;
 };
 
 export type ApiBootstrap = {
@@ -570,6 +587,16 @@ export const endpoints = {
     api<Paginated<ApiScooter> | ApiScooter[]>('/scooters/', { query: params, lang }),
   scooter: (idOrSlug: string | number, lang?: string) => api<ApiScooterDetail>(`/scooters/${idOrSlug}/`, { lang }),
   scooterTypes: () => api<Paginated<ApiVehicleType> | ApiVehicleType[]>('/scooter-types/'),
+  adminCreateScooterType: (body: { code: string; name: string }) =>
+    api<ApiVehicleType>('/scooter-types/', { method: 'POST', body, auth: true }),
+  adminUpdateScooterType: (id: number | string, body: Partial<{ code: string; name: string }>) =>
+    api<ApiVehicleType>(`/scooter-types/${id}/`, { method: 'PATCH', body, auth: true }),
+  adminDeleteScooterType: (id: number | string) =>
+    api<void>(`/scooter-types/${id}/`, { method: 'DELETE', auth: true }),
+  adminScooterTypeTranslations: (id: number | string) =>
+    api<ApiVehicleTypeTranslation[]>(`/scooter-types/${id}/translations/`, { auth: true }),
+  adminSaveScooterTypeTranslations: (id: number | string, translations: ApiVehicleTypeTranslation[]) =>
+    api<{ status: string }>(`/scooter-types/${id}/translations/`, { method: 'POST', body: translations, auth: true }),
   scooterModels: () => api<Paginated<ApiVehicleModel> | ApiVehicleModel[]>('/scooter-models/'),
   adminCreateScooterModel: (body: AdminScooterModelPayload) =>
     api<ApiVehicleModel>('/scooter-models/', { method: 'POST', body, auth: true }),
@@ -625,6 +652,10 @@ export const endpoints = {
     if (!t) return Promise.resolve();
     return api('/auth/logout/', { method: 'POST', body: { refresh: t.refresh }, auth: true }).catch(() => {});
   },
+  requestPasswordReset: (body: { email: string }) =>
+    api<{ detail: string; uid: string; token: string }>('/auth/password-reset/', { method: 'POST', body }),
+  confirmPasswordReset: (body: { uid: string; token: string; new_password: string }) =>
+    api<{ detail: string }>('/auth/password-reset-confirm/', { method: 'POST', body }),
   profile: () => api<ApiUser>('/profile/', { auth: true }),
   updateProfile: (body: Partial<Pick<ApiUser, 'full_name' | 'phone' | 'country' | 'language' | 'currency'>>) =>
     api<ApiUser>('/profile/', { method: 'PATCH', body, auth: true }),
@@ -663,6 +694,18 @@ export const endpoints = {
     api<{ status: string }>(`/admin/bookings/${id}/complete/`, { method: 'POST', auth: true }),
   adminUsers: (params?: { page?: number; search?: string }) =>
     api<Paginated<ApiAdminUser> | ApiAdminUser[]>('/admin/users/', { auth: true, query: params }),
+  adminCreateUser: (body: Partial<ApiAdminUser> & { password?: string }) =>
+    api<ApiAdminUser>('/admin/users/', { method: 'POST', body, auth: true }),
+  adminUpdateUser: (id: number | string, body: Partial<ApiAdminUser> & { password?: string }) =>
+    api<ApiAdminUser>(`/admin/users/${id}/`, { method: 'PATCH', body, auth: true }),
+  adminAvailabilityBlocks: (params?: { vehicle?: number | string; start_at?: string; end_at?: string }) =>
+    api<Paginated<ApiAvailabilityBlock> | ApiAvailabilityBlock[]>('/availability-calendar/', { auth: true, query: params }),
+  adminCreateAvailabilityBlock: (body: Partial<ApiAvailabilityBlock>) =>
+    api<ApiAvailabilityBlock>('/availability-calendar/', { method: 'POST', body, auth: true }),
+  adminUpdateAvailabilityBlock: (id: number | string, body: Partial<ApiAvailabilityBlock>) =>
+    api<ApiAvailabilityBlock>(`/availability-calendar/${id}/`, { method: 'PATCH', body, auth: true }),
+  adminDeleteAvailabilityBlock: (id: number | string) =>
+    api<void>(`/availability-calendar/${id}/`, { method: 'DELETE', auth: true }),
   adminAnalyticsRevenue: (params?: { start_date?: string; end_date?: string }) =>
     api<ApiAnalyticsRevenue>('/admin/analytics/revenue/', { auth: true, query: params }),
   adminAnalyticsFunnel: (params?: { start_date?: string; end_date?: string }) =>
