@@ -396,7 +396,7 @@ function BookingPageInner() {
 
             <div className="br-booking-card" style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
               <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
-                <span {...marker('booking.addressTitle')}>{copy.addressTitle}</span>
+               
               </div>
               <div style={{ display: 'grid', gap: 14, marginTop: 18 }}>
                 <Field label={copy.addressLabel} contentKey="booking.addressLabel">
