@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { AdminLocaleProvider, useAdminLocale } from '@/lib/i18n/AdminLocaleProvider';
 import { ADMIN_UI_LOCALES, translateAdminUiText } from '@/lib/i18n/adminUi';
 
@@ -8,56 +8,63 @@ type AttrKey = 'placeholder' | 'title' | 'aria-label' | 'value';
 
 const TRACKED_ATTRIBUTES: AttrKey[] = ['placeholder', 'title', 'aria-label', 'value'];
 
-function AdminLanguageSwitcher() {
+export function AdminSidebarLanguageSwitcher() {
   const { locale, setLocale } = useAdminLocale();
+  const languageLabel = translateAdminUiText('Language', locale);
+  const switcherLabel = translateAdminUiText('Admin interface language', locale);
 
   return (
     <div
       data-admin-i18n-skip="true"
       style={{
-        position: 'fixed',
-        top: 14,
-        right: 14,
         zIndex: 1400,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        padding: 6,
-        borderRadius: 999,
-        border: '1px solid rgba(0,0,0,0.08)',
-        background: 'rgba(255,255,255,0.92)',
-        boxShadow: '0 12px 32px -18px rgba(0,0,0,0.4)',
-        backdropFilter: 'blur(12px)',
+        display: 'grid',
+        gap: 10,
       }}
-      aria-label="Admin interface language"
-      title="Admin interface language"
+      aria-label={switcherLabel}
+      title={switcherLabel}
     >
-      {ADMIN_UI_LOCALES.map((item) => {
-        const active = item.code === locale;
-        return (
-          <button
-            key={item.code}
-            type="button"
-            onClick={() => setLocale(item.code)}
-            title={item.label}
-            style={{
-              border: 'none',
-              cursor: 'pointer',
-              borderRadius: 999,
-              padding: '8px 10px',
-              minWidth: 44,
-              fontFamily: 'Inter, sans-serif',
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: '0.06em',
-              background: active ? '#111111' : 'transparent',
-              color: active ? '#ffffff' : '#111111',
-            }}
-          >
-            {item.code.toUpperCase()}
-          </button>
-        );
-      })}
+      <div
+        style={{
+          fontFamily: 'Inter, sans-serif',
+          fontSize: 10,
+          letterSpacing: '0.08em',
+          color: 'rgba(255,255,255,0.25)',
+          textTransform: 'uppercase',
+          padding: '0 4px',
+        }}
+      >
+        {languageLabel}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {ADMIN_UI_LOCALES.map((item) => {
+          const active = item.code === locale;
+          return (
+            <button
+              key={item.code}
+              type="button"
+              onClick={() => setLocale(item.code)}
+              title={translateAdminUiText(item.label, locale)}
+              aria-label={translateAdminUiText(item.label, locale)}
+              style={{
+                border: `1px solid ${active ? 'rgba(255,215,0,0.45)' : 'rgba(255,255,255,0.12)'}`,
+                cursor: 'pointer',
+                borderRadius: 999,
+                padding: '8px 12px',
+                minWidth: 52,
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: '0.06em',
+                background: active ? 'rgba(255,215,0,0.14)' : 'transparent',
+                color: active ? '#FFD700' : 'rgba(255,255,255,0.72)',
+              }}
+            >
+              {item.code.toUpperCase()}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -203,13 +210,8 @@ function AdminRouteShellInner({ children }: { children: React.ReactNode }) {
   const rootRef = useRef<HTMLDivElement>(null);
   useAdminDomTranslator(rootRef);
 
-  const topSpacing = useMemo(() => ({ paddingTop: 58 }), []);
-
   return (
-    <div ref={rootRef} style={topSpacing}>
-      <AdminLanguageSwitcher />
-      {children}
-    </div>
+    <div ref={rootRef}>{children}</div>
   );
 }
 

@@ -7,6 +7,7 @@ import {
   AdminScooterModelPayload,
   AdminScooterPayload,
   ApiVehicleModel,
+  ApiVehicleTranslation,
   ApiVehicleType,
   endpoints,
   unwrapList,
@@ -190,6 +191,23 @@ type PhotoDraft = {
   alt_text: string;
 };
 
+type TranslationDraft = {
+  title: string;
+  description: string;
+  rental_terms: string;
+  transmission: string;
+  trunk: string;
+};
+
+const LOCALES = [
+  { code: 'en', label: 'English' },
+  { code: 'ru', label: 'Русский' },
+  { code: 'zh', label: '中文' },
+  { code: 'id', label: 'Indonesia' },
+  { code: 'de', label: 'Deutsch' },
+  { code: 'fr', label: 'Français' },
+];
+
 const EMPTY_MODEL: DraftModel = {
   type: '',
   brand: '',
@@ -216,6 +234,15 @@ const EMPTY_SCOOTER: DraftScooter = {
   is_featured: false,
 };
 
+function createEmptyTranslations(): Record<string, TranslationDraft> {
+  return Object.fromEntries(
+    LOCALES.map((locale) => [
+      locale.code,
+      { title: '', description: '', rental_terms: '', transmission: '', trunk: '' },
+    ]),
+  ) as Record<string, TranslationDraft>;
+}
+
 export default function AdminNewScooterPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -232,6 +259,8 @@ export default function AdminNewScooterPage() {
   const [scooterDraft, setScooterDraft] = useState<DraftScooter>(EMPTY_SCOOTER);
   const [photos, setPhotos] = useState<PhotoDraft[]>([]);
   const [mainPhotoIndex, setMainPhotoIndex] = useState(0);
+  const [translations, setTranslations] = useState<Record<string, TranslationDraft>>(createEmptyTranslations());
+  const [activeLang, setActiveLang] = useState('en');
 
   useEffect(() => {
     return () => {
@@ -308,6 +337,47 @@ export default function AdminNewScooterPage() {
     });
   }
 
+  function getEnglishFallbacks() {
+    return {
+      title: scooterDraft.title.trim(),
+      description: (modelMode === 'existing' ? selectedModel?.description : modelDraft.description)?.trim() || '',
+      rental_terms: (modelMode === 'existing' ? selectedModel?.rental_terms : modelDraft.rental_terms)?.trim() || '',
+      transmission: (modelMode === 'existing' ? selectedModel?.transmission : modelDraft.transmission)?.trim() || '',
+      trunk: (modelMode === 'existing' ? selectedModel?.trunk : modelDraft.trunk)?.trim() || '',
+    };
+  }
+
+  function buildTranslationPayload() {
+    const englishFallbacks = getEnglishFallbacks();
+    return LOCALES.map((locale) => {
+      const draftTranslation = translations[locale.code] || { title: '', description: '', rental_terms: '', transmission: '', trunk: '' };
+      return {
+        language: locale.code,
+        title: draftTranslation.title.trim() || (locale.code === 'en' ? englishFallbacks.title : ''),
+        description: draftTranslation.description.trim() || (locale.code === 'en' ? englishFallbacks.description : ''),
+        rental_terms: draftTranslation.rental_terms.trim() || (locale.code === 'en' ? englishFallbacks.rental_terms : ''),
+        transmission: draftTranslation.transmission.trim() || (locale.code === 'en' ? englishFallbacks.transmission : ''),
+        trunk: draftTranslation.trunk.trim() || (locale.code === 'en' ? englishFallbacks.trunk : ''),
+      };
+    });
+  }
+
+  function validateTranslations() {
+    const payload = buildTranslationPayload();
+    const requiredFields: Array<keyof ApiVehicleTranslation> = ['title', 'description', 'rental_terms', 'transmission', 'trunk'];
+
+    for (const locale of LOCALES) {
+      const item = payload.find((translation) => translation.language === locale.code);
+      const missing = requiredFields.filter((field) => !String(item?.[field] || '').trim());
+      if (missing.length > 0) {
+        setActiveLang(locale.code);
+        throw new Error(`Fill all translation fields for ${locale.label}: ${missing.join(', ')}`);
+      }
+    }
+
+    return payload;
+  }
+
   async function handleSubmit() {
     setSaving(true);
     setError(null);
@@ -362,6 +432,8 @@ export default function AdminNewScooterPage() {
         throw new Error('Fill in scooter title, slug and price.');
       }
 
+      const translationPayload = validateTranslations();
+
       const createdScooter = await endpoints.adminCreateScooter({
         model: modelId,
         title: scooterDraft.title.trim(),
@@ -373,6 +445,8 @@ export default function AdminNewScooterPage() {
         mileage: Number(scooterDraft.mileage || 0),
         is_featured: scooterDraft.is_featured,
       } satisfies AdminScooterPayload);
+
+      await endpoints.adminSaveScooterTranslations(createdScooter.id, translationPayload);
 
       for (let index = 0; index < photos.length; index += 1) {
         const item = photos[index];
@@ -560,6 +634,124 @@ export default function AdminNewScooterPage() {
             </Panel>
 
             <Panel style={{ padding: 22 }}>
+              <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18, color: A.black, marginBottom: 4 }}>Translations</div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, marginBottom: 16 }}>
+                Detail screen content comes from backend in the selected language, so fill every language before publishing.
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
+                {LOCALES.map((locale) => {
+                  const draftTranslation = translations[locale.code];
+                  const hasTranslation = Boolean(
+                    draftTranslation?.title ||
+                    draftTranslation?.description ||
+                    draftTranslation?.rental_terms ||
+                    draftTranslation?.transmission ||
+                    draftTranslation?.trunk,
+                  );
+                  return (
+                    <button
+                      key={locale.code}
+                      type="button"
+                      onClick={() => setActiveLang(locale.code)}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: 8,
+                        border: activeLang === locale.code ? `2px solid ${A.black}` : `1.5px solid ${A.g200}`,
+                        background: activeLang === locale.code ? A.black : hasTranslation ? A.greenBg : A.white,
+                        color: activeLang === locale.code ? A.white : hasTranslation ? A.green : A.g700,
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {locale.code.toUpperCase()}
+                      {hasTranslation ? ' ✓' : ''}
+                    </button>
+                  );
+                })}
+              </div>
+              {LOCALES.map((locale) => {
+                const translation = translations[locale.code] || { title: '', description: '', rental_terms: '', transmission: '', trunk: '' };
+                const fallbackDescription = modelMode === 'existing' ? selectedModel?.description : modelDraft.description;
+                const fallbackRentalTerms = modelMode === 'existing' ? selectedModel?.rental_terms : modelDraft.rental_terms;
+                const fallbackTransmission = modelMode === 'existing' ? selectedModel?.transmission : modelDraft.transmission;
+                const fallbackTrunk = modelMode === 'existing' ? selectedModel?.trunk : modelDraft.trunk;
+                return (
+                  <div key={locale.code} style={{ display: activeLang === locale.code ? 'grid' : 'none', gap: 14 }}>
+                    <Field label={`Title (${locale.label})`}>
+                      <input
+                        value={translation.title}
+                        onChange={(event) =>
+                          setTranslations((current) => ({
+                            ...current,
+                            [locale.code]: { ...current[locale.code], title: event.target.value },
+                          }))
+                        }
+                        style={inputStyle}
+                        placeholder={locale.code === 'en' ? scooterDraft.title || 'Vehicle title' : `Title in ${locale.label}`}
+                      />
+                    </Field>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <Field label={`Transmission (${locale.label})`}>
+                        <input
+                          value={translation.transmission}
+                          onChange={(event) =>
+                            setTranslations((current) => ({
+                              ...current,
+                              [locale.code]: { ...current[locale.code], transmission: event.target.value },
+                            }))
+                          }
+                          style={inputStyle}
+                          placeholder={locale.code === 'en' ? fallbackTransmission || 'Automatic CVT' : `Transmission in ${locale.label}`}
+                        />
+                      </Field>
+                      <Field label={`Storage / Trunk (${locale.label})`}>
+                        <input
+                          value={translation.trunk}
+                          onChange={(event) =>
+                            setTranslations((current) => ({
+                              ...current,
+                              [locale.code]: { ...current[locale.code], trunk: event.target.value },
+                            }))
+                          }
+                          style={inputStyle}
+                          placeholder={locale.code === 'en' ? fallbackTrunk || '18L underseat' : `Storage in ${locale.label}`}
+                        />
+                      </Field>
+                    </div>
+                    <Field label={`Description (${locale.label})`}>
+                      <textarea
+                        value={translation.description}
+                        onChange={(event) =>
+                          setTranslations((current) => ({
+                            ...current,
+                            [locale.code]: { ...current[locale.code], description: event.target.value },
+                          }))
+                        }
+                        style={textAreaStyle}
+                        placeholder={locale.code === 'en' ? fallbackDescription || 'Description' : `Description in ${locale.label}`}
+                      />
+                    </Field>
+                    <Field label={`Rental Terms (${locale.label})`}>
+                      <textarea
+                        value={translation.rental_terms}
+                        onChange={(event) =>
+                          setTranslations((current) => ({
+                            ...current,
+                            [locale.code]: { ...current[locale.code], rental_terms: event.target.value },
+                          }))
+                        }
+                        style={textAreaStyle}
+                        placeholder={locale.code === 'en' ? fallbackRentalTerms || 'Rental terms' : `Rental terms in ${locale.label}`}
+                      />
+                    </Field>
+                  </div>
+                );
+              })}
+            </Panel>
+
+            <Panel style={{ padding: 22 }}>
               <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18, color: A.black, marginBottom: 16 }}>Photos</div>
               <Field label="Upload gallery" hint="The selected main photo will be used as the primary image on the site.">
                 <input type="file" accept="image/*" multiple onChange={handlePhotoPick} style={inputStyle} />
@@ -655,7 +847,9 @@ export default function AdminNewScooterPage() {
               <br />
               photos from vehicle gallery,
               <br />
-              description and rental terms from vehicle model,
+              titles and translations from vehicle translations,
+              <br />
+              specs and detail copy from localized backend fields,
               <br />
               price and status from the scooter card.
             </div>

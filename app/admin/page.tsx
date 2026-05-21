@@ -2,7 +2,8 @@
 
 import { CSSProperties, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ApiError, mediaUrl } from '@/lib/api';
+import { AdminSidebarLanguageSwitcher } from '@/components/AdminRouteShell';
+import { ApiError, ApiUser, mediaUrl } from '@/lib/api';
 import {
   ClipboardIcon,
   CloseIcon,
@@ -798,7 +799,7 @@ function renderStructuredPreview(data: unknown) {
         ))}
         {data.length > 3 ? (
           <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
-            +{data.length - 3} more items in this block
+            {`+${data.length - 3} more items in this block`}
           </div>
         ) : null}
       </div>
@@ -1087,6 +1088,66 @@ function normalizePreviewText(value: string) {
     .toLowerCase();
 }
 
+function getOwnPreviewText(element: HTMLElement) {
+  return Array.from(element.childNodes)
+    .filter((node): node is Text => node.nodeType === Node.TEXT_NODE)
+    .map((node) => node.textContent || '')
+    .join(' ');
+}
+
+function getPreviewTextCandidates(element: HTMLElement) {
+  const rawCandidates = [
+    getOwnPreviewText(element),
+    element.textContent || '',
+    element.innerText || '',
+    element.getAttribute('aria-label') || '',
+    element.getAttribute('title') || '',
+    element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement ? element.placeholder || '' : '',
+    element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement ? element.value || '' : '',
+  ];
+
+  return Array.from(new Set(rawCandidates.map((value) => normalizePreviewText(value)).filter(Boolean)));
+}
+
+function isPreviewCandidateElement(element: HTMLElement) {
+  const tag = element.tagName.toLowerCase();
+  if (['html', 'body', 'script', 'style', 'noscript', 'svg', 'path'].includes(tag)) return false;
+  if (element.closest('script, style, noscript, svg')) return false;
+  if (element.getAttribute('aria-hidden') === 'true') return false;
+  if (element.hasAttribute('hidden')) return false;
+  return getPreviewTextCandidates(element).length > 0;
+}
+
+function scorePreviewTextMatch(candidate: string, variant: string) {
+  if (!candidate || !variant) return 0;
+  if (candidate === variant) return 1000 + variant.length;
+
+  const candidateTokens = candidate.split(' ').filter(Boolean);
+  const variantTokens = variant.split(' ').filter(Boolean);
+
+  if (candidate.startsWith(variant) || candidate.endsWith(variant)) {
+    return 860 + variant.length;
+  }
+
+  if (candidate.includes(variant)) {
+    return variant.length >= 3 ? 700 + variant.length : 0;
+  }
+
+  if (variant.includes(candidate)) {
+    return candidate.length >= 3 ? 520 + candidate.length : 0;
+  }
+
+  if (variantTokens.length === 1 && candidateTokens.includes(variantTokens[0]) && variantTokens[0].length >= 3) {
+    return 640 + variantTokens[0].length;
+  }
+
+  if (candidateTokens.length === 1 && variantTokens.includes(candidateTokens[0]) && candidateTokens[0].length >= 3) {
+    return 500 + candidateTokens[0].length;
+  }
+
+  return 0;
+}
+
 function formatMoney(value: string | number | undefined | null) {
   const amount = Number(value || 0);
   return new Intl.NumberFormat('en-US', {
@@ -1200,6 +1261,37 @@ function toDateTimeLocalValue(date: Date) {
   return local.toISOString().slice(0, 16);
 }
 
+function fromDateTimeLocalValue(value: string) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function withTime(date: Date, hours: number, minutes: number) {
+  const copy = new Date(date);
+  copy.setHours(hours, minutes, 0, 0);
+  return copy;
+}
+
+function buildManualBlockDayRange(day: Date) {
+  return {
+    start: withTime(day, 9, 0),
+    end: withTime(day, 18, 0),
+  };
+}
+
+function formatTimeOnly(value?: string | Date | null) {
+  if (!value) return '—';
+  return new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
+}
+
+const MANUAL_BLOCK_REASON_PRESETS = [
+  'Maintenance',
+  'External booking',
+  'Owner use',
+  'Delivery hold',
+] as const;
+
 const inputBaseStyle: CSSProperties = {
   width: '100%',
   minHeight: 42,
@@ -1213,6 +1305,28 @@ const inputBaseStyle: CSSProperties = {
   background: A.white,
   boxSizing: 'border-box',
 };
+
+function InlineStatus({ message, tone }: { message: string; tone: 'success' | 'error' }) {
+  const palette = tone === 'success'
+    ? { background: A.greenBg, border: 'rgba(22,163,74,0.18)', color: A.green }
+    : { background: A.redBg, border: 'rgba(220,38,38,0.14)', color: A.red };
+
+  return (
+    <div
+      style={{
+        padding: '10px 12px',
+        borderRadius: 10,
+        border: `1px solid ${palette.border}`,
+        background: palette.background,
+        color: palette.color,
+        fontFamily: 'Inter, sans-serif',
+        fontSize: 13,
+      }}
+    >
+      {message}
+    </div>
+  );
+}
 
 type AdminData = {
   bookings: ApiBooking[];
@@ -1402,7 +1516,7 @@ function LocationsView({ isMobile }: { isMobile: boolean }) {
                     })}
                   </div>
                   <div style={{ marginBottom: 16 }}>
-                    <label style={labelStyle}>Name in {LANG_LABELS[activeLang]}</label>
+                    <label style={labelStyle}>{`Name in ${LANG_LABELS[activeLang]}`}</label>
                     <input style={{ ...inputStyle, maxWidth: 280 }} value={draft.translations.find((t) => t.language === activeLang)?.name || ''} onChange={(e) => setZoneTrans('new', activeLang, e.target.value)} placeholder={draft.name || 'Zone name'} />
                   </div>
                   <Button variant="dark" onClick={createZone} disabled={saving['new'] || !draft.name.trim()}>{saving['new'] ? 'Creating…' : 'Create Zone'}</Button>
@@ -1426,7 +1540,7 @@ function LocationsView({ isMobile }: { isMobile: boolean }) {
                     <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 700, color: A.black }}>{zone.name}</span>
                     {zone.is_free ? <Badge color="green">Free</Badge> : <Badge color="orange">Paid</Badge>}
                     {!zone.is_active && <Badge color="default">Inactive</Badge>}
-                    {zone.translations.length > 0 && <Badge color="blue">{zone.translations.length} langs</Badge>}
+                    {zone.translations.length > 0 && <Badge color="blue">{`${zone.translations.length} langs`}</Badge>}
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <Button variant="ghost" onClick={() => openZone(zone)}>{open ? 'Close' : 'Edit'}</Button>
@@ -1464,7 +1578,7 @@ function LocationsView({ isMobile }: { isMobile: boolean }) {
                       })}
                     </div>
                     <div style={{ marginBottom: 20 }}>
-                      <label style={labelStyle}>Name in {LANG_LABELS[activeLang]}</label>
+                      <label style={labelStyle}>{`Name in ${LANG_LABELS[activeLang]}`}</label>
                       <input style={{ ...inputStyle, maxWidth: 280 }} value={draft.translations.find((t) => t.language === activeLang)?.name || ''} onChange={(e) => setZoneTrans(zone.id, activeLang, e.target.value)} placeholder={zone.name} />
                       <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: A.g400, margin: '6px 0 0' }}>Leave empty to use the default "{zone.name}"</p>
                     </div>
@@ -1631,7 +1745,8 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
         return next;
       });
       load();
-    } catch {
+    } catch (err) {
+      window.alert(err instanceof ApiError ? err.message : 'Unable to delete add-on.');
     } finally {
       setDeletingId(null);
     }
@@ -1705,11 +1820,11 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
         </div>
         <div style={{ background: A.g100, borderRadius: 10, padding: 14 }}>
           <div style={{ marginBottom: 10 }}>
-            <label style={labelStyle}>Name ({lang.toUpperCase()})</label>
+            <label style={labelStyle}>{`Name (${lang.toUpperCase()})`}</label>
             <input style={inputStyle} value={trans.name} onChange={(e) => onTransChange(lang, 'name', e.target.value)} placeholder={`Addon name in ${lang}`} />
           </div>
           <div>
-            <label style={labelStyle}>Description ({lang.toUpperCase()})</label>
+            <label style={labelStyle}>{`Description (${lang.toUpperCase()})`}</label>
             <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} value={trans.description} onChange={(e) => onTransChange(lang, 'description', e.target.value)} placeholder={`Description in ${lang}`} />
           </div>
         </div>
@@ -1761,7 +1876,7 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
                       {isDeleting ? 'Deleting…' : 'Delete'}
                     </Button>
                     {(addon.translations?.length ?? 0) > 0 && (
-                      <Badge color="green">{addon.translations!.length} langs</Badge>
+                      <Badge color="green">{`${addon.translations!.length} langs`}</Badge>
                     )}
                     <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 18, color: A.g400, lineHeight: 1 }}>{isExpanded ? '▲' : '▼'}</span>
                   </div>
@@ -1948,17 +2063,17 @@ function CategoriesView({ isMobile }: { isMobile: boolean }) {
 
   const handleSave = async (category: ApiVehicleType) => {
     const draft = drafts[category.id];
-    if (!draft || !draft.name.trim() || !draft.code.trim()) return;
+    if (!draft || !draft.name.trim()) return;
     setSaving((prev) => ({ ...prev, [category.id]: true }));
     try {
       await endpoints.adminUpdateScooterType(category.id, {
         code: draft.code.trim(),
         name: draft.name.trim(),
       });
-      await endpoints.adminSaveScooterTypeTranslations(
-        category.id,
-        draft.translations.filter((item) => item.name.trim()),
-      );
+      const translationsToSave = draft.translations.filter((item) => item.name.trim());
+      if (translationsToSave.length > 0) {
+        await endpoints.adminSaveScooterTypeTranslations(category.id, translationsToSave);
+      }
       setExpandedId(null);
       setDrafts((prev) => {
         const next = { ...prev };
@@ -1966,7 +2081,8 @@ function CategoriesView({ isMobile }: { isMobile: boolean }) {
         return next;
       });
       load();
-    } catch {
+    } catch (err) {
+      window.alert(err instanceof ApiError ? err.message : 'Unable to update category.');
     } finally {
       setSaving((prev) => ({ ...prev, [category.id]: false }));
     }
@@ -1990,28 +2106,30 @@ function CategoriesView({ isMobile }: { isMobile: boolean }) {
         return next;
       });
       load();
-    } catch {
+    } catch (err) {
+      window.alert(err instanceof ApiError ? err.message : 'Unable to delete category.');
     } finally {
       setDeletingId(null);
     }
   };
 
   const handleCreate = async () => {
-    if (!newCategory.name.trim() || !newCategory.code.trim()) return;
+    if (!newCategory.name.trim()) return;
     setCreating(true);
     try {
       const created = await endpoints.adminCreateScooterType({
         code: newCategory.code.trim(),
         name: newCategory.name.trim(),
       });
-      await endpoints.adminSaveScooterTypeTranslations(
-        created.id,
-        newCategory.translations.filter((item) => item.name.trim()),
-      );
+      const translationsToSave = newCategory.translations.filter((item) => item.name.trim());
+      if (translationsToSave.length > 0) {
+        await endpoints.adminSaveScooterTypeTranslations(created.id, translationsToSave);
+      }
       setShowCreateForm(false);
       setNewCategory(emptyCategory());
       load();
-    } catch {
+    } catch (err) {
+      window.alert(err instanceof ApiError ? err.message : 'Unable to create category.');
     } finally {
       setCreating(false);
     }
@@ -2039,7 +2157,7 @@ function CategoriesView({ isMobile }: { isMobile: boolean }) {
           </div>
           <div>
             <label style={labelStyle}>Code</label>
-            <input style={inputStyle} value={draft.code} onChange={(e) => onChange('code', e.target.value)} placeholder="scooter" />
+            <input style={inputStyle} value={draft.code} onChange={(e) => onChange('code', e.target.value)} placeholder="Optional, auto-generated" />
           </div>
         </div>
 
@@ -2075,7 +2193,7 @@ function CategoriesView({ isMobile }: { isMobile: boolean }) {
           })}
         </div>
         <div style={{ background: A.g100, borderRadius: 10, padding: 14 }}>
-          <label style={labelStyle}>Name ({LANG_LABELS[lang]})</label>
+          <label style={labelStyle}>{`Name (${LANG_LABELS[lang]})`}</label>
           <input
             style={inputStyle}
             value={translation.name}
@@ -2124,7 +2242,7 @@ function CategoriesView({ isMobile }: { isMobile: boolean }) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 14, color: A.black }}>{category.name}</div>
                     <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginTop: 2 }}>
-                      Code: {category.code}
+                      {`Code: ${category.code}`}
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -2139,7 +2257,7 @@ function CategoriesView({ isMobile }: { isMobile: boolean }) {
                       {isDeleting ? 'Deleting…' : 'Delete'}
                     </Button>
                     {(category.translations?.length ?? 0) > 0 && (
-                      <Badge color="green">{category.translations!.length} langs</Badge>
+                      <Badge color="green">{`${category.translations!.length} langs`}</Badge>
                     )}
                     <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 18, color: A.g400, lineHeight: 1 }}>{isExpanded ? '▲' : '▼'}</span>
                   </div>
@@ -2167,7 +2285,7 @@ function CategoriesView({ isMobile }: { isMobile: boolean }) {
                       }}>
                         Cancel
                       </Button>
-                      <Button variant="primary" disabled={isSaving || isDeleting || !draft.name.trim() || !draft.code.trim()} onClick={() => handleSave(category)}>
+                      <Button variant="primary" disabled={isSaving || isDeleting || !draft.name.trim()} onClick={() => handleSave(category)}>
                         {isSaving ? 'Saving…' : 'Save'}
                       </Button>
                     </div>
@@ -2194,7 +2312,7 @@ function CategoriesView({ isMobile }: { isMobile: boolean }) {
               </div>
               <div>
                 <label style={labelStyle}>Code</label>
-                <input style={inputStyle} value={newCategory.code} onChange={(e) => setNewCategory((prev) => ({ ...prev, code: e.target.value }))} placeholder="scooter" />
+                <input style={inputStyle} value={newCategory.code} onChange={(e) => setNewCategory((prev) => ({ ...prev, code: e.target.value }))} placeholder="Optional, auto-generated" />
               </div>
             </div>
 
@@ -2224,7 +2342,7 @@ function CategoriesView({ isMobile }: { isMobile: boolean }) {
 
             <div style={{ display: 'flex', gap: 10, marginTop: 24, justifyContent: 'flex-end' }}>
               <Button variant="outline" onClick={() => setShowCreateForm(false)}>Cancel</Button>
-              <Button variant="primary" onClick={handleCreate} disabled={creating || !newCategory.name.trim() || !newCategory.code.trim()}>
+              <Button variant="primary" onClick={handleCreate} disabled={creating || !newCategory.name.trim()}>
                 {creating ? 'Creating…' : 'Create'}
               </Button>
             </div>
@@ -2638,7 +2756,7 @@ function PromoCodesView({ isMobile }: { isMobile: boolean }) {
             </div>
             {draft.id ? (
               <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginBottom: 16 }}>
-                Used {draft.current_usage} / {draft.usage_limit} times
+                {`Used ${draft.current_usage} / ${draft.usage_limit} times`}
               </div>
             ) : (
               <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginBottom: 16 }}>Fill in the fields below</div>
@@ -2745,6 +2863,8 @@ export default function AdminPage() {
   const [savingScooterId, setSavingScooterId] = useState<number | null>(null);
   const [savingFleetForm, setSavingFleetForm] = useState(false);
   const [savingAdminUser, setSavingAdminUser] = useState(false);
+  const [changingOwnPassword, setChangingOwnPassword] = useState(false);
+  const [settingTeamPasswordId, setSettingTeamPasswordId] = useState<number | null>(null);
   const [activeThreadId, setActiveThreadId] = useState<number | null>(null);
   const [threadMessages, setThreadMessages] = useState<ApiChatMessage[]>([]);
   const [sendingReply, setSendingReply] = useState(false);
@@ -2843,6 +2963,24 @@ export default function AdminPage() {
       await loadAdminData();
     } finally {
       setSavingAdminUser(false);
+    }
+  }
+
+  async function handleChangeOwnPassword(payload: { current_password: string; new_password: string }) {
+    setChangingOwnPassword(true);
+    try {
+      await endpoints.changeMyPassword(payload);
+    } finally {
+      setChangingOwnPassword(false);
+    }
+  }
+
+  async function handleSetTeamUserPassword(userId: number, newPassword: string) {
+    setSettingTeamPasswordId(userId);
+    try {
+      await endpoints.adminSetUserPassword(userId, { new_password: newPassword });
+    } finally {
+      setSettingTeamPasswordId(null);
     }
   }
 
@@ -3032,7 +3170,17 @@ export default function AdminPage() {
   }
 
   const viewMap: Record<AdminView, ReactNode> = {
-    overview: <OverviewView data={data} onOpenView={setView} canManageTeam={canManageTeam} isMobile={isMobile} />,
+    overview: (
+      <OverviewView
+        data={data}
+        currentUser={user}
+        onOpenView={setView}
+        onChangeOwnPassword={handleChangeOwnPassword}
+        changingOwnPassword={changingOwnPassword}
+        canManageTeam={canManageTeam}
+        isMobile={isMobile}
+      />
+    ),
     fleet: (
       <FleetView
         scooters={data.scooters}
@@ -3067,7 +3215,17 @@ export default function AdminPage() {
     locations: <LocationsView isMobile={isMobile} />,
     site: <SiteContentView isMobile={isMobile} />,
     appContent: <SiteContentView isMobile={isMobile} initialPage="app" lockedPage="app" />,
-    users: <UsersView users={data.users} onCreateAdminUser={handleCreateAdminUser} savingAdminUser={savingAdminUser} isMobile={isMobile} />,
+    users: (
+      <UsersView
+        users={data.users}
+        currentUser={user}
+        onCreateAdminUser={handleCreateAdminUser}
+        onSetTeamUserPassword={handleSetTeamUserPassword}
+        savingAdminUser={savingAdminUser}
+        settingTeamPasswordId={settingTeamPasswordId}
+        isMobile={isMobile}
+      />
+    ),
     promocodes: <PromoCodesView isMobile={isMobile} />,
   };
 
@@ -3129,6 +3287,9 @@ export default function AdminPage() {
         </Link>
       </div>
       <div style={{ padding: '16px 14px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+        <div style={{ marginBottom: 16 }}>
+          <AdminSidebarLanguageSwitcher />
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
           <div style={{ width: 36, height: 36, background: 'rgba(255,215,0,0.15)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Sora, sans-serif', fontWeight: 800, fontSize: 14, color: A.gold }}>
             {initials(user.full_name || user.email)}
@@ -3512,15 +3673,7 @@ function SiteContentView({
   const resolveFieldFromElement = useCallback((element: HTMLElement | null) => {
     if (!element) return null;
 
-    const rawCandidates = [
-      element.textContent || '',
-      element.innerText || '',
-      element.getAttribute('aria-label') || '',
-      element.getAttribute('title') || '',
-      element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement ? element.placeholder || '' : '',
-      element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement ? element.value || '' : '',
-    ];
-    const candidates = Array.from(new Set(rawCandidates.map((value) => normalizePreviewText(value)).filter(Boolean)));
+    const candidates = getPreviewTextCandidates(element);
     if (!candidates.length) return null;
 
     let bestMatch: { fieldKey: string; score: number } | null = null;
@@ -3531,10 +3684,7 @@ function SiteContentView({
 
       for (const candidate of candidates) {
         for (const variant of variants) {
-          let score = 0;
-          if (candidate === variant) score = 1000 + variant.length;
-          else if (candidate.includes(variant) && variant.length > 5) score = 700 + variant.length;
-          else if (variant.includes(candidate) && candidate.length > 5) score = 500 + candidate.length;
+          const score = scorePreviewTextMatch(candidate, variant);
 
           if (!bestMatch || score > bestMatch.score) {
             bestMatch = { fieldKey: field.key, score };
@@ -3598,9 +3748,8 @@ function SiteContentView({
       element.style.cursor = 'pointer';
     });
 
-    const nodes = Array.from(
-      doc.body.querySelectorAll('h1,h2,h3,h4,h5,h6,p,span,a,button,li,label,small,strong,em,input,textarea'),
-    ) as HTMLElement[];
+    const nodes = Array.from(doc.body.querySelectorAll('*'))
+      .filter((node): node is HTMLElement => node instanceof HTMLElement && isPreviewCandidateElement(node));
 
     for (const node of nodes) {
       if (node.closest('[data-site-content-key]')) continue;
@@ -3673,7 +3822,7 @@ function SiteContentView({
         return;
       }
 
-      const fallbackTarget = target.closest('button, a, input, textarea, h1, h2, h3, h4, h5, h6, p, span, li, label, small, strong, em') as HTMLElement | null;
+      const fallbackTarget = target.closest('*') as HTMLElement | null;
       const fallbackFieldKey = resolveFieldFromElement(fallbackTarget);
       if (fallbackFieldKey) {
         event.preventDefault();
@@ -3891,7 +4040,7 @@ function SiteContentView({
                   Mobile app keys
                 </div>
                 <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 22, color: A.black, marginBottom: 8 }}>
-                  {pageFields.length} editable texts
+                  {`${pageFields.length} editable texts`}
                 </div>
                 <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
                   These values are saved as <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>app.*</span> content and are loaded by the mobile app from the public bootstrap API.
@@ -4232,8 +4381,8 @@ function SiteContentView({
             </div>
 
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <Badge color="blue">{previewSelectableFields.length} clickable content fields</Badge>
-              <Badge color="green">{pageFields.length} total content entries</Badge>
+              <Badge color="blue">{`${previewSelectableFields.length} clickable content fields`}</Badge>
+              <Badge color="green">{`${pageFields.length} total content entries`}</Badge>
               <Badge color="orange">Preview: {activeLanguage.toUpperCase()}</Badge>
             </div>
 
@@ -4313,7 +4462,7 @@ function SiteContentView({
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <Badge color="blue">{activePageMeta?.label}</Badge>
                   <Badge color="orange">{activeLanguage.toUpperCase()}</Badge>
-                  <Badge color="green">{previewSelectableFields.length} clickable texts</Badge>
+                  <Badge color="green">{`${previewSelectableFields.length} clickable texts`}</Badge>
                 </div>
 
                 <div style={{ border: `1px solid ${A.g200}`, borderRadius: 18, overflow: 'hidden', background: A.white }}>
@@ -4364,8 +4513,8 @@ function SiteContentView({
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <Badge color="blue">{activePageMeta?.label}</Badge>
-                    <Badge color="green">{previewSelectableFields.length} text elements ready</Badge>
-                    <Badge color="orange">Preview in {activeLanguage.toUpperCase()}</Badge>
+                    <Badge color="green">{`${previewSelectableFields.length} text elements ready`}</Badge>
+                    <Badge color="orange">{`Preview in ${activeLanguage.toUpperCase()}`}</Badge>
                   </div>
                 </div>
               </Panel>
@@ -4534,16 +4683,102 @@ function SiteContentView({
   );
 }
 
+function AdminPasswordPanel({
+  currentUser,
+  onSubmit,
+  submitting,
+}: {
+  currentUser: ApiUser | null;
+  onSubmit: (payload: { current_password: string; new_password: string }) => Promise<void>;
+  submitting: boolean;
+}) {
+  const [draft, setDraft] = useState({ current_password: '', new_password: '', confirm_password: '' });
+  const [status, setStatus] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
+
+  return (
+    <Panel style={{ padding: 20 }}>
+      <SectionHeader
+        title="Account Security"
+        subtitle="Change your own admin password here. Your current password is required for confirmation."
+        action={currentUser?.email ? <Badge color="default">{currentUser.email}</Badge> : null}
+      />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+        <input
+          type="password"
+          value={draft.current_password}
+          onChange={(event) => setDraft((current) => ({ ...current, current_password: event.target.value }))}
+          placeholder="Current password"
+          style={inputBaseStyle}
+        />
+        <input
+          type="password"
+          value={draft.new_password}
+          onChange={(event) => setDraft((current) => ({ ...current, new_password: event.target.value }))}
+          placeholder="New password"
+          style={inputBaseStyle}
+        />
+        <input
+          type="password"
+          value={draft.confirm_password}
+          onChange={(event) => setDraft((current) => ({ ...current, confirm_password: event.target.value }))}
+          placeholder="Confirm new password"
+          style={inputBaseStyle}
+        />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginTop: 14 }}>
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
+          Use at least one strong password with letters, numbers, and symbols.
+        </div>
+        <Button
+          variant="dark"
+          disabled={submitting}
+          onClick={async () => {
+            const currentPassword = draft.current_password.trim();
+            const newPassword = draft.new_password.trim();
+            const confirmPassword = draft.confirm_password.trim();
+
+            if (!currentPassword || !newPassword || !confirmPassword) {
+              setStatus({ tone: 'error', message: 'Fill in the current password, new password, and confirmation.' });
+              return;
+            }
+            if (newPassword !== confirmPassword) {
+              setStatus({ tone: 'error', message: 'The new password and confirmation do not match.' });
+              return;
+            }
+
+            try {
+              await onSubmit({ current_password: currentPassword, new_password: newPassword });
+              setDraft({ current_password: '', new_password: '', confirm_password: '' });
+              setStatus({ tone: 'success', message: 'Your password was updated successfully.' });
+            } catch (err) {
+              setStatus({ tone: 'error', message: err instanceof Error ? err.message : 'Unable to change your password.' });
+            }
+          }}
+        >
+          {submitting ? 'Saving…' : 'Change password'}
+        </Button>
+      </div>
+      {status ? <div style={{ marginTop: 14 }}><InlineStatus message={status.message} tone={status.tone} /></div> : null}
+    </Panel>
+  );
+}
+
 function TeamAccessPanel({
   users,
+  currentUser,
   onCreateAdminUser,
+  onSetTeamUserPassword,
   savingAdminUser,
+  settingTeamPasswordId,
   canManageTeam = true,
   isMobile,
 }: {
   users: ApiAdminUser[];
+  currentUser: ApiUser | null;
   onCreateAdminUser: (payload: { email: string; full_name?: string; phone?: string; password: string; role: string; admin_permissions: AdminPermission[] }) => Promise<void>;
+  onSetTeamUserPassword: (userId: number, newPassword: string) => Promise<void>;
   savingAdminUser: boolean;
+  settingTeamPasswordId: number | null;
   canManageTeam?: boolean;
   isMobile: boolean;
 }) {
@@ -4555,6 +4790,8 @@ function TeamAccessPanel({
     role: 'staff',
     admin_permissions: defaultAdminPermissionsForRole('staff'),
   });
+  const [teamPasswordDrafts, setTeamPasswordDrafts] = useState<Record<number, string>>({});
+  const [teamPasswordStatus, setTeamPasswordStatus] = useState<Record<number, { tone: 'success' | 'error'; message: string }>>({});
 
   const teamUsers = users.filter((item) => ['admin', 'manager', 'staff'].includes((item.role || '').toLowerCase()));
 
@@ -4571,7 +4808,7 @@ function TeamAccessPanel({
             <input value={adminDraft.email} onChange={(e) => setAdminDraft((current) => ({ ...current, email: e.target.value }))} placeholder="Email" style={inputBaseStyle} />
             <input value={adminDraft.full_name} onChange={(e) => setAdminDraft((current) => ({ ...current, full_name: e.target.value }))} placeholder="Full name" style={inputBaseStyle} />
             <input value={adminDraft.phone} onChange={(e) => setAdminDraft((current) => ({ ...current, phone: e.target.value }))} placeholder="Phone" style={inputBaseStyle} />
-            <input value={adminDraft.password} onChange={(e) => setAdminDraft((current) => ({ ...current, password: e.target.value }))} placeholder="Temporary password" style={inputBaseStyle} />
+            <input type="password" value={adminDraft.password} onChange={(e) => setAdminDraft((current) => ({ ...current, password: e.target.value }))} placeholder="Temporary password" style={inputBaseStyle} />
             <select
               value={adminDraft.role}
               onChange={(e) =>
@@ -4642,7 +4879,8 @@ function TeamAccessPanel({
       )}
       <div style={{ display: 'grid', gap: 10 }}>
         {teamUsers.map((item) => (
-          <div key={item.id} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.8fr 1fr', gap: 10, padding: '12px 14px', borderRadius: 12, background: A.g100, alignItems: 'start' }}>
+          <div key={item.id} style={{ display: 'grid', gap: 12, padding: '12px 14px', borderRadius: 12, background: A.g100, alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.8fr 1fr', gap: 10, alignItems: 'start' }}>
             <div>
               <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 14, color: A.black }}>
                 {item.full_name || item.email}
@@ -4668,6 +4906,61 @@ function TeamAccessPanel({
                 ))}
               </div>
             </div>
+            </div>
+            {canManageTeam ? (
+              currentUser?.id === item.id ? (
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
+                  Use the Account Security card on the Overview screen to change your own password.
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 280px) auto', gap: 10, alignItems: 'center' }}>
+                    <input
+                      type="password"
+                      value={teamPasswordDrafts[item.id] || ''}
+                      onChange={(event) =>
+                        setTeamPasswordDrafts((current) => ({
+                          ...current,
+                          [item.id]: event.target.value,
+                        }))
+                      }
+                      placeholder="Set a new password"
+                      style={inputBaseStyle}
+                    />
+                    <Button
+                      variant="dark"
+                      disabled={settingTeamPasswordId === item.id}
+                      onClick={async () => {
+                        const nextPassword = (teamPasswordDrafts[item.id] || '').trim();
+                        if (!nextPassword) {
+                          setTeamPasswordStatus((current) => ({
+                            ...current,
+                            [item.id]: { tone: 'error', message: 'Enter a new password first.' },
+                          }));
+                          return;
+                        }
+                        try {
+                          await onSetTeamUserPassword(item.id, nextPassword);
+                          setTeamPasswordDrafts((current) => ({ ...current, [item.id]: '' }));
+                          setTeamPasswordStatus((current) => ({
+                            ...current,
+                            [item.id]: { tone: 'success', message: 'Password updated successfully.' },
+                          }));
+                        } catch (err) {
+                          setTeamPasswordStatus((current) => ({
+                            ...current,
+                            [item.id]: { tone: 'error', message: err instanceof Error ? err.message : 'Unable to update the password.' },
+                          }));
+                        }
+                      }}
+                    >
+                      {settingTeamPasswordId === item.id ? 'Saving…' : 'Update password'}
+                    </Button>
+                  </div>
+                  {teamPasswordStatus[item.id] ? <InlineStatus message={teamPasswordStatus[item.id].message} tone={teamPasswordStatus[item.id].tone} /> : null}
+                </div>
+              )
+            ) : null}
           </div>
         ))}
         {teamUsers.length === 0 ? (
@@ -4682,30 +4975,50 @@ function TeamAccessPanel({
 
 function UsersView({
   users,
+  currentUser,
   onCreateAdminUser,
+  onSetTeamUserPassword,
   savingAdminUser,
+  settingTeamPasswordId,
   isMobile,
 }: {
   users: ApiAdminUser[];
+  currentUser: ApiUser | null;
   onCreateAdminUser: (payload: { email: string; full_name?: string; phone?: string; password: string; role: string; admin_permissions: AdminPermission[] }) => Promise<void>;
+  onSetTeamUserPassword: (userId: number, newPassword: string) => Promise<void>;
   savingAdminUser: boolean;
+  settingTeamPasswordId: number | null;
   isMobile: boolean;
 }) {
   return (
     <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? '16px' : '28px 32px' }}>
-      <TeamAccessPanel users={users} onCreateAdminUser={onCreateAdminUser} savingAdminUser={savingAdminUser} isMobile={isMobile} />
+      <TeamAccessPanel
+        users={users}
+        currentUser={currentUser}
+        onCreateAdminUser={onCreateAdminUser}
+        onSetTeamUserPassword={onSetTeamUserPassword}
+        savingAdminUser={savingAdminUser}
+        settingTeamPasswordId={settingTeamPasswordId}
+        isMobile={isMobile}
+      />
     </div>
   );
 }
 
 function OverviewView({
   data,
+  currentUser,
   onOpenView,
+  onChangeOwnPassword,
+  changingOwnPassword,
   canManageTeam,
   isMobile,
 }: {
   data: AdminData;
+  currentUser: ApiUser | null;
   onOpenView: (view: AdminView) => void;
+  onChangeOwnPassword: (payload: { current_password: string; new_password: string }) => Promise<void>;
+  changingOwnPassword: boolean;
   canManageTeam: boolean;
   isMobile: boolean;
 }) {
@@ -4920,6 +5233,7 @@ function OverviewView({
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: isMobile ? 12 : 16 }}>
+        <AdminPasswordPanel currentUser={currentUser} onSubmit={onChangeOwnPassword} submitting={changingOwnPassword} />
         <Panel style={{ padding: 20 }}>
           <SectionHeader
             title="Users & Team"
@@ -5569,6 +5883,12 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
     };
   });
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+  const draftStartDate = useMemo(() => fromDateTimeLocalValue(draft.start_at), [draft.start_at]);
+  const draftEndDate = useMemo(() => fromDateTimeLocalValue(draft.end_at), [draft.end_at]);
+  const selectedScooter = useMemo(
+    () => scooters.find((item) => String(item.id) === draft.vehicle) || null,
+    [draft.vehicle, scooters],
+  );
 
   const activeBookings = bookings
     .filter((item) => item.status !== 'cancelled')
@@ -5604,9 +5924,94 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
     loadBlocks();
   }, [loadBlocks]);
 
+  const draftValidationError = useMemo(() => {
+    if (!draft.vehicle) return 'Choose a scooter first.';
+    if (!draftStartDate || !draftEndDate) return 'Set both start and end time.';
+    if (draftEndDate <= draftStartDate) return 'End time must be later than start time.';
+    return null;
+  }, [draft.vehicle, draftEndDate, draftStartDate]);
+
+  const draftDurationHours = useMemo(() => {
+    if (!draftStartDate || !draftEndDate || draftEndDate <= draftStartDate) return 0;
+    return Math.round(((draftEndDate.getTime() - draftStartDate.getTime()) / (1000 * 60 * 60)) * 10) / 10;
+  }, [draftEndDate, draftStartDate]);
+
+  const overlappingBookings = useMemo(() => {
+    if (!selectedScooter || !draftStartDate || !draftEndDate || draftEndDate <= draftStartDate) return [];
+    return activeBookings.filter(
+      (item) =>
+        item.scooter?.id === selectedScooter.id &&
+        item.startDate <= draftEndDate &&
+        item.endDate >= draftStartDate,
+    );
+  }, [activeBookings, draftEndDate, draftStartDate, selectedScooter]);
+
+  const overlappingManualBlocks = useMemo(() => {
+    if (!selectedScooter || !draftStartDate || !draftEndDate || draftEndDate <= draftStartDate) return [];
+    return blocks.filter((item) => {
+      if (item.vehicle !== selectedScooter.id || item.type !== 'manual_block') return false;
+      const startAt = new Date(item.start_at);
+      const endAt = new Date(item.end_at);
+      return startAt <= draftEndDate && endAt >= draftStartDate;
+    });
+  }, [blocks, draftEndDate, draftStartDate, selectedScooter]);
+
+  const selectedScooterBlocks = useMemo(() => {
+    if (!selectedScooter) return [];
+    return blocks
+      .filter((item) => item.vehicle === selectedScooter.id && item.type === 'manual_block')
+      .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
+  }, [blocks, selectedScooter]);
+
+  function setManualBlockRangeForDay(vehicleId: number, day: Date) {
+    const { start, end } = buildManualBlockDayRange(day);
+    setDraft((current) => ({
+      ...current,
+      vehicle: String(vehicleId),
+      start_at: toDateTimeLocalValue(start),
+      end_at: toDateTimeLocalValue(end),
+    }));
+  }
+
+  function setRangePreset(mode: 'today' | 'day' | '24h' | '3d') {
+    const anchor = draftStartDate || new Date();
+
+    if (mode === 'today') {
+      const { start, end } = buildManualBlockDayRange(new Date());
+      setDraft((current) => ({
+        ...current,
+        start_at: toDateTimeLocalValue(start),
+        end_at: toDateTimeLocalValue(end),
+      }));
+      return;
+    }
+
+    if (mode === 'day') {
+      const { start, end } = buildManualBlockDayRange(anchor);
+      setDraft((current) => ({
+        ...current,
+        start_at: toDateTimeLocalValue(start),
+        end_at: toDateTimeLocalValue(end),
+      }));
+      return;
+    }
+
+    const nextEnd = new Date(anchor);
+    if (mode === '24h') {
+      nextEnd.setHours(nextEnd.getHours() + 24);
+    } else {
+      nextEnd.setDate(nextEnd.getDate() + 3);
+    }
+    setDraft((current) => ({
+      ...current,
+      start_at: toDateTimeLocalValue(anchor),
+      end_at: toDateTimeLocalValue(nextEnd),
+    }));
+  }
+
   async function createManualBlock() {
-    if (!draft.vehicle || !draft.start_at || !draft.end_at) {
-      window.alert('Choose a scooter, start, and end time.');
+    if (draftValidationError) {
+      window.alert(draftValidationError);
       return;
     }
 
@@ -5614,8 +6019,8 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
     try {
       await endpoints.adminCreateAvailabilityBlock({
         vehicle: Number(draft.vehicle),
-        start_at: new Date(draft.start_at).toISOString(),
-        end_at: new Date(draft.end_at).toISOString(),
+        start_at: draftStartDate!.toISOString(),
+        end_at: draftEndDate!.toISOString(),
         type: 'manual_block',
         comment: draft.comment.trim(),
       });
@@ -5655,39 +6060,159 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
         }
       />
       <Panel style={{ padding: 18, marginBottom: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr 1fr 1.2fr auto', gap: 12, alignItems: 'end' }}>
-          <div>
-            <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
-              Scooter
-            </label>
-            <select value={draft.vehicle} onChange={(e) => setDraft((current) => ({ ...current, vehicle: e.target.value }))} style={{ ...inputBaseStyle, minHeight: 42 }}>
-              <option value="">Choose scooter</option>
-              {scooters.map((item) => (
-                <option key={item.id} value={item.id}>{item.title}</option>
-              ))}
-            </select>
+        <div style={{ display: 'grid', gap: 16 }}>
+          <div style={{ display: 'grid', gap: 8 }}>
+            <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18, color: A.black }}>
+              Add manual occupancy fast
+            </div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
+              Click any empty day cell below to prefill scooter and date, then save the block. Use the note presets for maintenance, owner use, or external bookings.
+            </div>
           </div>
-          <div>
-            <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
-              Start
-            </label>
-            <input type="datetime-local" value={draft.start_at} onChange={(e) => setDraft((current) => ({ ...current, start_at: e.target.value }))} style={inputBaseStyle} />
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Button variant="outline" onClick={() => setRangePreset('today')}>Today 09:00–18:00</Button>
+            <Button variant="outline" onClick={() => setRangePreset('day')}>Whole selected day</Button>
+            <Button variant="outline" onClick={() => setRangePreset('24h')}>+24 hours</Button>
+            <Button variant="outline" onClick={() => setRangePreset('3d')}>+3 days</Button>
           </div>
-          <div>
-            <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
-              End
-            </label>
-            <input type="datetime-local" value={draft.end_at} onChange={(e) => setDraft((current) => ({ ...current, end_at: e.target.value }))} style={inputBaseStyle} />
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {MANUAL_BLOCK_REASON_PRESETS.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setDraft((current) => ({ ...current, comment: item }))}
+                style={{
+                  borderRadius: 999,
+                  border: `1px solid ${draft.comment === item ? A.black : A.g200}`,
+                  background: draft.comment === item ? A.black : A.white,
+                  color: draft.comment === item ? A.white : A.black,
+                  cursor: 'pointer',
+                  padding: '8px 12px',
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                {item}
+              </button>
+            ))}
           </div>
-          <div>
-            <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
-              Reserved by / note
-            </label>
-            <input value={draft.comment} onChange={(e) => setDraft((current) => ({ ...current, comment: e.target.value }))} placeholder="Guest name, maintenance, external booking..." style={inputBaseStyle} />
+
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr 1fr 1.2fr auto', gap: 12, alignItems: 'end' }}>
+            <div>
+              <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Scooter
+              </label>
+              <select value={draft.vehicle} onChange={(e) => setDraft((current) => ({ ...current, vehicle: e.target.value }))} style={{ ...inputBaseStyle, minHeight: 42 }}>
+                <option value="">Choose scooter</option>
+                {scooters.map((item) => (
+                  <option key={item.id} value={item.id}>{item.title}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Start
+              </label>
+              <input type="datetime-local" value={draft.start_at} onChange={(e) => setDraft((current) => ({ ...current, start_at: e.target.value }))} style={inputBaseStyle} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                End
+              </label>
+              <input type="datetime-local" value={draft.end_at} onChange={(e) => setDraft((current) => ({ ...current, end_at: e.target.value }))} style={inputBaseStyle} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Reserved by / note
+              </label>
+              <input value={draft.comment} onChange={(e) => setDraft((current) => ({ ...current, comment: e.target.value }))} placeholder="Guest name, maintenance, external booking..." style={inputBaseStyle} />
+            </div>
+            <Button variant="dark" onClick={createManualBlock} disabled={savingBlock || Boolean(draftValidationError)}>
+              {savingBlock ? 'Saving…' : 'Add block'}
+            </Button>
           </div>
-          <Button variant="dark" onClick={createManualBlock} disabled={savingBlock}>
-            {savingBlock ? 'Saving…' : 'Add block'}
-          </Button>
+
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.1fr) minmax(280px, 0.9fr)', gap: 12 }}>
+            <div style={{ border: `1px solid ${draftValidationError ? A.red : A.g200}`, borderRadius: 12, padding: '12px 14px', background: draftValidationError ? A.redBg : A.g100 }}>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Current block
+              </div>
+              <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 15, color: A.black, marginBottom: 4 }}>
+                {selectedScooter?.title || 'No scooter selected'}
+              </div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: draftValidationError ? A.red : A.g700, lineHeight: 1.6 }}>
+                {draftValidationError
+                  ? draftValidationError
+                  : `${formatShortDate(draftStartDate)} · ${formatTimeOnly(draftStartDate)} → ${formatShortDate(draftEndDate)} · ${formatTimeOnly(draftEndDate)} · ${draftDurationHours}h`}
+              </div>
+              {draft.comment ? (
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginTop: 6 }}>
+                  Note: {draft.comment}
+                </div>
+              ) : null}
+            </div>
+
+            <div style={{ border: `1px solid ${overlappingBookings.length || overlappingManualBlocks.length ? A.orange : A.g200}`, borderRadius: 12, padding: '12px 14px', background: overlappingBookings.length || overlappingManualBlocks.length ? A.orangeBg : A.g100 }}>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Conflict check
+              </div>
+              {overlappingBookings.length === 0 && overlappingManualBlocks.length === 0 ? (
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700, lineHeight: 1.6 }}>
+                  No overlapping bookings or manual blocks for this range.
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gap: 6 }}>
+                  {overlappingBookings.map((item) => (
+                    <div key={`booking-${item.id}`} style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700 }}>
+                      {`Booking #${item.order_number} · ${item.contact_name || item.user || 'Guest'}`}
+                    </div>
+                  ))}
+                  {overlappingManualBlocks.map((item) => (
+                    <div key={`manual-${item.id}`} style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700 }}>
+                      {`Manual block · ${item.comment || 'Blocked from admin panel'}`}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {selectedScooter ? (
+            <div style={{ borderTop: `1px solid ${A.g200}`, paddingTop: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  Manual blocks for {selectedScooter.title}
+                </div>
+                <Badge color="default">{selectedScooterBlocks.length} total</Badge>
+              </div>
+              {selectedScooterBlocks.length === 0 ? (
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500 }}>
+                  No manual occupancy blocks for this scooter yet.
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {selectedScooterBlocks.slice(0, 4).map((item) => (
+                    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', background: A.white, border: `1px solid ${A.g200}`, borderRadius: 10, padding: '10px 12px' }}>
+                      <div>
+                        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600, color: A.black }}>
+                          {formatShortDate(item.start_at)} {formatTimeOnly(item.start_at)} → {formatShortDate(item.end_at)} {formatTimeOnly(item.end_at)}
+                        </div>
+                        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginTop: 2 }}>
+                          {item.comment || 'Blocked from admin panel'}
+                        </div>
+                      </div>
+                      <Button variant="ghost" onClick={() => deleteManualBlock(item.id)} disabled={deletingBlockId === item.id}>
+                        {deletingBlockId === item.id ? 'Deleting…' : 'Delete'}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : null}
         </div>
       </Panel>
       {scooters.length === 0 ? (
@@ -5741,7 +6266,10 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
                 minHeight: 74,
               }}
             >
-              <div style={{ padding: '14px 16px' }}>
+              <div
+                onClick={() => setDraft((current) => ({ ...current, vehicle: String(scooter.id) }))}
+                style={{ padding: '14px 16px', cursor: 'pointer', background: draft.vehicle === String(scooter.id) ? 'rgba(255,215,0,0.08)' : 'transparent' }}
+              >
                 <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 14, color: A.black }}>
                   {scooter.title}
                 </div>
@@ -5763,13 +6291,30 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
                   const endAt = new Date(item.end_at);
                   return startAt <= dayEnd && endAt >= dayStart;
                 });
+                const isDraftTarget =
+                  draft.vehicle === String(scooter.id) &&
+                  Boolean(draftStartDate && draftEndDate && draftStartDate <= dayEnd && draftEndDate >= dayStart);
                 return (
                   <div
                     key={`${scooter.id}-${day.toISOString()}`}
-                    style={{ borderLeft: `1px solid ${A.g200}`, padding: 6 }}
+                    onClick={() => {
+                      if (matches.length === 0 && blockMatches.length === 0) {
+                        setManualBlockRangeForDay(scooter.id, day);
+                      }
+                    }}
+                    style={{
+                      borderLeft: `1px solid ${A.g200}`,
+                      padding: 6,
+                      cursor: matches.length === 0 && blockMatches.length === 0 ? 'pointer' : 'default',
+                      background: isDraftTarget ? 'rgba(255,215,0,0.08)' : 'transparent',
+                    }}
                   >
                     {matches.length === 0 && blockMatches.length === 0 ? (
-                      <div style={{ height: '100%', minHeight: 60, borderRadius: 10, background: A.g100 }} />
+                      <div style={{ height: '100%', minHeight: 60, borderRadius: 10, background: isDraftTarget ? 'rgba(255,215,0,0.18)' : A.g100, display: 'grid', placeItems: 'center' }}>
+                        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: isDraftTarget ? A.black : A.g500, textAlign: 'center' }}>
+                          {isDraftTarget ? 'Ready to save' : 'Click to block day'}
+                        </div>
+                      </div>
                     ) : (
                       <>
                         {matches.map((item) => (
@@ -5824,7 +6369,10 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
                               </div>
                               <button
                                 type="button"
-                                onClick={() => deleteManualBlock(item.id)}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  deleteManualBlock(item.id);
+                                }}
                                 disabled={deletingBlockId === item.id}
                                 style={{ border: 'none', background: 'transparent', color: A.red, cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: 11, padding: 0 }}
                               >
@@ -5967,7 +6515,7 @@ function AnalyticsView({
                   </span>
                 </div>
                 <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginTop: 4 }}>
-                  Dropoff: {item.dropoff_percent}%
+                  {`Dropoff: ${item.dropoff_percent}%`}
                 </div>
               </div>
             ))}
@@ -6066,7 +6614,7 @@ function SupportView({
             Support Threads
           </div>
           <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
-            {threads.length} live conversations
+            {`${threads.length} live conversations`}
           </div>
         </div>
         {threads.length === 0 ? (

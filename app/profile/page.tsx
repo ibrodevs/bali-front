@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import type { CSSProperties, FormEvent, ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { BRChip, BRPrimary, BROutline } from '@/components/BR';
 import SiteFooter from '@/components/SiteFooter';
 import SiteHeader from '@/components/SiteHeader';
@@ -42,12 +43,14 @@ type Tab = 'profile' | 'bookings' | 'support';
 type BookingFilter = 'all' | 'active' | 'completed';
 
 const ACTIVE_STATUSES = ['created', 'confirmed', 'active', 'delivery', 'pending_payment'];
+const BOOKING_PRICE_SOURCE_CURRENCY = 'USD';
 
 export default function ProfilePage() {
   const { t, locale } = useLocale();
   const copy = PROFILE_COPY[locale as keyof typeof PROFILE_COPY] || PROFILE_COPY.en;
   const { user, loading: authLoading, signOut, refresh } = useAuth();
   const { currency: activeCurrency, setCurrency } = useCurrency();
+  const searchParams = useSearchParams();
   const bookings = user?.bookings ?? [];
 
   const [activeTab, setActiveTab] = useState<Tab>('profile');
@@ -84,6 +87,13 @@ export default function ProfilePage() {
     if (bookingFilter === 'completed') return bookings.filter((b) => b.status === 'completed');
     return bookings;
   }, [bookings, bookingFilter]);
+
+  useEffect(() => {
+    const requestedTab = searchParams.get('tab');
+    if (requestedTab === 'profile' || requestedTab === 'bookings' || requestedTab === 'support') {
+      setActiveTab(requestedTab);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!user) return;
@@ -477,7 +487,11 @@ export default function ProfilePage() {
                           <BookingMeta
                             label={copy.total}
                             value={formatCurrencyAmount(
-                              convertAmount(Number(booking.total_price || 0), booking.currency || 'USD', activeCurrency),
+                              convertAmount(
+                                Number(booking.total_price || 0),
+                                BOOKING_PRICE_SOURCE_CURRENCY,
+                                activeCurrency,
+                              ),
                               activeCurrency,
                             )}
                           />

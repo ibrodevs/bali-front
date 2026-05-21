@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BR_LOCATIONS } from '@/lib/data';
@@ -7,6 +8,7 @@ import { BRPhoto } from '@/components/BR';
 import {
   ArrowRightIcon, CheckIcon,
   ScooterIcon, StarIcon,
+  SupportIcon,
   TelegramIcon,
   WeChatIcon,
   WhatsAppIcon,
@@ -80,6 +82,15 @@ const stagger = {
 };
 
 const WA_LINK = 'https://wa.me/628135915173?text=Hi%2C%20I%E2%80%99d%20like%20to%20rent%20a%20scooter%20in%20Bali!';
+const SUPPORT_CHAT_LINK = '/profile?tab=support';
+const SUPPORT_CHAT_COPY = {
+  en: 'Support chat',
+  ru: 'Чат поддержки',
+  zh: '支持聊天',
+  id: 'Chat support',
+  de: 'Support-Chat',
+  fr: 'Chat support',
+} as const;
 
 export default function LandingPage() {
   const { t, locale } = useLocale();
@@ -131,6 +142,7 @@ export default function LandingPage() {
   const homeReviews = t.home.reviews;
   const minPrice = featured[0]?.price || 8;
   const minPriceLabel = `${symbol}${(Math.round(convertPrice(minPrice) * 100) / 100).toFixed(2)}`;
+  const supportChatLabel = SUPPORT_CHAT_COPY[locale as keyof typeof SUPPORT_CHAT_COPY] || SUPPORT_CHAT_COPY.en;
 
   return (
     <div style={{ width: '100%', minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#FAFAF5', color: '#0A0A0F', fontFamily: 'var(--br-body)', WebkitFontSmoothing: 'antialiased' }}>
@@ -205,6 +217,18 @@ export default function LandingPage() {
               <WhatsAppIcon size={18} color="#25D366" />
               WhatsApp
             </a>
+
+            <Link href={SUPPORT_CHAT_LINK} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 9,
+              background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              color: '#fff', fontFamily: 'var(--br-body)', fontSize: 15, fontWeight: 500,
+              textDecoration: 'none', whiteSpace: 'nowrap',
+              padding: '0 20px', height: 'clamp(58px, 6vw, 68px)', borderRadius: 16,
+            }}>
+              <SupportIcon size={18} color="#FFD700" />
+              {supportChatLabel}
+            </Link>
 
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
               <button

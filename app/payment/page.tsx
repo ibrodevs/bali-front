@@ -256,6 +256,8 @@ function PaymentInner() {
         base: toSelectedCurrency(booking.base_price, pricingSourceCurrency),
         addons: toSelectedCurrency(booking.add_ons_price, pricingSourceCurrency),
         delivery: toSelectedCurrency(booking.delivery_price, pricingSourceCurrency),
+        discount: toSelectedCurrency(booking.discount_amount, pricingSourceCurrency),
+        markup: toSelectedCurrency(booking.markup_amount, pricingSourceCurrency),
         total: toSelectedCurrency(booking.total_price, pricingSourceCurrency),
         currency: selectedCurrency,
       };
@@ -264,6 +266,8 @@ function PaymentInner() {
       base: toSelectedCurrency(quote?.base_price, pricingSourceCurrency),
       addons: toSelectedCurrency(quote?.add_ons_price, pricingSourceCurrency),
       delivery: toSelectedCurrency(quote?.delivery_price, pricingSourceCurrency),
+      discount: toSelectedCurrency(quote?.discount_amount, pricingSourceCurrency),
+      markup: toSelectedCurrency(quote?.markup_amount, pricingSourceCurrency),
       total: toSelectedCurrency(quote?.total_price, pricingSourceCurrency),
       currency: selectedCurrency,
     };
@@ -473,6 +477,22 @@ function PaymentInner() {
                   <span {...marker(key)} style={{ color: sub }}>{l}</span><span>{v}</span>
                 </div>
               ))}
+              {summary.discount > 0 ? (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
+                  <span {...marker('payment.discount')} style={{ color: '#16A34A' }}>
+                    {draft?.promo_code ? `${copy.discountLabel} (${draft.promo_code})` : copy.discountLabel}
+                  </span>
+                  <span style={{ color: '#16A34A' }}>-{formatCurrencyAmount(summary.discount, summary.currency)}</span>
+                </div>
+              ) : null}
+              {summary.markup > 0 ? (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
+                  <span {...marker('payment.markup')} style={{ color: sub }}>
+                    {copy.paymentAdjustment}
+                  </span>
+                  <span>+{formatCurrencyAmount(summary.markup, summary.currency)}</span>
+                </div>
+              ) : null}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 16, paddingTop: 16, borderTop: `1px solid ${border}` }}>
               <span className="br-display" style={{ fontSize: 18 }}>{t.detail.total}</span>

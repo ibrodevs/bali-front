@@ -204,7 +204,7 @@ function FAQEditor({
             Active
           </label>
           <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
-            {filledCount}/{LANGUAGES.length} filled
+            {`${filledCount}/${LANGUAGES.length} filled`}
           </span>
         </div>
       )}
@@ -212,7 +212,7 @@ function FAQEditor({
       {/* Filled count (desktop) */}
       {!isMobile && (
         <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginBottom: 12, textAlign: 'right' }}>
-          {filledCount}/{LANGUAGES.length} languages filled
+          {`${filledCount}/${LANGUAGES.length} languages filled`}
         </div>
       )}
 
@@ -383,7 +383,7 @@ export default function AdminFAQPage() {
               FAQ Management
             </h1>
             <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, margin: '2px 0 0' }}>
-              {items.length} question{items.length !== 1 ? 's' : ''} · 6 languages
+              {`${items.length} question${items.length !== 1 ? 's' : ''} · 6 languages`}
             </p>
           </div>
           {editingId !== 'new' && (

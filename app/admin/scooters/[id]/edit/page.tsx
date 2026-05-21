@@ -412,6 +412,24 @@ export default function AdminEditScooterPage() {
         throw new Error('Fill in title, slug and price.');
       }
 
+      const translationList: ApiVehicleTranslation[] = LOCALES.map((locale) => ({
+        language: locale.code,
+        title: (translations[locale.code]?.title || '').trim() || (locale.code === 'en' ? draft.title.trim() : ''),
+        description: (translations[locale.code]?.description || '').trim() || (locale.code === 'en' ? modelDraft.description.trim() : ''),
+        rental_terms: (translations[locale.code]?.rental_terms || '').trim() || (locale.code === 'en' ? modelDraft.rental_terms.trim() : ''),
+        transmission: (translations[locale.code]?.transmission || '').trim() || (locale.code === 'en' ? modelDraft.transmission.trim() : ''),
+        trunk: (translations[locale.code]?.trunk || '').trim() || (locale.code === 'en' ? modelDraft.trunk.trim() : ''),
+      }));
+      const requiredFields: Array<keyof ApiVehicleTranslation> = ['title', 'description', 'rental_terms', 'transmission', 'trunk'];
+      for (const locale of LOCALES) {
+        const item = translationList.find((translation) => translation.language === locale.code);
+        const missing = requiredFields.filter((field) => !String(item?.[field] || '').trim());
+        if (missing.length > 0) {
+          setActiveLang(locale.code);
+          throw new Error(`Fill all translation fields for ${locale.label}: ${missing.join(', ')}`);
+        }
+      }
+
       const sku = draft.sku.trim();
       await endpoints.adminUpdateScooter(scooterId, {
         model: Number(draft.model),
@@ -436,14 +454,6 @@ export default function AdminEditScooterPage() {
       }
 
       // Save translations
-      const translationList: ApiVehicleTranslation[] = LOCALES.map((l) => ({
-        language: l.code,
-        title: (translations[l.code]?.title || '').trim() || draft.title,
-        description: (translations[l.code]?.description || '').trim(),
-        rental_terms: (translations[l.code]?.rental_terms || '').trim(),
-        transmission: (translations[l.code]?.transmission || '').trim(),
-        trunk: (translations[l.code]?.trunk || '').trim(),
-      }));
       await endpoints.adminSaveScooterTranslations(scooterId, translationList);
 
       // Save model characteristics if model is selected
@@ -818,13 +828,19 @@ export default function AdminEditScooterPage() {
                 Translations
               </div>
               <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, marginBottom: 16 }}>
-                Per-vehicle description and rental terms in each language. Leave blank to use the English fallback above.
+                Per-vehicle title, specs, description and rental terms for every language shown on the public detail screen.
               </div>
 
               {/* Language tabs */}
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
                 {LOCALES.map((l) => {
-                  const hasTr = !!(translations[l.code]?.description || translations[l.code]?.rental_terms || translations[l.code]?.transmission || translations[l.code]?.trunk);
+                  const hasTr = !!(
+                    translations[l.code]?.title ||
+                    translations[l.code]?.description ||
+                    translations[l.code]?.rental_terms ||
+                    translations[l.code]?.transmission ||
+                    translations[l.code]?.trunk
+                  );
                   return (
                     <button
                       key={l.code}
@@ -1105,7 +1121,7 @@ export default function AdminEditScooterPage() {
             </div>
 
             <div style={{ marginTop: 16, padding: 12, borderRadius: 12, background: A.g100, fontSize: 13, color: A.g700, lineHeight: 1.6 }}>
-              Scooter #{scooterId} · {existingImages.length} photo{existingImages.length !== 1 ? 's' : ''} in gallery
+              {`Scooter #${scooterId} · ${existingImages.length} photo${existingImages.length !== 1 ? 's' : ''} in gallery`}
             </div>
           </Panel>
         </div>

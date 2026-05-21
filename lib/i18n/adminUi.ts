@@ -9,6 +9,8 @@ export const ADMIN_UI_LOCALES: { code: AdminUiLocale; label: string }[] = [
 type TranslationPair = { ru: string; id: string };
 
 const EXACT_TRANSLATIONS: Record<string, TranslationPair> = {
+  'Language': { ru: 'Язык', id: 'Bahasa' },
+  'Admin interface language': { ru: 'Язык интерфейса админки', id: 'Bahasa antarmuka admin' },
   'Overview': { ru: 'Обзор', id: 'Ringkasan' },
   'Bookings': { ru: 'Бронирования', id: 'Pesanan' },
   'Fleet': { ru: 'Парк', id: 'Armada' },
@@ -258,6 +260,26 @@ const EXACT_TRANSLATIONS: Record<string, TranslationPair> = {
   'Type a message...': { ru: 'Введите сообщение...', id: 'Tulis pesan...' },
   'Recent admin activity': { ru: 'Недавняя активность админов', id: 'Aktivitas admin terbaru' },
   'Last 12 months from paid bookings': { ru: 'Последние 12 месяцев по оплаченным бронированиям', id: '12 bulan terakhir dari booking berbayar' },
+  'Description': { ru: 'Описание', id: 'Deskripsi' },
+  'Storage / Trunk': { ru: 'Багажник / хранилище', id: 'Bagasi / penyimpanan' },
+  'Storage': { ru: 'Хранилище', id: 'Penyimpanan' },
+  'Remove': { ru: 'Удалить', id: 'Hapus' },
+  'Main': { ru: 'Главное', id: 'Utama' },
+  'featured': { ru: 'избранное', id: 'unggulan' },
+  'catalog': { ru: 'каталог', id: 'katalog' },
+  'Enable': { ru: 'Включить', id: 'Aktifkan' },
+  'Disable': { ru: 'Выключить', id: 'Nonaktifkan' },
+  'Automatic': { ru: 'Автомат', id: 'Otomatis' },
+  'Automatic CVT': { ru: 'Автоматический вариатор', id: 'CVT otomatis' },
+  'Large under-seat storage': { ru: 'Вместительный подседельный багажник', id: 'Bagasi bawah jok yang luas' },
+  'Base description shown when no translation is available.': { ru: 'Базовое описание показывается, если перевод недоступен.', id: 'Deskripsi dasar ditampilkan jika terjemahan tidak tersedia.' },
+  'Base rental terms shown when no translation is available.': { ru: 'Базовые условия аренды показываются, если перевод недоступен.', id: 'Syarat sewa dasar ditampilkan jika terjemahan tidak tersedia.' },
+  'Create code': { ru: 'Создать код', id: 'Buat kode' },
+  'Create a new catalog item with description, rental terms and gallery. If status is `available`, it will appear on the site right away.': { ru: 'Создайте новый элемент каталога с описанием, условиями аренды и галереей. Если статус `available`, он сразу появится на сайте.', id: 'Buat item katalog baru dengan deskripsi, syarat sewa, dan galeri. Jika status `available`, item langsung muncul di situs.' },
+  'Detail screen content comes from backend in the selected language, so fill every language before publishing.': { ru: 'Контент экрана деталей приходит с бэкенда на выбранном языке, поэтому перед публикацией заполните все языки.', id: 'Konten layar detail datang dari backend sesuai bahasa yang dipilih, jadi isi semua bahasa sebelum publikasi.' },
+  'Edit scooter details, status and gallery. Changes are saved immediately to the site.': { ru: 'Редактируйте данные скутера, статус и галерею. Изменения сразу сохраняются на сайте.', id: 'Edit detail skuter, status, dan galeri. Perubahan langsung tersimpan di situs.' },
+  'Shared across all units of the same model. Changes apply to all scooters of this model.': { ru: 'Общее для всех единиц одной модели. Изменения применяются ко всем скутерам этой модели.', id: 'Dipakai bersama untuk semua unit model yang sama. Perubahan berlaku untuk semua skuter model ini.' },
+  'Per-vehicle title, specs, description and rental terms for every language shown on the public detail screen.': { ru: 'Индивидуальные название, характеристики, описание и условия аренды для каждого языка, которые показываются на публичной странице.', id: 'Judul, spesifikasi, deskripsi, dan syarat sewa per kendaraan untuk setiap bahasa yang tampil di halaman detail publik.' },
   'Manage delivery zones and translations': { ru: 'Управление зонами доставки и переводами', id: 'Kelola zona pengiriman dan terjemahan' },
   'Delivery Zones': { ru: 'Зоны доставки', id: 'Zona pengiriman' },
   'Delivery zones, translated zone names and location section copy.': { ru: 'Зоны доставки, переведённые названия зон и тексты раздела локаций.', id: 'Zona pengiriman, nama zona terjemahan, dan copy bagian lokasi.' },
@@ -370,6 +392,144 @@ const EXACT_TRANSLATIONS: Record<string, TranslationPair> = {
   'staff': { ru: 'сотрудник', id: 'staf' },
   'manager': { ru: 'менеджер', id: 'manajer' },
   'admin': { ru: 'админ', id: 'admin' },
+  'Admin': { ru: 'Админка', id: 'Admin' },
+  'Code': { ru: 'Код', id: 'Kode' },
+  'Code:': { ru: 'Код:', id: 'Kode:' },
+  'Content': { ru: 'Контент', id: 'Konten' },
+  'Email': { ru: 'Email', id: 'Email' },
+  'End': { ru: 'Конец', id: 'Selesai' },
+  'Full name': { ru: 'Полное имя', id: 'Nama lengkap' },
+  'Phone': { ru: 'Телефон', id: 'Telepon' },
+  'Profile': { ru: 'Профиль', id: 'Profil' },
+  'Start': { ru: 'Начало', id: 'Mulai' },
+  'Usage': { ru: 'Использование', id: 'Penggunaan' },
+  'Valid Until': { ru: 'Действует до', id: 'Berlaku hingga' },
+  'Vehicle': { ru: 'Транспорт', id: 'Kendaraan' },
+  'Send': { ru: 'Отправить', id: 'Kirim' },
+  'Reopen': { ru: 'Переоткрыть', id: 'Buka kembali' },
+  'Sign in required': { ru: 'Требуется вход', id: 'Perlu masuk' },
+  'Verifying admin access': { ru: 'Проверка доступа к админке', id: 'Memeriksa akses admin' },
+  'The admin panel is only available to authorized staff.': { ru: 'Админ-панель доступна только авторизованным сотрудникам.', id: 'Panel admin hanya tersedia untuk staf yang berwenang.' },
+  'Assigned sections': { ru: 'Назначенные разделы', id: 'Bagian yang ditugaskan' },
+  'No sections assigned': { ru: 'Разделы не назначены', id: 'Belum ada bagian yang ditugaskan' },
+  'team members': { ru: 'участников команды', id: 'anggota tim' },
+  'The users screen lets you create team members and assign the exact admin sections they can access.': { ru: 'Экран пользователей позволяет создавать участников команды и точно задавать разделы админки, к которым у них есть доступ.', id: 'Layar pengguna memungkinkan Anda membuat anggota tim dan menentukan dengan tepat bagian admin yang dapat mereka akses.' },
+  'You can see the users screen from the sidebar when your account has Team Access permission.': { ru: 'Экран пользователей появится в боковом меню, если у вашего аккаунта есть право Team Access.', id: 'Layar pengguna akan muncul di sidebar jika akun Anda memiliki izin Team Access.' },
+  'Your account can view the team list, but only admins with the': { ru: 'Ваш аккаунт может видеть список команды, но только админы с правом', id: 'Akun Anda dapat melihat daftar tim, tetapi hanya admin dengan izin' },
+  'permission can create or edit team members.': { ru: 'могут создавать и редактировать участников команды.', id: 'yang dapat membuat atau mengedit anggota tim.' },
+  'Your staff account is active, but no admin sections are assigned yet. Ask an administrator to enable the parts of the panel you should manage.': { ru: 'Ваш аккаунт сотрудника активен, но разделы админки ещё не назначены. Попросите администратора открыть те части панели, которыми вы должны управлять.', id: 'Akun staf Anda aktif, tetapi belum ada bagian admin yang ditugaskan. Minta administrator mengaktifkan bagian panel yang perlu Anda kelola.' },
+  'Manage multilingual news articles': { ru: 'Управление новостями на нескольких языках', id: 'Kelola artikel berita multibahasa' },
+  'News Management': { ru: 'Управление новостями', id: 'Manajemen berita' },
+  'App preview': { ru: 'Превью приложения', id: 'Pratinjau aplikasi' },
+  'Site preview': { ru: 'Превью сайта', id: 'Pratinjau situs' },
+  'Mobile app keys': { ru: 'Ключи мобильного приложения', id: 'Kunci aplikasi mobile' },
+  'Choose an app text key': { ru: 'Выберите ключ текста приложения', id: 'Pilih key teks aplikasi' },
+  'Selected app text': { ru: 'Выбранный текст приложения', id: 'Teks aplikasi yang dipilih' },
+  'Click text on the phone': { ru: 'Нажмите на текст на телефоне', id: 'Klik teks di ponsel' },
+  'The preview uses the selected language and your unsaved drafts, so text changes show here immediately.': { ru: 'Превью использует выбранный язык и ваши несохранённые черновики, поэтому изменения текста сразу видны здесь.', id: 'Preview menggunakan bahasa yang dipilih dan draft yang belum disimpan, jadi perubahan teks langsung terlihat di sini.' },
+  'These values are saved as': { ru: 'Эти значения сохраняются как', id: 'Nilai ini disimpan sebagai' },
+  'content and are loaded by the mobile app from the public bootstrap API.': { ru: 'контента и загружаются мобильным приложением из публичного bootstrap API.', id: 'konten dan dimuat oleh aplikasi mobile dari public bootstrap API.' },
+  'Select any mobile app field on the left, then edit and save it for every supported language here.': { ru: 'Выберите слева любое поле мобильного приложения, затем отредактируйте и сохраните его здесь для каждого поддерживаемого языка.', id: 'Pilih field aplikasi mobile di sebelah kiri, lalu edit dan simpan di sini untuk setiap bahasa yang didukung.' },
+  'Hi, how can we help?': { ru: 'Здравствуйте! Чем можем помочь?', id: 'Halo, ada yang bisa kami bantu?' },
+  'Add manual occupancy fast': { ru: 'Быстро добавить ручную блокировку', id: 'Tambah blok okupansi manual dengan cepat' },
+  'Click any empty day cell below to prefill scooter and date, then save the block. Use the note presets for maintenance, owner use, or external bookings.': { ru: 'Нажмите на любую пустую ячейку дня ниже, чтобы подставить скутер и дату, затем сохраните блок. Используйте готовые заметки для обслуживания, личного использования владельцем или внешних бронирований.', id: 'Klik sel hari kosong di bawah untuk mengisi skuter dan tanggal otomatis, lalu simpan bloknya. Gunakan preset catatan untuk perawatan, penggunaan pemilik, atau booking eksternal.' },
+  'Click to block day': { ru: 'Нажмите, чтобы заблокировать день', id: 'Klik untuk memblokir hari' },
+  'Conflict check': { ru: 'Проверка пересечений', id: 'Cek bentrok' },
+  'No overlapping bookings or manual blocks for this range.': { ru: 'Для этого диапазона нет пересекающихся бронирований или ручных блокировок.', id: 'Tidak ada booking atau blok manual yang bentrok pada rentang ini.' },
+  'No manual occupancy blocks for this scooter yet.': { ru: 'Для этого скутера пока нет ручных блокировок занятости.', id: 'Belum ada blok okupansi manual untuk skuter ini.' },
+  'No scooter selected': { ru: 'Скутер не выбран', id: 'Belum ada skuter yang dipilih' },
+  'Whole selected day': { ru: 'Весь выбранный день', id: 'Sepanjang hari yang dipilih' },
+  '+24 hours': { ru: '+24 часа', id: '+24 jam' },
+  '+3 days': { ru: '+3 дня', id: '+3 hari' },
+  'Today 09:00–18:00': { ru: 'Сегодня 09:00–18:00', id: 'Hari ini 09:00–18:00' },
+  'Current block': { ru: 'Текущий блок', id: 'Blok saat ini' },
+  'Manual blocks for': { ru: 'Ручные блокировки для', id: 'Blok manual untuk' },
+  'Manual block ·': { ru: 'Ручной блок ·', id: 'Blok manual ·' },
+  'Booking #': { ru: 'Бронирование №', id: 'Booking #' },
+  'Ready to save': { ru: 'Готово к сохранению', id: 'Siap disimpan' },
+  'Rental': { ru: 'Аренда', id: 'Rental' },
+  'Gross Revenue': { ru: 'Валовая выручка', id: 'Pendapatan kotor' },
+  'Average Booking': { ru: 'Средний чек бронирования', id: 'Rata-rata nilai booking' },
+  'Average LTV': { ru: 'Средний LTV', id: 'Rata-rata LTV' },
+  'Conversion': { ru: 'Конверсия', id: 'Konversi' },
+  'Funnel': { ru: 'Воронка', id: 'Funnel' },
+  'Customers': { ru: 'Клиенты', id: 'Pelanggan' },
+  'Client accounts with CRM data or bookings': { ru: 'Аккаунты клиентов с CRM-данными или бронированиями', id: 'Akun pelanggan dengan data CRM atau booking' },
+  'Profiles assigned to a segment': { ru: 'Профили, привязанные к сегменту', id: 'Profil yang ditetapkan ke segmen' },
+  'Derived from bookings': { ru: 'Рассчитано по бронированиям', id: 'Dihitung dari booking' },
+  'No customer records available.': { ru: 'Нет доступных карточек клиентов.', id: 'Tidak ada data pelanggan yang tersedia.' },
+  'No fleet records available.': { ru: 'Нет доступных записей по парку.', id: 'Tidak ada data armada yang tersedia.' },
+  'No limit': { ru: 'Без лимита', id: 'Tanpa batas' },
+  'Discount': { ru: 'Скидка', id: 'Diskon' },
+  'Discount %': { ru: 'Скидка %', id: 'Diskon %' },
+  'Discount $': { ru: 'Скидка $', id: 'Diskon $' },
+  'Optional, auto-generated': { ru: 'Необязательно, генерируется автоматически', id: 'Opsional, dibuat otomatis' },
+  'Price per day, USD': { ru: 'Цена за день, USD', id: 'Harga per hari, USD' },
+  'Edit article': { ru: 'Редактировать статью', id: 'Edit artikel' },
+  'Create a new product for catalog': { ru: 'Создайте новый товар для каталога', id: 'Buat produk baru untuk katalog' },
+  'Pick a page on top, look at the real site preview, then click any highlighted text. The editor for that specific copy will open here with all languages.': { ru: 'Выберите страницу сверху, посмотрите реальное превью сайта, затем нажмите на любой подсвеченный текст. Редактор именно этого текста откроется здесь сразу со всеми языками.', id: 'Pilih halaman di atas, lihat preview situs asli, lalu klik teks yang disorot. Editor untuk copy tersebut akan terbuka di sini dengan semua bahasa.' },
+  'Click highlighted text on the live page preview to open its editor. The editor shows every language at once, so content managers do not need to hunt through long field lists.': { ru: 'Нажмите на подсвеченный текст в живом превью страницы, чтобы открыть его редактор. Редактор сразу показывает все языки, поэтому менеджерам контента не нужно искать поле в длинных списках.', id: 'Klik teks yang disorot di preview live halaman untuk membuka editornya. Editor menampilkan semua bahasa sekaligus, jadi manajer konten tidak perlu mencari field di daftar panjang.' },
+  'The page below uses the selected language and receives your draft content live. Click visible text on the preview to jump to the matching field.': { ru: 'Страница ниже использует выбранный язык и сразу получает ваш черновой контент. Нажмите на видимый текст в превью, чтобы перейти к соответствующему полю.', id: 'Halaman di bawah menggunakan bahasa yang dipilih dan langsung menerima draft konten Anda. Klik teks yang terlihat di preview untuk membuka field yang sesuai.' },
+  'No clickable content fields found for this page.': { ru: 'Для этой страницы не найдено кликабельных полей контента.', id: 'Tidak ada field konten yang bisa diklik di halaman ini.' },
+  'This content block is stored as structured JSON. Clicking a small text from lists, cards, benefits, steps, or FAQ often opens this kind of field.': { ru: 'Этот блок контента хранится как структурированный JSON. Нажатие на небольшой текст из списков, карточек, преимуществ, шагов или FAQ часто открывает именно такое поле.', id: 'Blok konten ini disimpan sebagai JSON terstruktur. Mengeklik teks kecil dari daftar, kartu, manfaat, langkah, atau FAQ sering membuka field seperti ini.' },
+  'Manage scooter categories and their names in every language': { ru: 'Управляйте категориями скутеров и их названиями на каждом языке', id: 'Kelola kategori skuter dan namanya di setiap bahasa' },
+  'No bookings for this filter.': { ru: 'Для этого фильтра бронирований нет.', id: 'Tidak ada booking untuk filter ini.' },
+  'Note:': { ru: 'Примечание:', id: 'Catatan:' },
+  'Off': { ru: 'Выкл', id: 'Nonaktif' },
+  'Image': { ru: 'Изображение', id: 'Gambar' },
+  'Addon name': { ru: 'Название допа', id: 'Nama add-on' },
+  'Checkout Starts': { ru: 'Начало оформления', id: 'Mulai checkout' },
+  'Segmented': { ru: 'С сегментом', id: 'Tersegmentasi' },
+  'Temporary password': { ru: 'Временный пароль', id: 'Kata sandi sementara' },
+  'Unassigned': { ru: 'Не назначено', id: 'Belum ditetapkan' },
+  'New article': { ru: 'Новая статья', id: 'Artikel baru' },
+  'New Promo Code': { ru: 'Новый промокод', id: 'Kode promo baru' },
+  'Mobile App /': { ru: 'Мобильное приложение /', id: 'Aplikasi mobile /' },
+  'May 21': { ru: '21 мая', id: '21 Mei' },
+  'May 24': { ru: '24 мая', id: '24 Mei' },
+  'FIXED': { ru: 'ФИКС.', id: 'TETAP' },
+  'PERCENT': { ru: 'ПРОЦЕНТ', id: 'PERSEN' },
+  'Manager': { ru: 'Менеджер', id: 'Manajer' },
+  'Staff': { ru: 'Сотрудник', id: 'Staf' },
+  'White': { ru: 'Белый', id: 'Putih' },
+  'Black': { ru: 'Чёрный', id: 'Hitam' },
+  '18L underseat': { ru: '18 л под сиденьем', id: '18L di bawah jok' },
+  'Base description in English': { ru: 'Базовое описание на английском', id: 'Deskripsi dasar dalam bahasa Inggris' },
+  'specs and detail copy from localized backend fields,': { ru: 'характеристики и тексты детали из локализованных полей бэкенда,', id: 'spesifikasi dan copy detail dari field backend yang dilokalkan,' },
+  'titles and translations from vehicle translations,': { ru: 'названия и переводы из переводов транспорта,', id: 'judul dan terjemahan dari terjemahan kendaraan,' },
+  'in gallery': { ru: 'в галерее', id: 'di galeri' },
+  'Loading admin data…': { ru: 'Загрузка данных админки…', id: 'Memuat data admin…' },
+  'Loading site content…': { ru: 'Загрузка контента сайта…', id: 'Memuat konten situs…' },
+  'Loading...': { ru: 'Загрузка...', id: 'Memuat...' },
+  'login success': { ru: 'успешный вход', id: 'login berhasil' },
+  'login failed': { ru: 'ошибка входа', id: 'login gagal' },
+  'Delete this zone? This cannot be undone.': { ru: 'Удалить эту зону? Действие нельзя отменить.', id: 'Hapus zona ini? Tindakan ini tidak dapat dibatalkan.' },
+  'Unable to delete add-on.': { ru: 'Не удалось удалить доп.', id: 'Tidak dapat menghapus add-on.' },
+  'Unable to update category.': { ru: 'Не удалось обновить категорию.', id: 'Tidak dapat memperbarui kategori.' },
+  'Unable to delete category.': { ru: 'Не удалось удалить категорию.', id: 'Tidak dapat menghapus kategori.' },
+  'Unable to create category.': { ru: 'Не удалось создать категорию.', id: 'Tidak dapat membuat kategori.' },
+  'Delete this article?': { ru: 'Удалить эту статью?', id: 'Hapus artikel ini?' },
+  'Code is required': { ru: 'Код обязателен', id: 'Kode wajib diisi' },
+  'Discount value is required': { ru: 'Значение скидки обязательно', id: 'Nilai diskon wajib diisi' },
+  'Save failed': { ru: 'Не удалось сохранить', id: 'Gagal menyimpan' },
+  'Delete failed': { ru: 'Не удалось удалить', id: 'Gagal menghapus' },
+  'Unable to load admin data': { ru: 'Не удалось загрузить данные админки', id: 'Tidak dapat memuat data admin' },
+  'Unable to load messages': { ru: 'Не удалось загрузить сообщения', id: 'Tidak dapat memuat pesan' },
+  'Unable to update scooter': { ru: 'Не удалось обновить скутер', id: 'Tidak dapat memperbarui skuter' },
+  'Unable to create scooter': { ru: 'Не удалось создать скутер', id: 'Tidak dapat membuat skuter' },
+  'Unable to update booking': { ru: 'Не удалось обновить бронирование', id: 'Tidak dapat memperbarui booking' },
+  'Unable to send message': { ru: 'Не удалось отправить сообщение', id: 'Tidak dapat mengirim pesan' },
+  'Unable to update thread': { ru: 'Не удалось обновить тикет', id: 'Tidak dapat memperbarui thread' },
+  'Unable to load site content': { ru: 'Не удалось загрузить контент сайта', id: 'Tidak dapat memuat konten situs' },
+  'Unable to save content': { ru: 'Не удалось сохранить контент', id: 'Tidak dapat menyimpan konten' },
+  'Unable to reset content': { ru: 'Не удалось сбросить контент', id: 'Tidak dapat mereset konten' },
+  'Enter at least email and password.': { ru: 'Введите как минимум email и пароль.', id: 'Masukkan setidaknya email dan kata sandi.' },
+  'Unable to create the team member.': { ru: 'Не удалось создать участника команды.', id: 'Tidak dapat membuat anggota tim.' },
+  'Choose a scooter first.': { ru: 'Сначала выберите скутер.', id: 'Pilih skuter terlebih dahulu.' },
+  'Set both start and end time.': { ru: 'Укажите и время начала, и время окончания.', id: 'Isi waktu mulai dan waktu selesai.' },
+  'End time must be later than start time.': { ru: 'Время окончания должно быть позже времени начала.', id: 'Waktu selesai harus lebih lambat dari waktu mulai.' },
+  'Unable to save the calendar block.': { ru: 'Не удалось сохранить блок календаря.', id: 'Tidak dapat menyimpan blok kalender.' },
+  'Unable to delete the calendar block.': { ru: 'Не удалось удалить блок календаря.', id: 'Tidak dapat menghapus blok kalender.' },
 };
 
 const LANGUAGE_LABELS: Record<string, TranslationPair> = {
@@ -380,6 +540,26 @@ const LANGUAGE_LABELS: Record<string, TranslationPair> = {
   Français: { ru: 'французском', id: 'bahasa Prancis' },
   '中文': { ru: 'китайском', id: 'bahasa Mandarin' },
 };
+
+const TRANSLATION_FIELD_LABELS: Record<string, TranslationPair> = {
+  title: { ru: 'название', id: 'judul' },
+  description: { ru: 'описание', id: 'deskripsi' },
+  rental_terms: { ru: 'условия аренды', id: 'syarat sewa' },
+  transmission: { ru: 'трансмиссия', id: 'transmisi' },
+  trunk: { ru: 'багажник', id: 'bagasi' },
+};
+
+function translateLanguageDisplay(label: string, locale: Exclude<AdminUiLocale, 'en'>): string {
+  return EXACT_TRANSLATIONS[label]?.[locale] || label;
+}
+
+function translateLanguageContext(label: string, locale: Exclude<AdminUiLocale, 'en'>): string {
+  return LANGUAGE_LABELS[label]?.[locale] || label;
+}
+
+function translateTranslationField(field: string, locale: Exclude<AdminUiLocale, 'en'>): string {
+  return TRANSLATION_FIELD_LABELS[field]?.[locale] || field;
+}
 
 type DynamicRule = {
   pattern: RegExp;
@@ -421,22 +601,71 @@ const DYNAMIC_TRANSLATIONS: DynamicRule[] = [
   {
     pattern: /^Name in (.+)$/,
     translate: (match, locale) => {
-      const label = LANGUAGE_LABELS[match[1]]?.[locale] || match[1];
+      const label = translateLanguageContext(match[1], locale);
       return locale === 'ru' ? `Название на ${label}` : `Nama dalam ${label}`;
+    },
+  },
+  {
+    pattern: /^Name \((.+)\)$/,
+    translate: (match, locale) => {
+      const label = translateLanguageDisplay(match[1], locale);
+      return locale === 'ru' ? `Название (${label})` : `Nama (${label})`;
+    },
+  },
+  {
+    pattern: /^Category in (.+)$/,
+    translate: (match, locale) => {
+      const label = translateLanguageContext(match[1], locale);
+      return locale === 'ru' ? `Категория на ${label}` : `Kategori dalam ${label}`;
     },
   },
   {
     pattern: /^Question in (.+)$/,
     translate: (match, locale) => {
-      const label = LANGUAGE_LABELS[match[1]]?.[locale] || match[1];
+      const label = translateLanguageContext(match[1], locale);
       return locale === 'ru' ? `Вопрос на ${label}` : `Pertanyaan dalam ${label}`;
     },
   },
   {
     pattern: /^Answer in (.+)$/,
     translate: (match, locale) => {
-      const label = LANGUAGE_LABELS[match[1]]?.[locale] || match[1];
+      const label = translateLanguageContext(match[1], locale);
       return locale === 'ru' ? `Ответ на ${label}` : `Jawaban dalam ${label}`;
+    },
+  },
+  {
+    pattern: /^Title \((.+)\)$/,
+    translate: (match, locale) => {
+      const label = translateLanguageDisplay(match[1], locale);
+      return locale === 'ru' ? `Название (${label})` : `Judul (${label})`;
+    },
+  },
+  {
+    pattern: /^Transmission \((.+)\)$/,
+    translate: (match, locale) => {
+      const label = translateLanguageDisplay(match[1], locale);
+      return locale === 'ru' ? `Трансмиссия (${label})` : `Transmisi (${label})`;
+    },
+  },
+  {
+    pattern: /^(?:Storage \/ Trunk|Storage \/ trunk|Trunk \/ Storage) \((.+)\)$/,
+    translate: (match, locale) => {
+      const label = translateLanguageDisplay(match[1], locale);
+      return locale === 'ru' ? `Багажник / хранилище (${label})` : `Bagasi / penyimpanan (${label})`;
+    },
+  },
+  {
+    pattern: /^Description \((.+)\)$/,
+    translate: (match, locale) => {
+      const label = translateLanguageDisplay(match[1], locale);
+      return locale === 'ru' ? `Описание (${label})` : `Deskripsi (${label})`;
+    },
+  },
+  {
+    pattern: /^Rental Terms \((.+)\)$/,
+    translate: (match, locale) => {
+      const label = translateLanguageDisplay(match[1], locale);
+      return locale === 'ru' ? `Условия аренды (${label})` : `Syarat sewa (${label})`;
     },
   },
   {
@@ -452,10 +681,45 @@ const DYNAMIC_TRANSLATIONS: DynamicRule[] = [
       : `Deskripsi dalam ${match[1].toUpperCase()}`,
   },
   {
+    pattern: /^Description in (.+)…$/,
+    translate: (match, locale) => {
+      const label = translateLanguageContext(match[1], locale);
+      return locale === 'ru' ? `Описание на ${label}…` : `Deskripsi dalam ${label}…`;
+    },
+  },
+  {
     pattern: /^Title in (.+)$/,
     translate: (match, locale) => locale === 'ru'
       ? `Заголовок на ${match[1].toUpperCase()}`
       : `Judul dalam ${match[1].toUpperCase()}`,
+  },
+  {
+    pattern: /^Transmission in (.+)$/,
+    translate: (match, locale) => {
+      const label = translateLanguageContext(match[1], locale);
+      return locale === 'ru' ? `Трансмиссия на ${label}` : `Transmisi dalam ${label}`;
+    },
+  },
+  {
+    pattern: /^Storage in (.+)$/,
+    translate: (match, locale) => {
+      const label = translateLanguageContext(match[1], locale);
+      return locale === 'ru' ? `Багажник на ${label}` : `Bagasi dalam ${label}`;
+    },
+  },
+  {
+    pattern: /^Rental terms in (.+)$/,
+    translate: (match, locale) => {
+      const label = translateLanguageContext(match[1], locale);
+      return locale === 'ru' ? `Условия аренды на ${label}` : `Syarat sewa dalam ${label}`;
+    },
+  },
+  {
+    pattern: /^Rental terms in (.+)…$/,
+    translate: (match, locale) => {
+      const label = translateLanguageContext(match[1], locale);
+      return locale === 'ru' ? `Условия аренды на ${label}…` : `Syarat sewa dalam ${label}…`;
+    },
   },
   {
     pattern: /^(\d+) vehicles from backend$/,
@@ -488,6 +752,24 @@ const DYNAMIC_TRANSLATIONS: DynamicRule[] = [
       : `${match[1]} field konten yang bisa diklik`,
   },
   {
+    pattern: /^(\d+) editable texts$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `${match[1]} редактируемых текстов`
+      : `${match[1]} teks yang bisa diedit`,
+  },
+  {
+    pattern: /^(\d+) clickable texts$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `${match[1]} кликабельных текстов`
+      : `${match[1]} teks yang bisa diklik`,
+  },
+  {
+    pattern: /^(\d+) text elements ready$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `${match[1]} текстовых элементов готово`
+      : `${match[1]} elemen teks siap`,
+  },
+  {
     pattern: /^(\d+) total content entries$/,
     translate: (match, locale) => locale === 'ru'
       ? `${match[1]} всего контентных полей`
@@ -514,8 +796,75 @@ const DYNAMIC_TRANSLATIONS: DynamicRule[] = [
   {
     pattern: /^Dropoff: (.+)$/,
     translate: (match, locale) => locale === 'ru'
-      ? `Отвал: ${match[1]}`
+      ? `Отток: ${match[1]}`
       : `Dropoff: ${match[1]}`,
+  },
+  {
+    pattern: /^(\d+) live conversations$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `${match[1]} активных диалогов`
+      : `${match[1]} percakapan aktif`,
+  },
+  {
+    pattern: /^(\d+) paid bookings$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `${match[1]} оплаченных бронирований`
+      : `${match[1]} booking berbayar`,
+  },
+  {
+    pattern: /^(\d+) payments tracked$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `${match[1]} платежей отслеживается`
+      : `${match[1]} pembayaran dilacak`,
+  },
+  {
+    pattern: /^(\d+) bookings created$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `${match[1]} созданных бронирований`
+      : `${match[1]} booking dibuat`,
+  },
+  {
+    pattern: /^\+(\d+) more items in this block$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `+${match[1]} элементов в этом блоке`
+      : `+${match[1]} item lagi di blok ini`,
+  },
+  {
+    pattern: /^Alt text (\d+)$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `Alt-текст ${match[1]}`
+      : `Teks alt ${match[1]}`,
+  },
+  {
+    pattern: /^Booking #(\d+) · (.+)$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `Бронирование №${match[1]} · ${match[2]}`
+      : `Booking #${match[1]} · ${match[2]}`,
+  },
+  {
+    pattern: /^Manual block · (.+)$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `Ручной блок · ${match[1]}`
+      : `Blok manual · ${match[1]}`,
+  },
+  {
+    pattern: /^Scooter #(\d+) · (\d+) photo(?:s)? in gallery$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `Скутер #${match[1]} · ${match[2]} фото в галерее`
+      : `Skuter #${match[1]} · ${match[2]} foto di galeri`,
+  },
+  {
+    pattern: /^Fill all translation fields for (.+): (.+)$/,
+    translate: (match, locale) => {
+      const label = translateLanguageDisplay(match[1], locale);
+      const fields = match[2]
+        .split(/\s*,\s*/)
+        .map((field) => translateTranslationField(field, locale))
+        .join(', ');
+      return locale === 'ru'
+        ? `Заполните все поля перевода для ${label}: ${fields}`
+        : `Isi semua field terjemahan untuk ${label}: ${fields}`;
+    },
   },
   {
     pattern: /^Used (\d+) \/ (\d+) times$/,
@@ -524,16 +873,46 @@ const DYNAMIC_TRANSLATIONS: DynamicRule[] = [
       : `Dipakai ${match[1]} / ${match[2]} kali`,
   },
   {
+    pattern: /^e\.g\. (.+)$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `например: ${match[1]}`
+      : `misalnya: ${match[1]}`,
+  },
+  {
     pattern: /^Leave empty to use the default "(.+)"$/,
     translate: (match, locale) => locale === 'ru'
       ? `Оставьте пустым, чтобы использовать значение по умолчанию "${match[1]}"`
       : `Kosongkan untuk memakai nilai default "${match[1]}"`,
   },
   {
+    pattern: /^Delete add-on "(.+)"\? This action cannot be undone\.$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `Удалить доп "${match[1]}"? Это действие нельзя отменить.`
+      : `Hapus add-on "${match[1]}"? Tindakan ini tidak dapat dibatalkan.`,
+  },
+  {
+    pattern: /^Delete category "(.+)"\? This action cannot be undone\.$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `Удалить категорию "${match[1]}"? Это действие нельзя отменить.`
+      : `Hapus kategori "${match[1]}"? Tindakan ini tidak dapat dibatalkan.`,
+  },
+  {
+    pattern: /^Delete promo code "(.+)"\?$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `Удалить промокод "${match[1]}"?`
+      : `Hapus kode promo "${match[1]}"?`,
+  },
+  {
     pattern: /^This language is shown in the live preview\.$/,
     translate: (_match, locale) => locale === 'ru'
       ? 'Этот язык сейчас показан в живом превью.'
       : 'Bahasa ini sedang ditampilkan pada preview live.',
+  },
+  {
+    pattern: /^This language is shown in the preview above\.$/,
+    translate: (_match, locale) => locale === 'ru'
+      ? 'Этот язык сейчас показан в превью выше.'
+      : 'Bahasa ini sedang ditampilkan pada preview di atas.',
   },
   {
     pattern: /^Edit here even if another language is open in preview\.$/,

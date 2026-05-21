@@ -698,6 +698,10 @@ export const endpoints = {
     api<ApiAdminUser>('/admin/users/', { method: 'POST', body, auth: true }),
   adminUpdateUser: (id: number | string, body: Partial<ApiAdminUser> & { password?: string }) =>
     api<ApiAdminUser>(`/admin/users/${id}/`, { method: 'PATCH', body, auth: true }),
+  adminSetUserPassword: (id: number | string, body: { new_password: string }) =>
+    api<{ detail: string }>(`/admin/users/${id}/set-password/`, { method: 'POST', body, auth: true }),
+  changeMyPassword: (body: { current_password: string; new_password: string }) =>
+    api<{ detail: string }>('/users/me/change-password/', { method: 'POST', body, auth: true }),
   adminAvailabilityBlocks: (params?: { vehicle?: number | string; start_at?: string; end_at?: string }) =>
     api<Paginated<ApiAvailabilityBlock> | ApiAvailabilityBlock[]>('/availability-calendar/', { auth: true, query: params }),
   adminCreateAvailabilityBlock: (body: Partial<ApiAvailabilityBlock>) =>
