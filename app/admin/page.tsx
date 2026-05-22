@@ -1280,6 +1280,67 @@ function buildManualBlockDayRange(day: Date) {
   };
 }
 
+function buildManualBlockFullDayRange(day: Date) {
+  return {
+    start: withTime(day, 0, 0),
+    end: withTime(day, 23, 59),
+  };
+}
+
+function buildManualBlockDateRange(startDay: Date, endDay: Date) {
+  const startSource = startDay <= endDay ? startDay : endDay;
+  const endSource = startDay <= endDay ? endDay : startDay;
+  return {
+    start: withTime(startSource, 0, 0),
+    end: withTime(endSource, 23, 59),
+  };
+}
+
+function isSameCalendarDay(left: Date, right: Date) {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
+}
+
+function buildManualBlockComment(guestName: string, guestPhone: string, note: string) {
+  const parts = [
+    guestName.trim() ? `Guest: ${guestName.trim()}` : '',
+    guestPhone.trim() ? `Phone: ${guestPhone.trim()}` : '',
+    note.trim() ? `Note: ${note.trim()}` : '',
+  ].filter(Boolean);
+  return parts.join(' | ');
+}
+
+function parseManualBlockComment(comment?: string | null) {
+  const result = { guest_name: '', guest_phone: '', note: comment || '' };
+  if (!comment) return result;
+
+  const parts = comment.split('|').map((item) => item.trim());
+  const noteParts: string[] = [];
+  for (const part of parts) {
+    if (part.startsWith('Guest: ')) {
+      result.guest_name = part.slice(7).trim();
+      continue;
+    }
+    if (part.startsWith('Phone: ')) {
+      result.guest_phone = part.slice(7).trim();
+      continue;
+    }
+    if (part.startsWith('Note: ')) {
+      result.note = part.slice(6).trim();
+      continue;
+    }
+    noteParts.push(part);
+  }
+
+  if (noteParts.length > 0 && !result.note) {
+    result.note = noteParts.join(' | ');
+  }
+  return result;
+}
+
 function formatTimeOnly(value?: string | Date | null) {
   if (!value) return '—';
   return new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
@@ -5865,11 +5926,27 @@ function CRMView({
 }
 
 function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]; scooters: ApiScooterDetail[]; isMobile: boolean }) {
+  type CalendarBlock = { id: number; vehicle: number; start_at: string; end_at: string; type: string; comment?: string };
+  type CalendarBooking = ApiBooking & { startDate: Date; endDate: Date };
+  type CalendarSelection = {
+    scooter: ApiScooterDetail;
+    day: Date;
+    bookings: CalendarBooking[];
+    manualBlocks: CalendarBlock[];
+  };
+  type PendingRangeSelection = {
+    scooter: ApiScooterDetail;
+    day: Date;
+  };
+
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
-  const [blocks, setBlocks] = useState<Array<{ id: number; vehicle: number; start_at: string; end_at: string; type: string; comment?: string }>>([]);
+  const [blocks, setBlocks] = useState<CalendarBlock[]>([]);
   const [loadingBlocks, setLoadingBlocks] = useState(false);
   const [savingBlock, setSavingBlock] = useState(false);
   const [deletingBlockId, setDeletingBlockId] = useState<number | null>(null);
+  const [editingBlockId, setEditingBlockId] = useState<number | null>(null);
+  const [selectedCell, setSelectedCell] = useState<CalendarSelection | null>(null);
+  const [pendingRangeStart, setPendingRangeStart] = useState<PendingRangeSelection | null>(null);
   const [draft, setDraft] = useState(() => {
     const start = startOfWeek(new Date());
     const end = new Date(start);
@@ -5879,6 +5956,8 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
       vehicle: '',
       start_at: toDateTimeLocalValue(start),
       end_at: toDateTimeLocalValue(end),
+      guest_name: '',
+      guest_phone: '',
       comment: '',
     };
   });
@@ -5890,7 +5969,7 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
     [draft.vehicle, scooters],
   );
 
-  const activeBookings = bookings
+  const activeBookings: CalendarBooking[] = bookings
     .filter((item) => item.status !== 'cancelled')
     .map((item) => ({
       ...item,
@@ -5928,8 +6007,10 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
     if (!draft.vehicle) return 'Choose a scooter first.';
     if (!draftStartDate || !draftEndDate) return 'Set both start and end time.';
     if (draftEndDate <= draftStartDate) return 'End time must be later than start time.';
+    if (!draft.guest_name.trim()) return 'Enter guest name.';
+    if (!draft.guest_phone.trim()) return 'Enter guest phone.';
     return null;
-  }, [draft.vehicle, draftEndDate, draftStartDate]);
+  }, [draft.guest_name, draft.guest_phone, draft.vehicle, draftEndDate, draftStartDate]);
 
   const draftDurationHours = useMemo(() => {
     if (!draftStartDate || !draftEndDate || draftEndDate <= draftStartDate) return 0;
@@ -5965,12 +6046,44 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
 
   function setManualBlockRangeForDay(vehicleId: number, day: Date) {
     const { start, end } = buildManualBlockDayRange(day);
+    setEditingBlockId(null);
     setDraft((current) => ({
       ...current,
       vehicle: String(vehicleId),
       start_at: toDateTimeLocalValue(start),
       end_at: toDateTimeLocalValue(end),
     }));
+  }
+
+  function setManualBlockRangeForDates(vehicleId: number, startDay: Date, endDay: Date) {
+    const { start, end } = buildManualBlockDateRange(startDay, endDay);
+    setEditingBlockId(null);
+    setDraft((current) => ({
+      ...current,
+      vehicle: String(vehicleId),
+      start_at: toDateTimeLocalValue(start),
+      end_at: toDateTimeLocalValue(end),
+    }));
+  }
+
+  function clearManualBlockEditor() {
+    setEditingBlockId(null);
+    setPendingRangeStart(null);
+    setDraft((current) => ({ ...current, guest_name: '', guest_phone: '', comment: '' }));
+  }
+
+  function editManualBlock(block: CalendarBlock) {
+    setEditingBlockId(block.id);
+    setPendingRangeStart(null);
+    const parsedComment = parseManualBlockComment(block.comment);
+    setDraft({
+      vehicle: String(block.vehicle),
+      start_at: toDateTimeLocalValue(new Date(block.start_at)),
+      end_at: toDateTimeLocalValue(new Date(block.end_at)),
+      guest_name: parsedComment.guest_name,
+      guest_phone: parsedComment.guest_phone,
+      comment: parsedComment.note,
+    });
   }
 
   function setRangePreset(mode: 'today' | 'day' | '24h' | '3d') {
@@ -6009,7 +6122,7 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
     }));
   }
 
-  async function createManualBlock() {
+  async function saveManualBlock() {
     if (draftValidationError) {
       window.alert(draftValidationError);
       return;
@@ -6017,17 +6130,23 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
 
     setSavingBlock(true);
     try {
-      await endpoints.adminCreateAvailabilityBlock({
+      const payload = {
         vehicle: Number(draft.vehicle),
         start_at: draftStartDate!.toISOString(),
         end_at: draftEndDate!.toISOString(),
-        type: 'manual_block',
-        comment: draft.comment.trim(),
-      });
-      setDraft((current) => ({ ...current, comment: '' }));
+        type: 'manual_block' as const,
+        comment: buildManualBlockComment(draft.guest_name, draft.guest_phone, draft.comment),
+      };
+      if (editingBlockId) {
+        await endpoints.adminUpdateAvailabilityBlock(editingBlockId, payload);
+      } else {
+        await endpoints.adminCreateAvailabilityBlock(payload);
+      }
+      clearManualBlockEditor();
+      setSelectedCell(null);
       await loadBlocks();
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Unable to save the calendar block.');
+      window.alert(err instanceof Error ? err.message : editingBlockId ? 'Unable to update the calendar block.' : 'Unable to save the calendar block.');
     } finally {
       setSavingBlock(false);
     }
@@ -6038,6 +6157,17 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
     setDeletingBlockId(blockId);
     try {
       await endpoints.adminDeleteAvailabilityBlock(blockId);
+      if (editingBlockId === blockId) {
+        clearManualBlockEditor();
+      }
+      setSelectedCell((current) => {
+        if (!current) return current;
+        const nextManualBlocks = current.manualBlocks.filter((item) => item.id !== blockId);
+        if (current.bookings.length === 0 && nextManualBlocks.length === 0) {
+          return null;
+        }
+        return { ...current, manualBlocks: nextManualBlocks };
+      });
       await loadBlocks();
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Unable to delete the calendar block.');
@@ -6066,9 +6196,20 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
               Add manual occupancy fast
             </div>
             <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
-              Click any empty day cell below to prefill scooter and date, then save the block. Use the note presets for maintenance, owner use, or external bookings.
+              Click one empty day to start a range and another day to finish it. After that, enter guest name and phone above, then the admin can save the block manually.
             </div>
           </div>
+
+          {pendingRangeStart ? (
+            <div style={{ borderRadius: 12, padding: '12px 14px', background: A.blueBg, border: `1px solid ${A.blue}` }}>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.blue, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Range selection
+              </div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700, lineHeight: 1.6 }}>
+                {pendingRangeStart.scooter.title}: start selected on {formatShortDate(pendingRangeStart.day)}. Click the end date on the same row, then fill guest details and save the block.
+              </div>
+            </div>
+          ) : null}
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Button variant="outline" onClick={() => setRangePreset('today')}>Today 09:00–18:00</Button>
@@ -6100,6 +6241,21 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
             ))}
           </div>
 
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Guest name
+              </label>
+              <input value={draft.guest_name} onChange={(e) => setDraft((current) => ({ ...current, guest_name: e.target.value }))} placeholder="Guest full name" style={inputBaseStyle} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Guest phone
+              </label>
+              <input value={draft.guest_phone} onChange={(e) => setDraft((current) => ({ ...current, guest_phone: e.target.value }))} placeholder="+62 812..." style={inputBaseStyle} />
+            </div>
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr 1fr 1.2fr auto', gap: 12, alignItems: 'end' }}>
             <div>
               <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
@@ -6126,13 +6282,20 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
             </div>
             <div>
               <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
-                Reserved by / note
+                Note
               </label>
-              <input value={draft.comment} onChange={(e) => setDraft((current) => ({ ...current, comment: e.target.value }))} placeholder="Guest name, maintenance, external booking..." style={inputBaseStyle} />
+              <input value={draft.comment} onChange={(e) => setDraft((current) => ({ ...current, comment: e.target.value }))} placeholder="Maintenance, external booking, delivery hold..." style={inputBaseStyle} />
             </div>
-            <Button variant="dark" onClick={createManualBlock} disabled={savingBlock || Boolean(draftValidationError)}>
-              {savingBlock ? 'Saving…' : 'Add block'}
-            </Button>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {editingBlockId ? (
+                <Button variant="ghost" onClick={clearManualBlockEditor} disabled={savingBlock}>
+                  Cancel edit
+                </Button>
+              ) : null}
+              <Button variant="dark" onClick={saveManualBlock} disabled={savingBlock || Boolean(draftValidationError)}>
+                {savingBlock ? 'Saving…' : editingBlockId ? 'Save changes' : 'Add block'}
+              </Button>
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.1fr) minmax(280px, 0.9fr)', gap: 12 }}>
@@ -6148,9 +6311,14 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
                   ? draftValidationError
                   : `${formatShortDate(draftStartDate)} · ${formatTimeOnly(draftStartDate)} → ${formatShortDate(draftEndDate)} · ${formatTimeOnly(draftEndDate)} · ${draftDurationHours}h`}
               </div>
+              {draft.guest_name || draft.guest_phone ? (
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginTop: 6 }}>
+                  {draft.guest_name || 'Guest'}{draft.guest_phone ? ` · ${draft.guest_phone}` : ''}
+                </div>
+              ) : null}
               {draft.comment ? (
                 <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginTop: 6 }}>
-                  Note: {draft.comment}
+                  {editingBlockId ? 'Editing note' : 'Note'}: {draft.comment}
                 </div>
               ) : null}
             </div>
@@ -6204,9 +6372,14 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
                           {item.comment || 'Blocked from admin panel'}
                         </div>
                       </div>
-                      <Button variant="ghost" onClick={() => deleteManualBlock(item.id)} disabled={deletingBlockId === item.id}>
-                        {deletingBlockId === item.id ? 'Deleting…' : 'Delete'}
-                      </Button>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <Button variant="ghost" onClick={() => editManualBlock(item)} disabled={deletingBlockId === item.id}>
+                          Edit
+                        </Button>
+                        <Button variant="ghost" onClick={() => deleteManualBlock(item.id)} disabled={deletingBlockId === item.id}>
+                          {deletingBlockId === item.id ? 'Deleting…' : 'Delete'}
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -6291,28 +6464,63 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
                   const endAt = new Date(item.end_at);
                   return startAt <= dayEnd && endAt >= dayStart;
                 });
+                const isPendingRangeCell =
+                  pendingRangeStart?.scooter.id === scooter.id &&
+                  draft.vehicle === String(scooter.id) &&
+                  Boolean(draftStartDate && draftEndDate && draftStartDate <= dayEnd && draftEndDate >= dayStart);
+                const isRangeAnchor =
+                  pendingRangeStart?.scooter.id === scooter.id &&
+                  isSameCalendarDay(pendingRangeStart.day, day);
                 const isDraftTarget =
                   draft.vehicle === String(scooter.id) &&
                   Boolean(draftStartDate && draftEndDate && draftStartDate <= dayEnd && draftEndDate >= dayStart);
                 return (
                   <div
                     key={`${scooter.id}-${day.toISOString()}`}
-                    onClick={() => {
+                    onClick={async () => {
                       if (matches.length === 0 && blockMatches.length === 0) {
-                        setManualBlockRangeForDay(scooter.id, day);
+                        setSelectedCell(null);
+                        if (pendingRangeStart && pendingRangeStart.scooter.id === scooter.id) {
+                          setManualBlockRangeForDates(scooter.id, pendingRangeStart.day, day);
+                          setPendingRangeStart(null);
+                          return;
+                        }
+                        setPendingRangeStart({ scooter, day });
+                        const { start, end } = buildManualBlockFullDayRange(day);
+                        setEditingBlockId(null);
+                        setDraft((current) => ({
+                          ...current,
+                          vehicle: String(scooter.id),
+                          start_at: toDateTimeLocalValue(start),
+                          end_at: toDateTimeLocalValue(end),
+                        }));
+                        return;
                       }
+                      setPendingRangeStart(null);
+                      setSelectedCell({
+                        scooter,
+                        day,
+                        bookings: matches,
+                        manualBlocks: blockMatches,
+                      });
                     }}
                     style={{
                       borderLeft: `1px solid ${A.g200}`,
                       padding: 6,
-                      cursor: matches.length === 0 && blockMatches.length === 0 ? 'pointer' : 'default',
-                      background: isDraftTarget ? 'rgba(255,215,0,0.08)' : 'transparent',
+                      cursor: 'pointer',
+                      background: isPendingRangeCell ? 'rgba(37,99,235,0.10)' : isDraftTarget ? 'rgba(255,215,0,0.08)' : 'transparent',
                     }}
                   >
                     {matches.length === 0 && blockMatches.length === 0 ? (
-                      <div style={{ height: '100%', minHeight: 60, borderRadius: 10, background: isDraftTarget ? 'rgba(255,215,0,0.18)' : A.g100, display: 'grid', placeItems: 'center' }}>
-                        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: isDraftTarget ? A.black : A.g500, textAlign: 'center' }}>
-                          {isDraftTarget ? 'Ready to save' : 'Click to block day'}
+                      <div style={{ height: '100%', minHeight: 60, borderRadius: 10, background: isPendingRangeCell ? 'rgba(37,99,235,0.18)' : isDraftTarget ? 'rgba(255,215,0,0.18)' : A.g100, display: 'grid', placeItems: 'center', border: isRangeAnchor ? `2px solid ${A.blue}` : 'none' }}>
+                        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: isPendingRangeCell || isDraftTarget ? A.black : A.g500, textAlign: 'center' }}>
+                          {isPendingRangeCell
+                            ? isRangeAnchor
+                              ? 'Start selected'
+                              : 'Finish range'
+                            : isDraftTarget
+                              ? 'Fill guest info'
+                              : 'Click to block day'}
                         </div>
                       </div>
                     ) : (
@@ -6371,12 +6579,11 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
                                 type="button"
                                 onClick={(event) => {
                                   event.stopPropagation();
-                                  deleteManualBlock(item.id);
+                                  editManualBlock(item);
                                 }}
-                                disabled={deletingBlockId === item.id}
-                                style={{ border: 'none', background: 'transparent', color: A.red, cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: 11, padding: 0 }}
+                                style={{ border: 'none', background: 'transparent', color: A.black, cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: 11, padding: 0 }}
                               >
-                                {deletingBlockId === item.id ? '...' : 'Delete'}
+                                Edit
                               </button>
                             </div>
                             <div
@@ -6403,6 +6610,100 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
         </Panel>
         </div>
       )}
+      {selectedCell ? (
+        <div
+          onClick={() => setSelectedCell(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(13,13,13,0.45)',
+            display: 'grid',
+            placeItems: 'center',
+            padding: isMobile ? 16 : 28,
+            zIndex: 60,
+          }}
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: 860,
+              maxHeight: 'min(80vh, 760px)',
+              overflowY: 'auto',
+              background: A.white,
+              borderRadius: 18,
+              padding: isMobile ? 18 : 24,
+              boxShadow: '0 24px 80px rgba(0,0,0,0.18)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18, color: A.black }}>
+                  Occupancy details
+                </div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500 }}>
+                  {selectedCell.scooter.title} · {formatShortDate(selectedCell.day)}
+                </div>
+              </div>
+              <Button variant="ghost" onClick={() => setSelectedCell(null)}>Close</Button>
+            </div>
+            <div style={{ display: 'grid', gap: 12 }}>
+              {selectedCell.bookings.map((item) => (
+                <div key={`selected-booking-${item.id}`} style={{ border: `1px solid ${A.g200}`, borderRadius: 12, padding: '14px 16px', background: A.white }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 15, color: A.black }}>
+                        #{item.order_number} · {item.contact_name || item.user || 'Guest'}
+                      </div>
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, marginTop: 4 }}>
+                        {formatDateTime(item.start_datetime)} → {formatDateTime(item.end_datetime)}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <Badge color={item.status === 'active' ? 'green' : item.status === 'completed' ? 'blue' : 'default'}>{item.status}</Badge>
+                      <Badge color={item.payment_status === 'paid' ? 'green' : 'default'}>{item.payment_status}</Badge>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: 10, marginTop: 12 }}>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700 }}>
+                      <strong style={{ color: A.black }}>Phone:</strong> {item.contact_phone || '—'}
+                    </div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700 }}>
+                      <strong style={{ color: A.black }}>Total:</strong> {formatMoney(item.total_price)}
+                    </div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700 }}>
+                      <strong style={{ color: A.black }}>Delivery:</strong> {item.delivery_address || '—'}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {selectedCell.manualBlocks.map((item) => (
+                <div key={`selected-block-${item.id}`} style={{ border: `1px solid ${A.g200}`, borderRadius: 12, padding: '14px 16px', background: A.redBg }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 15, color: A.black }}>
+                        Manual block
+                      </div>
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700, marginTop: 4 }}>
+                        {formatDateTime(item.start_at)} → {formatDateTime(item.end_at)}
+                      </div>
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700, marginTop: 6 }}>
+                        {item.comment || 'Blocked from admin panel'}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <Button variant="ghost" onClick={() => editManualBlock(item)}>Edit</Button>
+                      <Button variant="ghost" onClick={() => deleteManualBlock(item.id)} disabled={deletingBlockId === item.id}>
+                        {deletingBlockId === item.id ? 'Deleting…' : 'Delete'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
       {loadingBlocks ? (
         <div style={{ marginTop: 12, fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
           Loading manual blocks…

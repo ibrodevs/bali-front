@@ -95,6 +95,14 @@ const EXACT_TRANSLATIONS: Record<string, TranslationPair> = {
   'Create new model': { ru: 'Создать новую модель', id: 'Buat model baru' },
   'Auto': { ru: 'Авто', id: 'Otomatis' },
   'Today': { ru: 'Сегодня', id: 'Hari ini' },
+  'Guest name': { ru: 'Имя гостя', id: 'Nama tamu' },
+  'Guest phone': { ru: 'Телефон гостя', id: 'Telepon tamu' },
+  'Note': { ru: 'Заметка', id: 'Catatan' },
+  'Range selection': { ru: 'Выбор диапазона', id: 'Pemilihan rentang' },
+  'Cancel edit': { ru: 'Отменить редактирование', id: 'Batal edit' },
+  'Total': { ru: 'Итого', id: 'Total' },
+  'Delivery': { ru: 'Доставка', id: 'Pengantaran' },
+  'Delete this manual block?': { ru: 'Удалить этот ручной блок?', id: 'Hapus blok manual ini?' },
   'Create Zone': { ru: 'Создать зону', id: 'Buat zona' },
   'New Zone': { ru: 'Новая зона', id: 'Zona baru' },
   '+ Add Zone': { ru: '+ Добавить зону', id: '+ Tambah zona' },
@@ -160,6 +168,9 @@ const EXACT_TRANSLATIONS: Record<string, TranslationPair> = {
   'Max discount, $ (optional)': { ru: 'Макс. скидка, $ (необязательно)', id: 'Diskon maks., $ (opsional)' },
   'Usage limit': { ru: 'Лимит использований', id: 'Batas penggunaan' },
   'Reserved by / note': { ru: 'Кем занято / заметка', id: 'Dipesan oleh / catatan' },
+  'Guest full name': { ru: 'Полное имя гостя', id: 'Nama lengkap tamu' },
+  '+62 812...': { ru: '+62 812...', id: '+62 812...' },
+  'Maintenance, external booking, delivery hold...': { ru: 'Обслуживание, внешнее бронирование, удержание на доставку...', id: 'Servis, booking eksternal, tahan untuk delivery...' },
   'Access denied': { ru: 'Доступ запрещён', id: 'Akses ditolak' },
   'Admin privileges required.': { ru: 'Нужны права администратора.', id: 'Hak admin diperlukan.' },
   'Your account does not have admin privileges.': { ru: 'У вашего аккаунта нет прав администратора.', id: 'Akun Anda tidak memiliki hak admin.' },
@@ -528,8 +539,23 @@ const EXACT_TRANSLATIONS: Record<string, TranslationPair> = {
   'Choose a scooter first.': { ru: 'Сначала выберите скутер.', id: 'Pilih skuter terlebih dahulu.' },
   'Set both start and end time.': { ru: 'Укажите и время начала, и время окончания.', id: 'Isi waktu mulai dan waktu selesai.' },
   'End time must be later than start time.': { ru: 'Время окончания должно быть позже времени начала.', id: 'Waktu selesai harus lebih lambat dari waktu mulai.' },
+  'Enter guest name.': { ru: 'Введите имя гостя.', id: 'Masukkan nama tamu.' },
+  'Enter guest phone.': { ru: 'Введите телефон гостя.', id: 'Masukkan telepon tamu.' },
   'Unable to save the calendar block.': { ru: 'Не удалось сохранить блок календаря.', id: 'Tidak dapat menyimpan blok kalender.' },
   'Unable to delete the calendar block.': { ru: 'Не удалось удалить блок календаря.', id: 'Tidak dapat menghapus blok kalender.' },
+  'Fill guest info': { ru: 'Заполните данные гостя', id: 'Isi data tamu' },
+  'Finish range': { ru: 'Завершить диапазон', id: 'Selesaikan rentang' },
+  'Start selected': { ru: 'Старт выбран', id: 'Tanggal mulai dipilih' },
+  'Click one empty day to start a range and another day to finish it. After that, enter guest name and phone above, then the admin can save the block manually.': {
+    ru: 'Нажмите на одну пустую дату, чтобы начать диапазон, и на другую, чтобы завершить его. После этого введите имя и телефон гостя сверху, и администратор сможет вручную сохранить блок.',
+    id: 'Klik satu hari kosong untuk memulai rentang dan hari kosong lainnya untuk mengakhirinya. Setelah itu isi nama dan telepon tamu di atas, lalu admin bisa menyimpan blok secara manual.',
+  },
+  'Click an occupied cell to open the booking or manual block details in a modal.': {
+    ru: 'Нажмите на занятую ячейку, чтобы открыть детали бронирования или ручного блока в модальном окне.',
+    id: 'Klik sel yang terisi untuk membuka detail booking atau blok manual di modal.',
+  },
+  'Editing note': { ru: 'Редактируемая заметка', id: 'Catatan yang diedit' },
+  'Occupancy details': { ru: 'Детали занятости', id: 'Detail okupansi' },
 };
 
 const LANGUAGE_LABELS: Record<string, TranslationPair> = {
@@ -597,6 +623,12 @@ const DYNAMIC_TRANSLATIONS: DynamicRule[] = [
     translate: (match, locale) => locale === 'ru'
       ? `${match[1]} яз.`
       : `${match[1]} bahasa`,
+  },
+  {
+    pattern: /^(\d+) total$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `${match[1]} всего`
+      : `${match[1]} total`,
   },
   {
     pattern: /^Name in (.+)$/,
@@ -846,6 +878,12 @@ const DYNAMIC_TRANSLATIONS: DynamicRule[] = [
     translate: (match, locale) => locale === 'ru'
       ? `Ручной блок · ${match[1]}`
       : `Blok manual · ${match[1]}`,
+  },
+  {
+    pattern: /^Manual blocks for (.+)$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `Ручные блоки для ${match[1]}`
+      : `Blok manual untuk ${match[1]}`,
   },
   {
     pattern: /^Scooter #(\d+) · (\d+) photo(?:s)? in gallery$/,

@@ -188,6 +188,7 @@ type TranslationDraft = {
   rental_terms: string;
   transmission: string;
   trunk: string;
+  color: string;
 };
 
 type NewPhoto = {
@@ -240,7 +241,7 @@ export default function AdminEditScooterPage() {
   const [newMainIndex, setNewMainIndex] = useState(0);
 
   const emptyTranslations = () =>
-    Object.fromEntries(LOCALES.map((l) => [l.code, { title: '', description: '', rental_terms: '', transmission: '', trunk: '' }])) as Record<string, TranslationDraft>;
+    Object.fromEntries(LOCALES.map((l) => [l.code, { title: '', description: '', rental_terms: '', transmission: '', trunk: '', color: '' }])) as Record<string, TranslationDraft>;
 
   const [translations, setTranslations] = useState<Record<string, TranslationDraft>>(emptyTranslations());
   const [activeLang, setActiveLang] = useState('en');
@@ -272,10 +273,11 @@ export default function AdminEditScooterPage() {
     let cancelled = false;
     (async () => {
       try {
-        const [scooterRes, modelsRes, typesRes] = await Promise.all([
-          endpoints.scooter(scooterId),
+        const [scooterRes, modelsRes, typesRes, existingTr] = await Promise.all([
+          endpoints.adminScooter(scooterId),
           endpoints.scooterModels(),
           endpoints.scooterTypes(),
+          endpoints.adminScooterTranslations(scooterId),
         ]);
         if (cancelled) return;
 
@@ -313,11 +315,17 @@ export default function AdminEditScooterPage() {
         });
 
         // Load per-vehicle translations
-        const existingTr = scooterRes.translations || [];
         setTranslations((prev) => {
           const next = { ...prev };
           for (const t of existingTr) {
-            next[t.language] = { title: t.title || '', description: t.description || '', rental_terms: t.rental_terms || '', transmission: t.transmission || '', trunk: t.trunk || '' };
+            next[t.language] = {
+              title: t.title || '',
+              description: t.description || '',
+              rental_terms: t.rental_terms || '',
+              transmission: t.transmission || '',
+              trunk: t.trunk || '',
+              color: t.color || '',
+            };
           }
           return next;
         });
@@ -419,8 +427,9 @@ export default function AdminEditScooterPage() {
         rental_terms: (translations[locale.code]?.rental_terms || '').trim() || (locale.code === 'en' ? modelDraft.rental_terms.trim() : ''),
         transmission: (translations[locale.code]?.transmission || '').trim() || (locale.code === 'en' ? modelDraft.transmission.trim() : ''),
         trunk: (translations[locale.code]?.trunk || '').trim() || (locale.code === 'en' ? modelDraft.trunk.trim() : ''),
+        color: (translations[locale.code]?.color || '').trim() || (locale.code === 'en' ? draft.color.trim() : ''),
       }));
-      const requiredFields: Array<keyof ApiVehicleTranslation> = ['title', 'description', 'rental_terms', 'transmission', 'trunk'];
+      const requiredFields: Array<keyof ApiVehicleTranslation> = ['title', 'description', 'rental_terms', 'transmission', 'trunk', 'color'];
       for (const locale of LOCALES) {
         const item = translationList.find((translation) => translation.language === locale.code);
         const missing = requiredFields.filter((field) => !String(item?.[field] || '').trim());
@@ -475,7 +484,7 @@ export default function AdminEditScooterPage() {
 
       setSuccess('Changes saved successfully.');
       setNewPhotos([]);
-      const refreshed = await endpoints.scooter(scooterId);
+      const refreshed = await endpoints.adminScooter(scooterId);
       setExistingImages(refreshed.gallery || []);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Unable to save changes');
@@ -839,7 +848,8 @@ export default function AdminEditScooterPage() {
                     translations[l.code]?.description ||
                     translations[l.code]?.rental_terms ||
                     translations[l.code]?.transmission ||
-                    translations[l.code]?.trunk
+                    translations[l.code]?.trunk ||
+                    translations[l.code]?.color
                   );
                   return (
                     <button
@@ -875,7 +885,7 @@ export default function AdminEditScooterPage() {
                       placeholder={draft.title || 'Vehicle title'}
                     />
                   </Field>
-                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
                     <Field label={`Transmission (${l.label})`}>
                       <input
                         value={translations[l.code]?.transmission || ''}
@@ -890,6 +900,14 @@ export default function AdminEditScooterPage() {
                         onChange={(e) => setTranslations((p) => ({ ...p, [l.code]: { ...p[l.code], trunk: e.target.value } }))}
                         style={inputStyle}
                         placeholder={modelDraft.trunk || 'e.g. 18L underseat'}
+                      />
+                    </Field>
+                    <Field label={`Color (${l.label})`}>
+                      <input
+                        value={translations[l.code]?.color || ''}
+                        onChange={(e) => setTranslations((p) => ({ ...p, [l.code]: { ...p[l.code], color: e.target.value } }))}
+                        style={inputStyle}
+                        placeholder={draft.color || 'e.g. Pastel Blue'}
                       />
                     </Field>
                   </div>

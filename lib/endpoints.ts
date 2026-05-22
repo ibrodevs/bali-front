@@ -293,6 +293,9 @@ export type ApiChatThread = {
   created_at?: string;
   updated_at?: string;
   message_count?: number;
+  has_support_reply?: boolean;
+  support_replied_at?: string | null;
+  has_unread_support_reply?: boolean;
   participants?: Array<{
     id: number;
     role: string;
@@ -306,6 +309,8 @@ export type ApiChatThread = {
     text: string;
     created_at?: string;
     sender_name?: string | null;
+    sender_role?: string | null;
+    is_from_support?: boolean;
   } | null;
   messages?: Array<{
     id: number;
@@ -395,6 +400,7 @@ export type ApiChatMessage = {
   thread?: number;
   text: string;
   created_at?: string;
+  is_from_support?: boolean;
   sender?: {
     id: number;
     email: string;
@@ -498,6 +504,7 @@ export type ApiVehicleTranslation = {
   rental_terms: string;
   transmission?: string;
   trunk?: string;
+  color?: string;
 };
 
 export type ApiAddonTranslation = {
@@ -661,6 +668,8 @@ export const endpoints = {
     api<ApiUser>('/profile/', { method: 'PATCH', body, auth: true }),
   chatThreads: (params?: { page?: number; status?: string; page_size?: number }) =>
     api<Paginated<ApiChatThread> | ApiChatThread[]>('/chat/threads/', { auth: true, query: params }),
+  markSupportThreadRead: (threadId: number | string) =>
+    api<{ updated: number }>(`/chat/threads/${threadId}/mark-support-replies-read/`, { method: 'POST', auth: true }),
   ensureSupportChatThread: (body?: { title?: string }) =>
     api<ApiChatThread>('/chat/threads/ensure-support/', { method: 'POST', body, auth: true }),
   chatMessages: (threadId: number | string, params?: { page_size?: number }) =>
@@ -673,6 +682,8 @@ export const endpoints = {
 
   adminScooters: (params?: { page?: number; search?: string; status?: string }) =>
     api<Paginated<ApiScooterDetail> | ApiScooterDetail[]>('/admin/scooters/', { auth: true, query: params }),
+  adminScooter: (id: number | string) =>
+    api<ApiScooterDetail>(`/admin/scooters/${id}/`, { auth: true }),
   adminCreateScooter: (body: AdminScooterPayload) =>
     api<ApiScooterDetail>('/admin/scooters/', { method: 'POST', body, auth: true }),
   adminUpdateScooter: (id: number | string, body: Partial<AdminScooterPayload>) =>

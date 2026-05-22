@@ -197,6 +197,7 @@ type TranslationDraft = {
   rental_terms: string;
   transmission: string;
   trunk: string;
+  color: string;
 };
 
 const LOCALES = [
@@ -238,7 +239,7 @@ function createEmptyTranslations(): Record<string, TranslationDraft> {
   return Object.fromEntries(
     LOCALES.map((locale) => [
       locale.code,
-      { title: '', description: '', rental_terms: '', transmission: '', trunk: '' },
+      { title: '', description: '', rental_terms: '', transmission: '', trunk: '', color: '' },
     ]),
   ) as Record<string, TranslationDraft>;
 }
@@ -344,13 +345,14 @@ export default function AdminNewScooterPage() {
       rental_terms: (modelMode === 'existing' ? selectedModel?.rental_terms : modelDraft.rental_terms)?.trim() || '',
       transmission: (modelMode === 'existing' ? selectedModel?.transmission : modelDraft.transmission)?.trim() || '',
       trunk: (modelMode === 'existing' ? selectedModel?.trunk : modelDraft.trunk)?.trim() || '',
+      color: scooterDraft.color.trim(),
     };
   }
 
   function buildTranslationPayload() {
     const englishFallbacks = getEnglishFallbacks();
     return LOCALES.map((locale) => {
-      const draftTranslation = translations[locale.code] || { title: '', description: '', rental_terms: '', transmission: '', trunk: '' };
+      const draftTranslation = translations[locale.code] || { title: '', description: '', rental_terms: '', transmission: '', trunk: '', color: '' };
       return {
         language: locale.code,
         title: draftTranslation.title.trim() || (locale.code === 'en' ? englishFallbacks.title : ''),
@@ -358,13 +360,14 @@ export default function AdminNewScooterPage() {
         rental_terms: draftTranslation.rental_terms.trim() || (locale.code === 'en' ? englishFallbacks.rental_terms : ''),
         transmission: draftTranslation.transmission.trim() || (locale.code === 'en' ? englishFallbacks.transmission : ''),
         trunk: draftTranslation.trunk.trim() || (locale.code === 'en' ? englishFallbacks.trunk : ''),
+        color: draftTranslation.color.trim() || (locale.code === 'en' ? englishFallbacks.color : ''),
       };
     });
   }
 
   function validateTranslations() {
     const payload = buildTranslationPayload();
-    const requiredFields: Array<keyof ApiVehicleTranslation> = ['title', 'description', 'rental_terms', 'transmission', 'trunk'];
+    const requiredFields: Array<keyof ApiVehicleTranslation> = ['title', 'description', 'rental_terms', 'transmission', 'trunk', 'color'];
 
     for (const locale of LOCALES) {
       const item = payload.find((translation) => translation.language === locale.code);
@@ -646,7 +649,8 @@ export default function AdminNewScooterPage() {
                     draftTranslation?.description ||
                     draftTranslation?.rental_terms ||
                     draftTranslation?.transmission ||
-                    draftTranslation?.trunk,
+                    draftTranslation?.trunk ||
+                    draftTranslation?.color,
                   );
                   return (
                     <button
@@ -672,11 +676,12 @@ export default function AdminNewScooterPage() {
                 })}
               </div>
               {LOCALES.map((locale) => {
-                const translation = translations[locale.code] || { title: '', description: '', rental_terms: '', transmission: '', trunk: '' };
+                const translation = translations[locale.code] || { title: '', description: '', rental_terms: '', transmission: '', trunk: '', color: '' };
                 const fallbackDescription = modelMode === 'existing' ? selectedModel?.description : modelDraft.description;
                 const fallbackRentalTerms = modelMode === 'existing' ? selectedModel?.rental_terms : modelDraft.rental_terms;
                 const fallbackTransmission = modelMode === 'existing' ? selectedModel?.transmission : modelDraft.transmission;
                 const fallbackTrunk = modelMode === 'existing' ? selectedModel?.trunk : modelDraft.trunk;
+                const fallbackColor = scooterDraft.color;
                 return (
                   <div key={locale.code} style={{ display: activeLang === locale.code ? 'grid' : 'none', gap: 14 }}>
                     <Field label={`Title (${locale.label})`}>
@@ -692,7 +697,7 @@ export default function AdminNewScooterPage() {
                         placeholder={locale.code === 'en' ? scooterDraft.title || 'Vehicle title' : `Title in ${locale.label}`}
                       />
                     </Field>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
                       <Field label={`Transmission (${locale.label})`}>
                         <input
                           value={translation.transmission}
@@ -717,6 +722,19 @@ export default function AdminNewScooterPage() {
                           }
                           style={inputStyle}
                           placeholder={locale.code === 'en' ? fallbackTrunk || '18L underseat' : `Storage in ${locale.label}`}
+                        />
+                      </Field>
+                      <Field label={`Color (${locale.label})`}>
+                        <input
+                          value={translation.color}
+                          onChange={(event) =>
+                            setTranslations((current) => ({
+                              ...current,
+                              [locale.code]: { ...current[locale.code], color: event.target.value },
+                            }))
+                          }
+                          style={inputStyle}
+                          placeholder={locale.code === 'en' ? fallbackColor || 'Pastel Blue' : `Color in ${locale.label}`}
                         />
                       </Field>
                     </div>

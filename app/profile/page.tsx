@@ -31,12 +31,12 @@ const PROFILE_LANGUAGES = [
 ] as const;
 
 const PROFILE_COPY = {
-  en: { signInRequired: 'Sign in to your account', signInHint: 'Sign in first to open your profile and bookings.', account: 'ACCOUNT', riderProfile: 'Rider profile', riderFallback: 'Bali Rent Rider', language: 'Language', currency: 'Currency', country: 'Country', role: 'Role', editProfile: 'EDIT PROFILE', keepUpdated: 'Keep your rider details up to date.', saveSuccess: 'Profile saved.', saveFailed: 'Unable to save profile.', fullNamePlaceholder: 'Your full name', saveChanges: 'Save changes', saving: 'Saving…', bookings: 'Bookings', active: 'Active', completed: 'Completed', quickActions: 'QUICK ACTIONS', planNextRide: 'Plan the next ride.', quickActionsHint: 'Browse the fleet or jump straight to checkout — your details are saved.', myBookings: 'MY BOOKINGS', bookingHistory: 'Booking history', noBookings: 'No bookings yet. Open the catalog and we will deliver the scooter the same day.', total: 'Total', payment: 'Payment', days: 'Days', support: 'SUPPORT', supportTitle: 'Talk to support in real time.', supportHint: 'Ask about booking, payment, delivery, or documents. Messages from the site appear in the admin panel instantly.', supportEmpty: 'No messages yet. Send a message and our team will reply shortly.', supportPlaceholder: 'Type your message… (Enter to send)', supportCreate: 'Start support chat', supportSend: 'Send', supportSending: 'Sending…', supportStatusOpen: 'Open', supportStatusClosed: 'Closed', supportError: 'Unable to load support chat.', all: 'All', filterLabel: 'Show' },
-  ru: { signInRequired: 'Войдите в аккаунт', signInHint: 'Чтобы открыть профиль и список бронирований, сначала войдите в аккаунт.', account: 'АККАУНТ', riderProfile: 'Профиль райдера', riderFallback: 'Rider Bali Rent', language: 'Язык', currency: 'Валюта', country: 'Страна', role: 'Роль', editProfile: 'РЕДАКТИРОВАТЬ', keepUpdated: 'Держите данные райдера в актуальном состоянии.', saveSuccess: 'Профиль сохранён.', saveFailed: 'Не удалось сохранить профиль.', fullNamePlaceholder: 'Ваше полное имя', saveChanges: 'Сохранить изменения', saving: 'Сохраняем…', bookings: 'Брони', active: 'Активные', completed: 'Завершённые', quickActions: 'БЫСТРЫЕ ДЕЙСТВИЯ', planNextRide: 'Запланируйте следующую поездку.', quickActionsHint: 'Откройте каталог или сразу переходите к оформлению — ваши данные уже сохранены.', myBookings: 'МОИ БРОНИ', bookingHistory: 'История бронирований', noBookings: 'У вас пока нет бронирований. Откройте каталог, и мы доставим скутер в тот же день.', total: 'Итого', payment: 'Оплата', days: 'Дни', support: 'ПОДДЕРЖКА', supportTitle: 'Напишите поддержке прямо на сайте.', supportHint: 'Можно писать по бронированию, оплате, доставке и документам. Сообщения с сайта сразу появляются в админке.', supportEmpty: 'Сообщений пока нет. Напишите нам, и команда скоро ответит.', supportPlaceholder: 'Введите сообщение… (Enter для отправки)', supportCreate: 'Начать чат с поддержкой', supportSend: 'Отправить', supportSending: 'Отправляем…', supportStatusOpen: 'Открыт', supportStatusClosed: 'Закрыт', supportError: 'Не удалось загрузить чат поддержки.', all: 'Все', filterLabel: 'Показать' },
-  zh: { signInRequired: '登录您的账户', signInHint: '请先登录以打开个人资料和预订列表。', account: '账户', riderProfile: '骑手资料', riderFallback: 'Bali Rent 骑手', language: '语言', currency: '货币', country: '国家', role: '角色', editProfile: '编辑资料', keepUpdated: '请保持您的骑手信息为最新。', saveSuccess: '资料已保存。', saveFailed: '无法保存资料。', fullNamePlaceholder: '您的全名', saveChanges: '保存更改', saving: '保存中…', bookings: '预订', active: '进行中', completed: '已完成', quickActions: '快捷操作', planNextRide: '规划下一次出行。', quickActionsHint: '浏览车队或直接结账，您的信息已保存。', myBookings: '我的预订', bookingHistory: '预订历史', noBookings: '您还没有预订。打开车型页，我们可以当天送车。', total: '总计', payment: '支付', days: '天数', support: '客服', supportTitle: '直接在网站上联系支持。', supportHint: '可咨询预订、付款、配送或文件问题。网站消息会立即出现在管理后台。', supportEmpty: '还没有消息。发送消息后，我们会尽快回复。', supportPlaceholder: '输入消息…（Enter 发送）', supportCreate: '开始支持聊天', supportSend: '发送', supportSending: '发送中…', supportStatusOpen: '开启', supportStatusClosed: '关闭', supportError: '无法加载支持聊天。', all: '全部', filterLabel: '筛选' },
-  id: { signInRequired: 'Masuk ke akun Anda', signInHint: 'Masuk terlebih dahulu untuk membuka profil dan daftar pesanan.', account: 'AKUN', riderProfile: 'Profil pengendara', riderFallback: 'Rider Bali Rent', language: 'Bahasa', currency: 'Mata uang', country: 'Negara', role: 'Peran', editProfile: 'EDIT PROFIL', keepUpdated: 'Pastikan detail pengendara Anda selalu terbaru.', saveSuccess: 'Profil disimpan.', saveFailed: 'Tidak dapat menyimpan profil.', fullNamePlaceholder: 'Nama lengkap Anda', saveChanges: 'Simpan perubahan', saving: 'Menyimpan…', bookings: 'Pesanan', active: 'Aktif', completed: 'Selesai', quickActions: 'AKSI CEPAT', planNextRide: 'Rencanakan perjalanan berikutnya.', quickActionsHint: 'Jelajahi armada atau langsung ke checkout — detail Anda sudah tersimpan.', myBookings: 'PESANAN SAYA', bookingHistory: 'Riwayat pesanan', noBookings: 'Belum ada pesanan. Buka katalog dan kami bisa kirim skuter di hari yang sama.', total: 'Total', payment: 'Pembayaran', days: 'Hari', support: 'SUPPORT', supportTitle: 'Hubungi support langsung dari situs.', supportHint: 'Tanyakan soal booking, pembayaran, pengantaran, atau dokumen. Pesan dari situs langsung muncul di panel admin.', supportEmpty: 'Belum ada pesan. Kirim pesan dan tim kami akan segera membalas.', supportPlaceholder: 'Tulis pesan Anda… (Enter untuk kirim)', supportCreate: 'Mulai chat support', supportSend: 'Kirim', supportSending: 'Mengirim…', supportStatusOpen: 'Terbuka', supportStatusClosed: 'Ditutup', supportError: 'Tidak dapat memuat chat support.', all: 'Semua', filterLabel: 'Tampilkan' },
-  de: { signInRequired: 'In Ihr Konto einloggen', signInHint: 'Bitte zuerst anmelden, um Profil und Buchungen zu öffnen.', account: 'KONTO', riderProfile: 'Fahrerprofil', riderFallback: 'Bali Rent Rider', language: 'Sprache', currency: 'Währung', country: 'Land', role: 'Rolle', editProfile: 'PROFIL BEARBEITEN', keepUpdated: 'Halte deine Fahrerdaten aktuell.', saveSuccess: 'Profil gespeichert.', saveFailed: 'Profil konnte nicht gespeichert werden.', fullNamePlaceholder: 'Dein vollständiger Name', saveChanges: 'Änderungen speichern', saving: 'Speichern…', bookings: 'Buchungen', active: 'Aktiv', completed: 'Abgeschlossen', quickActions: 'SCHNELLAKTIONEN', planNextRide: 'Plane die nächste Fahrt.', quickActionsHint: 'Sieh dir die Flotte an oder gehe direkt zum Checkout — deine Daten sind gespeichert.', myBookings: 'MEINE BUCHUNGEN', bookingHistory: 'Buchungsverlauf', noBookings: 'Noch keine Buchungen. Öffne den Katalog und wir liefern den Roller noch am selben Tag.', total: 'Gesamt', payment: 'Zahlung', days: 'Tage', support: 'SUPPORT', supportTitle: 'Schreibe dem Support direkt auf der Website.', supportHint: 'Fragen zu Buchung, Zahlung, Lieferung oder Dokumenten. Nachrichten von der Website erscheinen sofort im Adminbereich.', supportEmpty: 'Noch keine Nachrichten. Schreib uns und wir antworten bald.', supportPlaceholder: 'Nachricht eingeben… (Enter zum Senden)', supportCreate: 'Support-Chat starten', supportSend: 'Senden', supportSending: 'Wird gesendet…', supportStatusOpen: 'Offen', supportStatusClosed: 'Geschlossen', supportError: 'Support-Chat konnte nicht geladen werden.', all: 'Alle', filterLabel: 'Anzeigen' },
-  fr: { signInRequired: 'Connectez-vous à votre compte', signInHint: "Connectez-vous d'abord pour ouvrir votre profil et vos réservations.", account: 'COMPTE', riderProfile: 'Profil pilote', riderFallback: 'Pilote Bali Rent', language: 'Langue', currency: 'Devise', country: 'Pays', role: 'Rôle', editProfile: 'MODIFIER LE PROFIL', keepUpdated: 'Gardez vos informations pilote à jour.', saveSuccess: 'Profil enregistré.', saveFailed: "Impossible d'enregistrer le profil.", fullNamePlaceholder: 'Votre nom complet', saveChanges: 'Enregistrer les modifications', saving: 'Enregistrement…', bookings: 'Réservations', active: 'Actives', completed: 'Terminées', quickActions: 'ACTIONS RAPIDES', planNextRide: 'Préparez votre prochaine sortie.', quickActionsHint: 'Parcourez la flotte ou passez directement au paiement — vos informations sont enregistrées.', myBookings: 'MES RÉSERVATIONS', bookingHistory: 'Historique des réservations', noBookings: "Vous n'avez pas encore de réservation. Ouvrez le catalogue et nous livrerons le scooter le jour même.", total: 'Total', payment: 'Paiement', days: 'Jours', support: 'SUPPORT', supportTitle: 'Parlez au support directement sur le site.', supportHint: "Posez vos questions sur la réservation, le paiement, la livraison ou les documents. Les messages du site apparaissent immédiatement dans l'admin.", supportEmpty: 'Aucun message pour le moment. Écrivez-nous et nous répondrons rapidement.', supportPlaceholder: 'Écrivez votre message… (Entrée pour envoyer)', supportCreate: 'Démarrer le chat support', supportSend: 'Envoyer', supportSending: 'Envoi…', supportStatusOpen: 'Ouvert', supportStatusClosed: 'Fermé', supportError: 'Impossible de charger le chat support.', all: 'Tous', filterLabel: 'Afficher' },
+  en: { signInRequired: 'Sign in to your account', signInHint: 'Sign in first to open your profile and bookings.', account: 'ACCOUNT', riderProfile: 'Rider profile', riderFallback: 'Bali Rent Rider', language: 'Language', currency: 'Currency', country: 'Country', role: 'Role', editProfile: 'EDIT PROFILE', keepUpdated: 'Keep your rider details up to date.', saveSuccess: 'Profile saved.', saveFailed: 'Unable to save profile.', fullNamePlaceholder: 'Your full name', saveChanges: 'Save changes', saving: 'Saving…', bookings: 'Bookings', active: 'Active', completed: 'Completed', quickActions: 'QUICK ACTIONS', planNextRide: 'Plan the next ride.', quickActionsHint: 'Browse the fleet or jump straight to checkout — your details are saved.', myBookings: 'MY BOOKINGS', bookingHistory: 'Booking history', noBookings: 'No bookings yet. Open the catalog and we will deliver the scooter the same day.', total: 'Total', payment: 'Payment', days: 'Days', support: 'SUPPORT', supportTitle: 'Talk to support in real time.', supportHint: 'Ask about booking, payment, delivery, or documents. Messages from the site appear in the admin panel instantly.', supportEmpty: 'No messages yet. Send a message and our team will reply shortly.', supportPlaceholder: 'Type your message… (Enter to send)', supportCreate: 'Start support chat', supportSend: 'Send', supportSending: 'Sending…', supportStatusOpen: 'Open', supportStatusClosed: 'Closed', supportError: 'Unable to load support chat.', supportReplied: 'Support replied', newReply: 'New reply', all: 'All', filterLabel: 'Show' },
+  ru: { signInRequired: 'Войдите в аккаунт', signInHint: 'Чтобы открыть профиль и список бронирований, сначала войдите в аккаунт.', account: 'АККАУНТ', riderProfile: 'Профиль райдера', riderFallback: 'Rider Bali Rent', language: 'Язык', currency: 'Валюта', country: 'Страна', role: 'Роль', editProfile: 'РЕДАКТИРОВАТЬ', keepUpdated: 'Держите данные райдера в актуальном состоянии.', saveSuccess: 'Профиль сохранён.', saveFailed: 'Не удалось сохранить профиль.', fullNamePlaceholder: 'Ваше полное имя', saveChanges: 'Сохранить изменения', saving: 'Сохраняем…', bookings: 'Брони', active: 'Активные', completed: 'Завершённые', quickActions: 'БЫСТРЫЕ ДЕЙСТВИЯ', planNextRide: 'Запланируйте следующую поездку.', quickActionsHint: 'Откройте каталог или сразу переходите к оформлению — ваши данные уже сохранены.', myBookings: 'МОИ БРОНИ', bookingHistory: 'История бронирований', noBookings: 'У вас пока нет бронирований. Откройте каталог, и мы доставим скутер в тот же день.', total: 'Итого', payment: 'Оплата', days: 'Дни', support: 'ПОДДЕРЖКА', supportTitle: 'Напишите поддержке прямо на сайте.', supportHint: 'Можно писать по бронированию, оплате, доставке и документам. Сообщения с сайта сразу появляются в админке.', supportEmpty: 'Сообщений пока нет. Напишите нам, и команда скоро ответит.', supportPlaceholder: 'Введите сообщение… (Enter для отправки)', supportCreate: 'Начать чат с поддержкой', supportSend: 'Отправить', supportSending: 'Отправляем…', supportStatusOpen: 'Открыт', supportStatusClosed: 'Закрыт', supportError: 'Не удалось загрузить чат поддержки.', supportReplied: 'Поддержка ответила', newReply: 'Новый ответ', all: 'Все', filterLabel: 'Показать' },
+  zh: { signInRequired: '登录您的账户', signInHint: '请先登录以打开个人资料和预订列表。', account: '账户', riderProfile: '骑手资料', riderFallback: 'Bali Rent 骑手', language: '语言', currency: '货币', country: '国家', role: '角色', editProfile: '编辑资料', keepUpdated: '请保持您的骑手信息为最新。', saveSuccess: '资料已保存。', saveFailed: '无法保存资料。', fullNamePlaceholder: '您的全名', saveChanges: '保存更改', saving: '保存中…', bookings: '预订', active: '进行中', completed: '已完成', quickActions: '快捷操作', planNextRide: '规划下一次出行。', quickActionsHint: '浏览车队或直接结账，您的信息已保存。', myBookings: '我的预订', bookingHistory: '预订历史', noBookings: '您还没有预订。打开车型页，我们可以当天送车。', total: '总计', payment: '支付', days: '天数', support: '客服', supportTitle: '直接在网站上联系支持。', supportHint: '可咨询预订、付款、配送或文件问题。网站消息会立即出现在管理后台。', supportEmpty: '还没有消息。发送消息后，我们会尽快回复。', supportPlaceholder: '输入消息…（Enter 发送）', supportCreate: '开始支持聊天', supportSend: '发送', supportSending: '发送中…', supportStatusOpen: '开启', supportStatusClosed: '关闭', supportError: '无法加载支持聊天。', supportReplied: '客服已回复', newReply: '新回复', all: '全部', filterLabel: '筛选' },
+  id: { signInRequired: 'Masuk ke akun Anda', signInHint: 'Masuk terlebih dahulu untuk membuka profil dan daftar pesanan.', account: 'AKUN', riderProfile: 'Profil pengendara', riderFallback: 'Rider Bali Rent', language: 'Bahasa', currency: 'Mata uang', country: 'Negara', role: 'Peran', editProfile: 'EDIT PROFIL', keepUpdated: 'Pastikan detail pengendara Anda selalu terbaru.', saveSuccess: 'Profil disimpan.', saveFailed: 'Tidak dapat menyimpan profil.', fullNamePlaceholder: 'Nama lengkap Anda', saveChanges: 'Simpan perubahan', saving: 'Menyimpan…', bookings: 'Pesanan', active: 'Aktif', completed: 'Selesai', quickActions: 'AKSI CEPAT', planNextRide: 'Rencanakan perjalanan berikutnya.', quickActionsHint: 'Jelajahi armada atau langsung ke checkout — detail Anda sudah tersimpan.', myBookings: 'PESANAN SAYA', bookingHistory: 'Riwayat pesanan', noBookings: 'Belum ada pesanan. Buka katalog dan kami bisa kirim skuter di hari yang sama.', total: 'Total', payment: 'Pembayaran', days: 'Hari', support: 'SUPPORT', supportTitle: 'Hubungi support langsung dari situs.', supportHint: 'Tanyakan soal booking, pembayaran, pengantaran, atau dokumen. Pesan dari situs langsung muncul di panel admin.', supportEmpty: 'Belum ada pesan. Kirim pesan dan tim kami akan segera membalas.', supportPlaceholder: 'Tulis pesan Anda… (Enter untuk kirim)', supportCreate: 'Mulai chat support', supportSend: 'Kirim', supportSending: 'Mengirim…', supportStatusOpen: 'Terbuka', supportStatusClosed: 'Ditutup', supportError: 'Tidak dapat memuat chat support.', supportReplied: 'Support sudah membalas', newReply: 'Balasan baru', all: 'Semua', filterLabel: 'Tampilkan' },
+  de: { signInRequired: 'In Ihr Konto einloggen', signInHint: 'Bitte zuerst anmelden, um Profil und Buchungen zu öffnen.', account: 'KONTO', riderProfile: 'Fahrerprofil', riderFallback: 'Bali Rent Rider', language: 'Sprache', currency: 'Währung', country: 'Land', role: 'Rolle', editProfile: 'PROFIL BEARBEITEN', keepUpdated: 'Halte deine Fahrerdaten aktuell.', saveSuccess: 'Profil gespeichert.', saveFailed: 'Profil konnte nicht gespeichert werden.', fullNamePlaceholder: 'Dein vollständiger Name', saveChanges: 'Änderungen speichern', saving: 'Speichern…', bookings: 'Buchungen', active: 'Aktiv', completed: 'Abgeschlossen', quickActions: 'SCHNELLAKTIONEN', planNextRide: 'Plane die nächste Fahrt.', quickActionsHint: 'Sieh dir die Flotte an oder gehe direkt zum Checkout — deine Daten sind gespeichert.', myBookings: 'MEINE BUCHUNGEN', bookingHistory: 'Buchungsverlauf', noBookings: 'Noch keine Buchungen. Öffne den Katalog und wir liefern den Roller noch am selben Tag.', total: 'Gesamt', payment: 'Zahlung', days: 'Tage', support: 'SUPPORT', supportTitle: 'Schreibe dem Support direkt auf der Website.', supportHint: 'Fragen zu Buchung, Zahlung, Lieferung oder Dokumenten. Nachrichten von der Website erscheinen sofort im Adminbereich.', supportEmpty: 'Noch keine Nachrichten. Schreib uns und wir antworten bald.', supportPlaceholder: 'Nachricht eingeben… (Enter zum Senden)', supportCreate: 'Support-Chat starten', supportSend: 'Senden', supportSending: 'Wird gesendet…', supportStatusOpen: 'Offen', supportStatusClosed: 'Geschlossen', supportError: 'Support-Chat konnte nicht geladen werden.', supportReplied: 'Support hat geantwortet', newReply: 'Neue Antwort', all: 'Alle', filterLabel: 'Anzeigen' },
+  fr: { signInRequired: 'Connectez-vous à votre compte', signInHint: "Connectez-vous d'abord pour ouvrir votre profil et vos réservations.", account: 'COMPTE', riderProfile: 'Profil pilote', riderFallback: 'Pilote Bali Rent', language: 'Langue', currency: 'Devise', country: 'Pays', role: 'Rôle', editProfile: 'MODIFIER LE PROFIL', keepUpdated: 'Gardez vos informations pilote à jour.', saveSuccess: 'Profil enregistré.', saveFailed: "Impossible d'enregistrer le profil.", fullNamePlaceholder: 'Votre nom complet', saveChanges: 'Enregistrer les modifications', saving: 'Enregistrement…', bookings: 'Réservations', active: 'Actives', completed: 'Terminées', quickActions: 'ACTIONS RAPIDES', planNextRide: 'Préparez votre prochaine sortie.', quickActionsHint: 'Parcourez la flotte ou passez directement au paiement — vos informations sont enregistrées.', myBookings: 'MES RÉSERVATIONS', bookingHistory: 'Historique des réservations', noBookings: "Vous n'avez pas encore de réservation. Ouvrez le catalogue et nous livrerons le scooter le jour même.", total: 'Total', payment: 'Paiement', days: 'Jours', support: 'SUPPORT', supportTitle: 'Parlez au support directement sur le site.', supportHint: "Posez vos questions sur la réservation, le paiement, la livraison ou les documents. Les messages du site apparaissent immédiatement dans l'admin.", supportEmpty: 'Aucun message pour le moment. Écrivez-nous et nous répondrons rapidement.', supportPlaceholder: 'Écrivez votre message… (Entrée pour envoyer)', supportCreate: 'Démarrer le chat support', supportSend: 'Envoyer', supportSending: 'Envoi…', supportStatusOpen: 'Ouvert', supportStatusClosed: 'Fermé', supportError: 'Impossible de charger le chat support.', supportReplied: 'Le support a répondu', newReply: 'Nouvelle réponse', all: 'Tous', filterLabel: 'Afficher' },
 } as const;
 
 type Tab = 'profile' | 'bookings' | 'support';
@@ -44,6 +44,22 @@ type BookingFilter = 'all' | 'active' | 'completed';
 
 const ACTIVE_STATUSES = ['created', 'confirmed', 'active', 'delivery', 'pending_payment'];
 const BOOKING_PRICE_SOURCE_CURRENCY = 'USD';
+
+function messageIsFromSupport(
+  message?: Pick<ApiChatMessage, 'is_from_support' | 'sender'> | null
+) {
+  if (!message) {
+    return false;
+  }
+  return Boolean(
+    message.is_from_support ||
+    (message.sender?.role && ['admin', 'manager', 'staff'].includes(message.sender.role))
+  );
+}
+
+function canUseBrowserNotifications() {
+  return typeof window !== 'undefined' && 'Notification' in window;
+}
 
 export default function ProfilePage() {
   const { t, locale } = useLocale();
@@ -75,6 +91,7 @@ export default function ProfilePage() {
   const [supportError, setSupportError] = useState('');
 
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const supportUnreadIdsRef = useRef<number[] | null>(null);
 
   const totals = useMemo(() => {
     const active = bookings.filter((b) => ACTIVE_STATUSES.includes(b.status)).length;
@@ -112,9 +129,43 @@ export default function ProfilePage() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [supportMessages]);
 
+  const unreadSupportCount = useMemo(
+    () => supportThreads.filter((thread) => thread.has_unread_support_reply).length,
+    [supportThreads],
+  );
+
+  async function requestBrowserNotificationPermission() {
+    if (!canUseBrowserNotifications() || window.Notification.permission !== 'default') {
+      return;
+    }
+    try {
+      await window.Notification.requestPermission();
+    } catch {}
+  }
+
   async function loadSupportThreads() {
     const res = await endpoints.chatThreads({ page_size: 100 });
     const threads = unwrapList(res);
+    const unreadIds = threads
+      .filter((thread) => thread.has_unread_support_reply)
+      .map((thread) => thread.id);
+    const previousUnreadIds = supportUnreadIdsRef.current;
+    if (previousUnreadIds) {
+      threads
+        .filter((thread) => thread.has_unread_support_reply && !previousUnreadIds.includes(thread.id))
+        .forEach((thread) => {
+          if (
+            canUseBrowserNotifications() &&
+            window.Notification.permission === 'granted' &&
+            (document.visibilityState !== 'visible' || activeTab !== 'support' || activeSupportThreadId !== thread.id)
+          ) {
+            new window.Notification(copy.supportReplied, {
+              body: thread.last_message?.text || thread.title || copy.support,
+            });
+          }
+        });
+    }
+    supportUnreadIdsRef.current = unreadIds;
     setSupportThreads(threads);
     setActiveSupportThreadId((current) => current || threads[0]?.id || null);
     return threads;
@@ -125,6 +176,14 @@ export default function ProfilePage() {
     setSupportMessages(unwrapList(res));
   }
 
+  async function markSupportThreadRead(threadId: number) {
+    await endpoints.markSupportThreadRead(threadId);
+    setSupportThreads((current) =>
+      current.map((thread) => (thread.id === threadId ? { ...thread, has_unread_support_reply: false } : thread)),
+    );
+    supportUnreadIdsRef.current = (supportUnreadIdsRef.current || []).filter((id) => id !== threadId);
+  }
+
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -132,19 +191,11 @@ export default function ProfilePage() {
       setSupportLoading(true);
       setSupportError('');
       try {
-        const threads = await endpoints.chatThreads({ page_size: 100 });
+        const threads = await loadSupportThreads();
         if (cancelled) return;
-        const nextThreads = unwrapList(threads);
-        setSupportThreads(nextThreads);
-        const nextThreadId = nextThreads[0]?.id || null;
+        const nextThreadId = threads[0]?.id || null;
         setActiveSupportThreadId(nextThreadId);
-        if (nextThreadId) {
-          const messages = await endpoints.chatMessages(nextThreadId, { page_size: 100 });
-          if (cancelled) return;
-          setSupportMessages(unwrapList(messages));
-        } else {
-          setSupportMessages([]);
-        }
+        setSupportMessages([]);
       } catch (error) {
         if (cancelled) return;
         setSupportError(error instanceof ApiError ? error.message : copy.supportError);
@@ -157,22 +208,28 @@ export default function ProfilePage() {
   }, [user, copy.supportError]);
 
   useEffect(() => {
-    if (!user || !activeSupportThreadId) return;
+    if (!user) return;
     const id = window.setInterval(async () => {
       try {
         await loadSupportThreads();
-        await loadSupportMessages(activeSupportThreadId);
+        if (activeTab === 'support' && activeSupportThreadId) {
+          await loadSupportMessages(activeSupportThreadId);
+        }
       } catch {}
-    }, 10000);
+    }, 5000);
     return () => window.clearInterval(id);
-  }, [user, activeSupportThreadId]);
+  }, [activeSupportThreadId, activeTab, user, copy.support, copy.supportReplied]);
 
   useEffect(() => {
+    if (activeTab !== 'support') {
+      setSupportMessages([]);
+      return;
+    }
     if (!activeSupportThreadId) { setSupportMessages([]); return; }
-    loadSupportMessages(activeSupportThreadId).catch((error) => {
+    loadSupportMessages(activeSupportThreadId).then(() => markSupportThreadRead(activeSupportThreadId)).catch((error) => {
       setSupportError(error instanceof ApiError ? error.message : copy.supportError);
     });
-  }, [activeSupportThreadId, copy.supportError]);
+  }, [activeSupportThreadId, activeTab, copy.supportError]);
 
   async function handleSaveProfile(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -201,6 +258,7 @@ export default function ProfilePage() {
     setSupportError('');
     try {
       const thread = await endpoints.ensureSupportChatThread({ title: 'Support Chat' });
+      await requestBrowserNotificationPermission();
       const threads = await loadSupportThreads();
       const resolved = threads.find((t) => t.id === thread.id) || thread;
       setActiveSupportThreadId(resolved.id);
@@ -225,6 +283,7 @@ export default function ProfilePage() {
         setActiveSupportThreadId(thread.id);
       }
       await endpoints.sendChatMessage({ thread_id: threadId, text: supportDraft.trim() });
+      await requestBrowserNotificationPermission();
       setSupportDraft('');
       await loadSupportThreads();
       await loadSupportMessages(threadId);
@@ -240,7 +299,7 @@ export default function ProfilePage() {
   const TABS: { key: Tab; label: string; count?: number }[] = [
     { key: 'profile', label: copy.editProfile },
     { key: 'bookings', label: copy.myBookings, count: totals.total },
-    { key: 'support', label: copy.support },
+    { key: 'support', label: copy.support, count: unreadSupportCount || undefined },
   ];
 
   return (
@@ -536,6 +595,7 @@ export default function ProfilePage() {
                       >
                         {thread.title || 'Support Chat'}
                         {thread.status === 'closed' ? ` · ${copy.supportStatusClosed}` : ''}
+                        {thread.has_unread_support_reply ? ` · ${copy.newReply}` : thread.last_message?.is_from_support ? ` · ${copy.supportReplied}` : ''}
                       </button>
                     ))}
                   </div>
@@ -552,6 +612,15 @@ export default function ProfilePage() {
                       <span className="br-mono" style={{ marginLeft: 'auto', fontSize: 10, letterSpacing: '0.12em', color: activeSupportThread.status === 'closed' ? 'rgba(255,255,255,0.3)' : '#FFD700' }}>
                         {activeSupportThread.status === 'closed' ? copy.supportStatusClosed : copy.supportStatusOpen}
                       </span>
+                      {activeSupportThread.has_unread_support_reply ? (
+                        <span className="br-mono" style={{ fontSize: 10, letterSpacing: '0.12em', color: '#0A0A0A', padding: '5px 8px', borderRadius: 999, background: '#FFD700' }}>
+                          {copy.newReply}
+                        </span>
+                      ) : activeSupportThread.last_message?.is_from_support ? (
+                        <span className="br-mono" style={{ fontSize: 10, letterSpacing: '0.12em', color: '#86EFAC', padding: '5px 8px', borderRadius: 999, background: 'rgba(34,197,94,0.12)' }}>
+                          {copy.supportReplied}
+                        </span>
+                      ) : null}
                     </div>
                   )}
 
@@ -578,7 +647,7 @@ export default function ProfilePage() {
                     ) : (
                       <>
                         {supportMessages.map((message) => {
-                          const isSupport = ['admin', 'manager', 'staff'].includes(message.sender?.role || '');
+                          const isSupport = messageIsFromSupport(message);
                           return (
                             <div key={message.id} style={{ display: 'flex', justifyContent: isSupport ? 'flex-start' : 'flex-end' }}>
                               <div style={{ maxWidth: '72%', borderRadius: isSupport ? '4px 18px 18px 18px' : '18px 4px 18px 18px', padding: '12px 16px', background: isSupport ? 'rgba(255,255,255,0.09)' : '#FFD700', color: isSupport ? '#fff' : '#0A0A0A' }}>
