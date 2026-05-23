@@ -1247,9 +1247,10 @@ function AnalyticsView({ revenue, funnel, bookings }) {
   );
 }
 
-function SupportView({ threads, messages, quickReplies, activeThreadId, onSelectThread, onSendReply, onUpdateThreadStatus, sendingReply }) {
+function SupportView({ threads, messages, quickReplies, activeThreadId, currentAdminId, currentAdminEmail, onSelectThread, onSendReply, onUpdateThreadStatus, sendingReply }) {
   const activeThread = threads.find((item) => item.id === activeThreadId) || threads[0] || null;
   const [draft, setDraft] = React.useState('');
+  const threadAvatar = initials(activeThread?.title || 'Support');
 
   React.useEffect(() => {
     setDraft('');
@@ -1317,26 +1318,34 @@ function SupportView({ threads, messages, quickReplies, activeThreadId, onSelect
                 <Button variant="dark" onClick={() => onUpdateThreadStatus(activeThread.id, 'closed')}>Close Thread</Button>
               </div>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ flex: 1, padding: '16px 24px 18px' }}>
+              <div style={{ height: '100%', borderRadius: 30, background: '#F7F7F8', padding: '14px 12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
               {messages.length === 0 ? (
                 <div style={{ fontFamily: 'Inter', fontSize: 14, color: A.g500 }}>No messages in this thread.</div>
               ) : messages.map((message) => {
                 const sender = message.sender || {};
-                const isAdmin = ['admin', 'manager', 'staff'].includes(sender.role);
+                const own =
+                  (currentAdminEmail && sender.email && String(sender.email).toLowerCase() === String(currentAdminEmail).toLowerCase()) ||
+                  (currentAdminId != null && sender.id != null && String(sender.id) === String(currentAdminId));
                 return (
-                  <div key={message.id} style={{ display: 'flex', flexDirection: isAdmin ? 'row-reverse' : 'row', gap: 10, alignItems: 'flex-end' }}>
-                    <div style={{ width: 32, height: 32, background: isAdmin ? A.black : A.gold, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Sora', fontWeight: 800, fontSize: 12, color: isAdmin ? A.white : A.black }}>
-                      {initials(sender.full_name || sender.email)}
-                    </div>
-                    <div style={{ maxWidth: '74%' }}>
-                      <div style={{ background: isAdmin ? A.black : A.white, borderRadius: isAdmin ? '16px 4px 16px 16px' : '4px 16px 16px 16px', padding: '12px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                        <div style={{ fontFamily: 'Inter', fontSize: 14, lineHeight: 1.6, color: isAdmin ? A.white : A.black }}>{message.text}</div>
+                  <div key={message.id} style={{ display: 'flex', justifyContent: own ? 'flex-end' : 'flex-start', alignItems: 'flex-end', gap: 8 }}>
+                    {!own ? (
+                      <div style={{ width: 28, height: 28, borderRadius: 14, padding: 1.5, background: 'linear-gradient(135deg, #FEDA75 0%, #FA7E1E 30%, #D62976 60%, #962FBF 80%, #4F5BD5 100%)' }}>
+                        <div style={{ width: '100%', height: '100%', borderRadius: 12.5, background: A.white, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: A.black }}>
+                          {threadAvatar || 'SP'}
+                        </div>
                       </div>
-                      <div style={{ fontFamily: 'Inter', fontSize: 10, color: A.g400, marginTop: 4, textAlign: isAdmin ? 'right' : 'left' }}>{formatDateTime(message.created_at)}</div>
+                    ) : null}
+                    <div style={{ maxWidth: '78%', borderRadius: 24, borderBottomRightRadius: own ? 8 : 24, borderBottomLeftRadius: own ? 24 : 8, background: own ? '#3797F0' : A.white, border: own ? 'none' : `1px solid ${A.g200}`, padding: '11px 14px' }}>
+                      <div style={{ fontFamily: 'Inter', fontSize: 14, lineHeight: 1.45, color: own ? A.white : A.black }}>{message.text}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 6 }}>
+                        <div style={{ fontFamily: 'Inter', fontSize: 11, color: own ? 'rgba(255,255,255,0.72)' : '#8E8E93' }}>{formatDateTime(message.created_at)}</div>
+                      </div>
                     </div>
                   </div>
                 );
               })}
+              </div>
             </div>
             <div style={{ padding: '16px 24px', background: A.white, borderTop: `1px solid ${A.g200}` }}>
               {quickReplies.length > 0 ? (
@@ -1346,9 +1355,11 @@ function SupportView({ threads, messages, quickReplies, activeThreadId, onSelect
                   ))}
                 </div>
               ) : null}
-              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
-                <Textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Type a message..." style={{ minHeight: 90 }} />
-                <Button variant="primary" onClick={submitReply} disabled={sendingReply || !draft.trim()} style={{ height: 46 }}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+                <div style={{ flex: 1, minHeight: 54, borderRadius: 28, background: '#F7F7F8', border: `1px solid ${A.g200}`, padding: '8px 16px' }}>
+                  <Textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Type a message..." style={{ minHeight: 38, border: 'none', background: 'transparent', boxShadow: 'none', padding: 0, resize: 'none' }} />
+                </div>
+                <Button variant="primary" onClick={submitReply} disabled={sendingReply || !draft.trim()} style={{ width: 50, height: 50, borderRadius: 25, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {sendingReply ? 'Sending…' : 'Send'}
                 </Button>
               </div>
@@ -1997,6 +2008,8 @@ function AdminApp() {
         messages={threadMessages}
         quickReplies={data.quickReplies}
         activeThreadId={activeThreadId}
+        currentAdminId={profile?.id ?? null}
+        currentAdminEmail={profile?.email ?? ''}
         onSelectThread={setActiveThreadId}
         onSendReply={handleSendReply}
         onUpdateThreadStatus={handleThreadStatus}

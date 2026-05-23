@@ -3263,6 +3263,7 @@ export default function AdminPage() {
         messages={threadMessages}
         quickReplies={data.quickReplies}
         activeThreadId={activeThreadId}
+        currentUser={user}
         onSelectThread={setActiveThreadId}
         onSendReply={handleSendReply}
         onUpdateThreadStatus={handleThreadStatus}
@@ -6878,6 +6879,7 @@ function SupportView({
   messages,
   quickReplies,
   activeThreadId,
+  currentUser,
   onSelectThread,
   onSendReply,
   onUpdateThreadStatus,
@@ -6888,6 +6890,7 @@ function SupportView({
   messages: ApiChatMessage[];
   quickReplies: ApiQuickReply[];
   activeThreadId: number | null;
+  currentUser: ApiUser | null;
   onSelectThread: (id: number) => void;
   onSendReply: (threadId: number, text: string) => void;
   onUpdateThreadStatus: (threadId: number, status: 'open' | 'closed') => void;
@@ -6897,6 +6900,26 @@ function SupportView({
   const activeThread = threads.find((t) => t.id === activeThreadId) || threads[0] || null;
   const [draft, setDraft] = useState('');
   const [showChat, setShowChat] = useState(false);
+  const supportParticipantIds = useMemo(
+    () =>
+      new Set(
+        (activeThread?.participants || [])
+          .filter((participant) => participant.role !== 'client')
+          .map((participant) => participant.user?.id)
+          .filter((id): id is number => typeof id === 'number'),
+      ),
+    [activeThread],
+  );
+  const supportParticipantEmails = useMemo(
+    () =>
+      new Set(
+        (activeThread?.participants || [])
+          .filter((participant) => participant.role !== 'client')
+          .map((participant) => String(participant.user?.email || '').toLowerCase())
+          .filter(Boolean),
+      ),
+    [activeThread],
+  );
 
   useEffect(() => {
     setDraft('');
@@ -7039,8 +7062,17 @@ function SupportView({
             ) : (
               messages.map((message) => {
                 const sender = message.sender;
-                const role = sender?.role || '';
-                const isAdmin = ['admin', 'manager', 'staff'].includes(role);
+                const role = String(sender?.role || '').toLowerCase();
+                const senderEmail = String(sender?.email || '').toLowerCase();
+                const isCurrentAdmin =
+                  (currentUser?.id != null && sender?.id != null && String(currentUser.id) === String(sender.id)) ||
+                  Boolean(currentUser?.email && sender?.email && String(currentUser.email).toLowerCase() === senderEmail);
+                const isAdmin =
+                  Boolean(message.is_from_support) ||
+                  ['admin', 'manager', 'staff'].includes(role) ||
+                  (sender?.id != null && supportParticipantIds.has(sender.id)) ||
+                  (senderEmail ? supportParticipantEmails.has(senderEmail) : false) ||
+                  isCurrentAdmin;
                 return (
                   <div
                     key={message.id}
@@ -7055,7 +7087,7 @@ function SupportView({
                       style={{
                         width: 32,
                         height: 32,
-                        background: isAdmin ? A.black : A.gold,
+                        background: A.gold,
                         borderRadius: 10,
                         display: 'flex',
                         alignItems: 'center',
@@ -7063,7 +7095,7 @@ function SupportView({
                         fontFamily: 'Sora, sans-serif',
                         fontWeight: 800,
                         fontSize: 12,
-                        color: isAdmin ? A.white : A.black,
+                        color: A.black,
                         flexShrink: 0,
                       }}
                     >
@@ -7072,7 +7104,7 @@ function SupportView({
                     <div style={{ maxWidth: isMobile ? '85%' : '74%' }}>
                       <div
                         style={{
-                          background: isAdmin ? A.black : A.white,
+                          background: A.white,
                           borderRadius: isAdmin ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
                           padding: '12px 16px',
                           boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
@@ -7083,7 +7115,7 @@ function SupportView({
                             fontFamily: 'Inter, sans-serif',
                             fontSize: 14,
                             lineHeight: 1.6,
-                            color: isAdmin ? A.white : A.black,
+                            color: A.black,
                           }}
                         >
                           {message.text}
