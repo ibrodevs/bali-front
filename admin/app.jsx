@@ -1,8 +1,10 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { buildApiUrl } from '../src/api';
+import { ADMIN_UI_LOCALES, translateAdminUiText } from '../lib/i18n/adminUi';
 
 const STORAGE_KEY = 'scoot-bali-admin-auth';
+const UI_LOCALE_STORAGE_KEY = 'scoot-bali-admin-ui-locale';
 
 const A = {
   bg: '#f7f7f8',
@@ -36,6 +38,18 @@ const NAV = [
   { id: 'support', icon: '💬', label: 'Support' },
   { id: 'promocodes', icon: '🏷️', label: 'Promo Codes' },
 ];
+
+function loadStoredUiLocale() {
+  const raw = window.localStorage.getItem(UI_LOCALE_STORAGE_KEY);
+  if (raw && ADMIN_UI_LOCALES.some((item) => item.code === raw)) {
+    return raw;
+  }
+  return 'en';
+}
+
+function persistUiLocale(locale) {
+  window.localStorage.setItem(UI_LOCALE_STORAGE_KEY, locale);
+}
 
 function loadStoredSession() {
   const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -358,6 +372,10 @@ function formatDateRange(start, end) {
     return '—';
   }
   return `${formatDateTime(start)} – ${formatDateTime(end)}`;
+}
+
+function createAdminUiTranslator(locale) {
+  return (source) => translateAdminUiText(source, locale);
 }
 
 function paymentBadgeColor(status) {
@@ -900,7 +918,8 @@ function FleetView({
   );
 }
 
-function BookingsView({ bookings, busyBookingId, onBookingAction }) {
+function BookingsView({ bookings, busyBookingId, onBookingAction, locale }) {
+  const t = createAdminUiTranslator(locale);
   const [filter, setFilter] = React.useState('all');
   const filtered = filter === 'all' ? bookings : bookings.filter((item) => item.status === filter);
   const contactBadges = (item) => [
@@ -913,19 +932,19 @@ function BookingsView({ bookings, busyBookingId, onBookingAction }) {
     const busy = busyBookingId === item.id;
     const buttons = [];
     if (['created', 'pending_payment', 'paid'].includes(item.status)) {
-      buttons.push(['confirm', 'Confirm', 'dark']);
+      buttons.push(['confirm', t('Confirm'), 'dark']);
     }
     if (item.status === 'confirmed') {
-      buttons.push(['mark-delivery', 'Mark delivery', 'outline']);
+      buttons.push(['mark-delivery', t('Mark delivery'), 'outline']);
     }
     if (['confirmed', 'delivery'].includes(item.status)) {
-      buttons.push(['mark-active', 'Mark active', 'outline']);
+      buttons.push(['mark-active', t('Mark active'), 'outline']);
     }
     if (item.status === 'active') {
-      buttons.push(['complete', 'Complete', 'dark']);
+      buttons.push(['complete', t('Complete'), 'dark']);
     }
     if (!['completed', 'cancelled'].includes(item.status)) {
-      buttons.push(['cancel', 'Cancel', 'ghost']);
+      buttons.push(['cancel', t('Cancel'), 'ghost']);
     }
     return (
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -940,7 +959,7 @@ function BookingsView({ bookings, busyBookingId, onBookingAction }) {
 
   return (
     <div style={{ overflowY: 'auto', height: '100%', padding: '28px 32px' }}>
-      <SectionHeader title="Bookings" subtitle={`${bookings.length} bookings loaded from backend`} />
+      <SectionHeader title={t('Bookings')} subtitle={t(`${bookings.length} bookings loaded from backend`)} />
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         {['all', 'created', 'pending_payment', 'confirmed', 'delivery', 'active', 'completed', 'cancelled'].map((value) => (
           <div
@@ -958,12 +977,12 @@ function BookingsView({ bookings, busyBookingId, onBookingAction }) {
               cursor: 'pointer',
             }}
           >
-            {value}
+            {t(value === 'all' ? 'All' : value)}
           </div>
         ))}
       </div>
       {filtered.length === 0 ? (
-        <EmptyState label="No bookings for this filter." />
+        <EmptyState label={t('No bookings for this filter.')} />
       ) : (
         <div style={{ display: 'grid', gap: 14 }}>
           {filtered.map((item) => (
@@ -971,12 +990,12 @@ function BookingsView({ bookings, busyBookingId, onBookingAction }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 16, alignItems: 'start' }}>
                 <div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-                    <Badge color={bookingBadgeColor(item.status)}>{item.status}</Badge>
-                    <Badge color={paymentBadgeColor(item.latest_payment?.status || item.payment_status)}>{item.latest_payment?.status || item.payment_status}</Badge>
+                    <Badge color={bookingBadgeColor(item.status)}>{t(item.status || 'Unknown')}</Badge>
+                    <Badge color={paymentBadgeColor(item.latest_payment?.status || item.payment_status)}>{t(item.latest_payment?.status || item.payment_status || 'Unknown')}</Badge>
                   </div>
                   <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 17, color: A.black, marginBottom: 4 }}>#{item.order_number}</div>
-                  <div style={{ fontFamily: 'Inter', fontSize: 13, color: A.g700 }}>{item.contact_name || item.user || 'Guest'}</div>
-                  <div style={{ fontFamily: 'Inter', fontSize: 13, color: A.g500 }}>{item.contact_phone || 'Phone not provided'}</div>
+                  <div style={{ fontFamily: 'Inter', fontSize: 13, color: A.g700 }}>{item.contact_name || item.user || t('Guest')}</div>
+                  <div style={{ fontFamily: 'Inter', fontSize: 13, color: A.g500 }}>{item.contact_phone || t('Phone not provided')}</div>
                   {contactBadges(item).length > 0 ? (
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
                       {contactBadges(item).map((label) => (
@@ -986,16 +1005,16 @@ function BookingsView({ bookings, busyBookingId, onBookingAction }) {
                       ))}
                     </div>
                   ) : null}
-                  <div style={{ fontFamily: 'Inter', fontSize: 13, color: A.g500 }}>{item.scooter?.title || 'Scooter'}</div>
+                  <div style={{ fontFamily: 'Inter', fontSize: 13, color: A.g500 }}>{item.scooter?.title || t('Scooter')}</div>
                 </div>
                 <div>
-                  <div style={{ fontFamily: 'Inter', fontSize: 12, color: A.g500, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Rental</div>
+                  <div style={{ fontFamily: 'Inter', fontSize: 12, color: A.g500, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>{t('Rental')}</div>
                   <div style={{ fontFamily: 'Inter', fontSize: 13, color: A.black, lineHeight: 1.6 }}>{formatDateRange(item.start_datetime, item.end_datetime)}</div>
-                  <div style={{ fontFamily: 'Inter', fontSize: 12, color: A.g500, marginTop: 8 }}>{item.delivery_address || 'Delivery address not provided'}</div>
+                  <div style={{ fontFamily: 'Inter', fontSize: 12, color: A.g500, marginTop: 8 }}>{item.delivery_address || t('Delivery address not provided')}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontFamily: 'Sora', fontWeight: 800, fontSize: 20, color: A.black, marginBottom: 8 }}>{formatMoney(item.total_price)}</div>
-                  <div style={{ fontFamily: 'Inter', fontSize: 12, color: A.g500, marginBottom: 14 }}>{item.rental_days} days · {item.payment_method}</div>
+                  <div style={{ fontFamily: 'Inter', fontSize: 12, color: A.g500, marginBottom: 14 }}>{item.rental_days} {t(item.rental_days === 1 ? 'day' : 'days')} · {t(item.payment_method || 'Unknown')}</div>
                   {actionButtons(item)}
                 </div>
               </div>
@@ -1622,6 +1641,7 @@ function LoginView({ form, setForm, error, loading, onSubmit }) {
 
 function AdminApp() {
   const [session, setSession] = React.useState(loadStoredSession);
+  const [uiLocale, setUiLocale] = React.useState(loadStoredUiLocale);
   const [profile, setProfile] = React.useState(null);
   const [view, setView] = React.useState('overview');
   const [loading, setLoading] = React.useState(false);
@@ -1744,6 +1764,10 @@ function AdminApp() {
   React.useEffect(() => {
     persistSession(session);
   }, [session]);
+
+  React.useEffect(() => {
+    persistUiLocale(uiLocale);
+  }, [uiLocale]);
 
   React.useEffect(() => {
     if (session?.access) {
@@ -1973,6 +1997,9 @@ function AdminApp() {
     return <LoginView form={loginForm} setForm={setLoginForm} error={error} loading={loading} onSubmit={handleLogin} />;
   }
 
+  const t = createAdminUiTranslator(uiLocale);
+  const currentViewLabel = NAV.find((item) => item.id === view)?.label || view;
+
   const viewMap = {
     overview: (
       <OverviewView
@@ -1997,6 +2024,7 @@ function AdminApp() {
         bookings={data.bookings}
         busyBookingId={busyBookingId}
         onBookingAction={handleBookingAction}
+        locale={uiLocale}
       />
     ),
     crm: <CRMView profiles={data.profiles} users={data.users} bookings={data.bookings} />,
@@ -2040,7 +2068,7 @@ function AdminApp() {
                 SCOOT <span style={{ color: A.gold }}>BALI</span>
               </div>
               <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.06em', marginTop: 1 }}>
-                ADMIN PANEL
+                {t('ADMIN PANEL')}
               </div>
             </div>
           </div>
@@ -2063,7 +2091,7 @@ function AdminApp() {
             >
               <span style={{ fontSize: 16, filter: view === item.id ? 'none' : 'grayscale(0.5) opacity(0.6)' }}>{item.icon}</span>
               <span style={{ fontFamily: 'Inter', fontSize: 14, fontWeight: view === item.id ? 700 : 400, color: view === item.id ? A.white : 'rgba(255,255,255,0.5)' }}>
-                {item.label}
+                {t(item.label)}
               </span>
             </div>
           ))}
@@ -2083,26 +2111,35 @@ function AdminApp() {
             </div>
           </div>
           <Button variant="outline" onClick={handleLogout} style={{ width: '100%', color: A.white, borderColor: 'rgba(255,255,255,0.16)' }}>
-            Sign out
+            {t('Sign out')}
           </Button>
         </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', background: A.bg }}>
         <div style={{ height: 56, background: A.white, borderBottom: `1px solid ${A.g200}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', flexShrink: 0 }}>
-          <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 16, color: A.black, textTransform: 'capitalize' }}>{view}</div>
+          <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 16, color: A.black }}>{t(currentViewLabel)}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 180 }}>
+              <Select value={uiLocale} onChange={(event) => setUiLocale(event.target.value)} style={{ padding: '9px 12px', fontSize: 13 }}>
+                {ADMIN_UI_LOCALES.map((item) => (
+                  <option key={item.code} value={item.code}>
+                    {item.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
             <Button variant="outline" onClick={() => loadAdminData(session.access)} disabled={loading}>
-              {loading ? 'Refreshing…' : 'Refresh'}
+              {loading ? t('Refreshing…') : t('Refresh')}
             </Button>
             <a href="../" target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
-              <Button variant="primary" size="md">↗ View Website</Button>
+              <Button variant="primary" size="md">{t('↗ View Website')}</Button>
             </a>
           </div>
         </div>
         <div style={{ flex: 1, overflow: 'hidden' }}>
           <ErrorBanner error={error} />
-          {loading && data.bookings.length === 0 && view !== 'support' ? <LoadingState label="Loading admin data…" /> : viewMap[view]}
+          {loading && data.bookings.length === 0 && view !== 'support' ? <LoadingState label={t('Loading admin data…')} /> : viewMap[view]}
         </div>
       </div>
     </div>
