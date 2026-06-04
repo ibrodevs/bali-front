@@ -5,11 +5,33 @@ import { useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
 
-export function BRLogo({ size = 22, dark = false }: { size?: number; dark?: boolean }) {
+export function BRLogo({
+  size = 22,
+  dark = false,
+  withBackdrop = false,
+}: {
+  size?: number;
+  dark?: boolean;
+  withBackdrop?: boolean;
+}) {
   const logoHeight = size * 1.7;
 
   return (
-    <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
+    <Link
+      href="/"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        textDecoration: 'none',
+        padding: withBackdrop ? '8px 12px' : 0,
+        borderRadius: withBackdrop ? 999 : 0,
+        background: withBackdrop ? 'rgba(255,255,255,0.14)' : 'transparent',
+        border: withBackdrop ? '1px solid rgba(255,255,255,0.2)' : 'none',
+        backdropFilter: withBackdrop ? 'blur(14px) saturate(160%)' : 'none',
+        WebkitBackdropFilter: withBackdrop ? 'blur(14px) saturate(160%)' : 'none',
+        boxShadow: withBackdrop ? '0 8px 24px rgba(0,0,0,0.16)' : 'none',
+      }}
+    >
       <img
         src="/logo.svg"
         alt="Bali Rent"
