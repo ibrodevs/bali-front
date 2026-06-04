@@ -6,16 +6,20 @@ import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
 
 export function BRLogo({ size = 22, dark = false }: { size?: number; dark?: boolean }) {
-  const fg = dark ? '#fff' : '#000';
+  const logoHeight = size * 1.7;
+
   return (
-    <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-      <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden>
-        <rect x="0" y="0" width="32" height="32" rx="7" fill="#FFD700" />
-        <path d="M9 7h7.5a5 5 0 0 1 2.4 9.4 5.5 5.5 0 0 1-2.9 9.6H9V7z M13 11v4.4h3.2a2.2 2.2 0 0 0 0-4.4H13z M13 18.4V22h3.6a1.8 1.8 0 0 0 0-3.6H13z" fill="#0A0A0A" />
-      </svg>
-      <span style={{ fontFamily: 'var(--br-display)', fontWeight: 700, fontSize: size * 0.78, letterSpacing: '-0.02em', color: fg }}>
-        BALI<span style={{ opacity: 0.4 }}>—</span>RENT
-      </span>
+    <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
+      <img
+        src="/logo.svg"
+        alt="Bali Rent"
+        style={{
+          height: logoHeight,
+          width: 'auto',
+          display: 'block',
+          filter: dark ? 'drop-shadow(0 2px 10px rgba(0,0,0,0.35))' : 'none',
+        }}
+      />
     </Link>
   );
 }
