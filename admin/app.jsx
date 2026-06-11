@@ -36,6 +36,7 @@ const NAV = [
   { id: 'crm', icon: '👥', label: 'CRM' },
   { id: 'analytics', icon: '📈', label: 'Analytics' },
   { id: 'support', icon: '💬', label: 'Support' },
+  { id: 'appContent', icon: '📱', label: 'App Content' },
   { id: 'promocodes', icon: '🏷️', label: 'Promo Codes' },
 ];
 
@@ -1639,6 +1640,73 @@ function LoginView({ form, setForm, error, loading, onSubmit }) {
   );
 }
 
+function AppContentBridgeView({ locale }) {
+  const t = createAdminUiTranslator(locale);
+  const nextAdminUrl = '../admin?view=appContent';
+
+  return (
+    <div style={{ padding: 24 }}>
+      <SectionHeader
+        title={t('App Content')}
+        subtitle="Open the new content editor for the mobile app onboarding, images, and translations."
+        action={
+          <a href={nextAdminUrl} style={{ textDecoration: 'none' }}>
+            <Button variant="primary" size="md">{t('Open App Content')}</Button>
+          </a>
+        }
+      />
+
+      <Panel style={{ padding: 24, maxWidth: 860 }}>
+        <div style={{ display: 'grid', gap: 18 }}>
+          <div>
+            <div style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+              Mobile app editor
+            </div>
+            <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 26, letterSpacing: '-0.03em', color: A.black, marginBottom: 8 }}>
+              Onboarding now lives in the new admin
+            </div>
+            <div style={{ fontFamily: 'Inter', fontSize: 14, lineHeight: 1.7, color: A.g500 }}>
+              Use the new admin section to edit onboarding texts in all languages, upload onboarding images, preview every slide, and save content for the mobile app through the shared backend content API.
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Badge color="blue">6 languages</Badge>
+            <Badge color="green">Image upload</Badge>
+            <Badge color="gold">Live preview</Badge>
+          </div>
+
+          <div style={{ display: 'grid', gap: 12 }}>
+            <div style={{ fontFamily: 'Inter', fontSize: 13, color: A.black, fontWeight: 600 }}>
+              What you can edit there:
+            </div>
+            <div style={{ display: 'grid', gap: 10 }}>
+              {[
+                'Onboarding slide 1, 2, and 3 texts for every supported language.',
+                'Separate onboarding images with immediate phone preview.',
+                'The same app content that the mobile application loads from the public bootstrap API.',
+              ].map((item) => (
+                <div key={item} style={{ border: `1px solid ${A.g200}`, borderRadius: 12, background: A.white, padding: '12px 14px', fontFamily: 'Inter', fontSize: 13, color: A.g700 }}>
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <a href={nextAdminUrl} style={{ textDecoration: 'none' }}>
+              <Button variant="primary" size="md">{t('Open App Content')}</Button>
+            </a>
+            <a href="../admin?view=site" style={{ textDecoration: 'none' }}>
+              <Button variant="outline" size="md">Open Site Content</Button>
+            </a>
+          </div>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
 function AdminApp() {
   const [session, setSession] = React.useState(loadStoredSession);
   const [uiLocale, setUiLocale] = React.useState(loadStoredUiLocale);
@@ -2044,6 +2112,7 @@ function AdminApp() {
         sendingReply={sendingReply}
       />
     ),
+    appContent: <AppContentBridgeView locale={uiLocale} />,
     promocodes: (
       <PromoCodesView
         promocodes={data.promocodes}

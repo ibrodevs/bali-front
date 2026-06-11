@@ -149,6 +149,7 @@ const EXACT_TRANSLATIONS: Record<string, TranslationPair> = {
   'Real page inside admin': { ru: 'Реальная страница внутри админки', id: 'Halaman nyata di admin' },
   'Preview unavailable': { ru: 'Превью недоступно', id: 'Preview tidak tersedia' },
   'Text': { ru: 'Текст', id: 'Teks' },
+  'Button': { ru: 'Кнопка', id: 'Tombol' },
   'Default value': { ru: 'Значение по умолчанию', id: 'Nilai default' },
   'Empty value': { ru: 'Пустое значение', id: 'Nilai kosong' },
   'Empty list': { ru: 'Пустой список', id: 'Daftar kosong' },
@@ -449,6 +450,33 @@ const EXACT_TRANSLATIONS: Record<string, TranslationPair> = {
   'App preview': { ru: 'Превью приложения', id: 'Pratinjau aplikasi' },
   'Site preview': { ru: 'Превью сайта', id: 'Pratinjau situs' },
   'Mobile app keys': { ru: 'Ключи мобильного приложения', id: 'Kunci aplikasi mobile' },
+  'App Onboarding': { ru: 'Онбоардинг приложения', id: 'Onboarding aplikasi' },
+  'Edit only the mobile app onboarding with the same 3-slide flow, images, and languages as the real app.': { ru: 'Редактируйте только онбоардинг мобильного приложения с теми же 3 слайдами, изображениями и языками, что и в реальном приложении.', id: 'Edit hanya onboarding aplikasi mobile dengan alur 3 slide, gambar, dan bahasa yang sama seperti aplikasi asli.' },
+  'Onboarding preview': { ru: 'Превью онбоардинга', id: 'Pratinjau onboarding' },
+  'Same layout as the app': { ru: 'Такой же экран, как в приложении', id: 'Layout sama seperti aplikasi' },
+  'The phone preview follows the onboarding screen from the mobile app and updates instantly with your draft text and image changes.': { ru: 'Превью телефона повторяет экран онбоардинга из мобильного приложения и сразу обновляется при изменении черновиков текста и изображений.', id: 'Pratinjau ponsel mengikuti layar onboarding aplikasi mobile dan langsung diperbarui saat draft teks atau gambar berubah.' },
+  'Onboarding fields': { ru: 'Поля онбоардинга', id: 'Field onboarding' },
+  'Only onboarding content is shown here. These values are saved as': { ru: 'Здесь показан только контент онбоардинга. Эти значения сохраняются как', id: 'Di sini hanya ditampilkan konten onboarding. Nilai ini disimpan sebagai' },
+  'entries and are loaded by the app from the public bootstrap API.': { ru: 'записи и загружаются приложением из публичного bootstrap API.', id: 'entri dan dimuat oleh aplikasi dari public bootstrap API.' },
+  'Shared': { ru: 'Общее', id: 'Bersama' },
+  'Badge shown above every onboarding slide': { ru: 'Бейдж над каждым слайдом онбоардинга', id: 'Badge yang tampil di atas setiap slide onboarding' },
+  'Slide 1': { ru: 'Слайд 1', id: 'Slide 1' },
+  'Slide 2': { ru: 'Слайд 2', id: 'Slide 2' },
+  'Slide 3': { ru: 'Слайд 3', id: 'Slide 3' },
+  'First screen users see after language selection': { ru: 'Первый экран после выбора языка', id: 'Layar pertama setelah pengguna memilih bahasa' },
+  'Dates, delivery, and add-ons message': { ru: 'Сообщение про даты, доставку и допы', id: 'Pesan tentang tanggal, pengantaran, dan add-on' },
+  'Bookings, updates, and support message': { ru: 'Сообщение про бронирования, обновления и поддержку', id: 'Pesan tentang booking, pembaruan, dan dukungan' },
+  'Choose an onboarding field': { ru: 'Выберите поле онбоардинга', id: 'Pilih field onboarding' },
+  'Select an onboarding field on the left, then edit it here for every language with the live phone preview beside it.': { ru: 'Выберите поле онбоардинга слева, затем отредактируйте его здесь для каждого языка рядом с живым превью телефона.', id: 'Pilih field onboarding di kiri, lalu edit di sini untuk setiap bahasa dengan pratinjau ponsel live di sampingnya.' },
+  'Selected app field': { ru: 'Выбранное поле приложения', id: 'Field aplikasi yang dipilih' },
+  'App Onboarding /': { ru: 'Онбоардинг приложения /', id: 'Onboarding aplikasi /' },
+  'shared': { ru: 'общее', id: 'bersama' },
+  'localized content': { ru: 'контент по языкам', id: 'konten per bahasa' },
+  'shared media': { ru: 'общее медиа', id: 'media bersama' },
+  'Or paste an external media URL': { ru: 'Или вставьте внешнюю ссылку на медиа', id: 'Atau tempel URL media eksternal' },
+  'Editing image': { ru: 'Редактируется изображение', id: 'Mengedit gambar' },
+  'Change image': { ru: 'Изменить изображение', id: 'Ganti gambar' },
+  'Add image': { ru: 'Добавить изображение', id: 'Tambah gambar' },
   'Choose an app text key': { ru: 'Выберите ключ текста приложения', id: 'Pilih key teks aplikasi' },
   'Selected app text': { ru: 'Выбранный текст приложения', id: 'Teks aplikasi yang dipilih' },
   'Click text on the phone': { ru: 'Нажмите на текст на телефоне', id: 'Klik teks di ponsel' },
@@ -803,6 +831,24 @@ const DYNAMIC_TRANSLATIONS: DynamicRule[] = [
     translate: (match, locale) => locale === 'ru'
       ? `${match[1]} редактируемых текстов`
       : `${match[1]} teks yang bisa diedit`,
+  },
+  {
+    pattern: /^(\d+) editable fields$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `${match[1]} редактируемых полей`
+      : `${match[1]} field yang bisa diedit`,
+  },
+  {
+    pattern: /^Onboarding (\d+) (Image|Title|Sub|Cta)$/,
+    translate: (match, locale) => {
+      const field = match[2];
+      const fieldLabel = locale === 'ru'
+        ? ({ Image: 'Изображение', Title: 'Заголовок', Sub: 'Описание', Cta: 'Кнопка' } as Record<string, string>)[field]
+        : ({ Image: 'Gambar', Title: 'Judul', Sub: 'Deskripsi', Cta: 'Tombol' } as Record<string, string>)[field];
+      return locale === 'ru'
+        ? `Онбоардинг ${match[1]}: ${fieldLabel}`
+        : `Onboarding ${match[1]}: ${fieldLabel}`;
+    },
   },
   {
     pattern: /^(\d+) clickable texts$/,

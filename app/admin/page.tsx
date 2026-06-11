@@ -99,6 +99,7 @@ const NAV: { id: AdminView; icon: ReactNode; label: string }[] = [
   { id: 'categories', icon: <TagIcon size={18} />, label: 'Categories' },
   { id: 'locations', icon: <EyeIcon size={18} />, label: 'Locations' },
   { id: 'site', icon: <EyeIcon size={18} />, label: 'Site Content' },
+  { id: 'appContent', icon: <EyeIcon size={18} />, label: 'App Content' },
   { id: 'users', icon: <UsersIcon size={18} />, label: 'Users & Team' },
   { id: 'promocodes', icon: <DollarIcon size={18} />, label: 'Promo Codes' },
 ];
@@ -135,6 +136,7 @@ const ADMIN_PERMISSION_OPTIONS: AdminPermission[] = [
   'categories',
   'locations',
   'site',
+  'appContent',
   'promocodes',
   'team',
 ];
@@ -145,7 +147,7 @@ function defaultAdminPermissionsForRole(role?: string | null): AdminPermission[]
     return [...ADMIN_PERMISSION_OPTIONS];
   }
   if (normalizedRole === 'manager') {
-    return ['overview', 'bookings', 'fleet', 'calendar', 'crm', 'analytics', 'support', 'news', 'addons', 'categories', 'locations', 'site', 'promocodes'];
+    return ['overview', 'bookings', 'fleet', 'calendar', 'crm', 'analytics', 'support', 'news', 'addons', 'categories', 'locations', 'site', 'appContent', 'promocodes'];
   }
   if (normalizedRole === 'staff') {
     return ['overview', 'bookings', 'calendar', 'support'];
@@ -430,16 +432,7 @@ function ErrorBanner({ error, onClose }: { error: string | null; onClose?: () =>
 }
 
 type SiteContentFieldMeta = (typeof SITE_CONTENT_FIELDS)[number];
-type AppPreviewScreenKey = 'onboarding' | 'home' | 'booking' | 'profile' | 'support';
 type AppPreviewTextVariant = 'badge' | 'title' | 'body' | 'button' | 'label' | 'input' | 'tab';
-
-const APP_CONTENT_PREVIEW_SCREENS: { key: AppPreviewScreenKey; label: string }[] = [
-  { key: 'onboarding', label: 'Onboarding' },
-  { key: 'home', label: 'Home' },
-  { key: 'booking', label: 'Booking' },
-  { key: 'profile', label: 'Profile' },
-  { key: 'support', label: 'Support' },
-];
 
 function AppPreviewText({
   fieldKey,
@@ -454,11 +447,12 @@ function AppPreviewText({
   variant?: AppPreviewTextVariant;
   onSelect: (fieldKey: string) => void;
 }) {
+  const isOnboardingField = fieldKey.startsWith('app.onboarding');
   const variantStyle: Record<AppPreviewTextVariant, CSSProperties> = {
-    badge: { alignSelf: 'flex-start', borderRadius: 999, background: 'rgba(255,215,0,0.18)', color: A.black, fontSize: 11, fontWeight: 800, padding: '7px 10px', textTransform: 'uppercase' },
-    title: { color: A.black, fontSize: 26, lineHeight: 1.05, fontWeight: 900, whiteSpace: 'pre-wrap' },
-    body: { color: A.g700, fontSize: 13, lineHeight: 1.45, whiteSpace: 'pre-wrap' },
-    button: { borderRadius: 999, background: A.black, color: A.white, fontSize: 13, fontWeight: 800, padding: '12px 14px', textAlign: 'center' },
+    badge: { alignSelf: 'center', background: 'transparent', color: isOnboardingField ? 'rgba(255,255,255,0.24)' : A.black, fontSize: 11, fontWeight: 500, padding: 0, textTransform: 'uppercase', letterSpacing: isOnboardingField ? '0.16em' : undefined },
+    title: { color: isOnboardingField ? A.white : A.black, fontSize: isOnboardingField ? 38 : 26, lineHeight: isOnboardingField ? 1.05 : 1.05, fontWeight: 900, whiteSpace: 'pre-wrap' },
+    body: { color: isOnboardingField ? 'rgba(255,255,255,0.54)' : A.g700, fontSize: isOnboardingField ? 15 : 13, lineHeight: isOnboardingField ? 1.73 : 1.45, whiteSpace: 'pre-wrap' },
+    button: { borderRadius: 999, background: isOnboardingField ? A.gold : A.black, color: isOnboardingField ? A.black : A.white, fontSize: 14, fontWeight: 800, padding: isOnboardingField ? '15px 18px' : '12px 14px', textAlign: 'center', width: isOnboardingField ? '100%' : undefined },
     label: { color: A.g500, fontSize: 11, fontWeight: 800, textTransform: 'uppercase' },
     input: { borderRadius: 14, border: `1px solid ${A.g200}`, background: A.white, color: A.g500, fontSize: 13, padding: '12px 14px' },
     tab: { color: A.black, fontSize: 11, fontWeight: 800, textAlign: 'center' },
@@ -475,6 +469,8 @@ function AppPreviewText({
         boxShadow: selected ? '0 0 0 5px rgba(255,215,0,0.18)' : 'none',
         cursor: 'pointer',
         fontFamily: 'Inter, sans-serif',
+        textAlign: variant === 'badge' ? 'center' : 'left',
+        background: 'transparent',
         transition: 'border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease',
         ...variantStyle[variant],
       }}
@@ -484,22 +480,85 @@ function AppPreviewText({
   );
 }
 
+function AppPreviewMedia({
+  fieldKey,
+  value,
+  selected,
+  onSelect,
+}: {
+  fieldKey: string;
+  value: string;
+  selected: boolean;
+  onSelect: (fieldKey: string) => void;
+}) {
+  const hasImage = Boolean(value.trim());
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(fieldKey)}
+      title={fieldKey}
+      style={{
+        border: selected ? `2px solid ${A.gold}` : '2px solid transparent',
+        outline: 'none',
+        boxShadow: selected ? '0 0 0 5px rgba(255,215,0,0.18)' : 'none',
+        cursor: 'pointer',
+        minHeight: 212,
+        height: '100%',
+        borderRadius: 0,
+        position: 'relative',
+        overflow: 'hidden',
+        background: 'transparent',
+        transition: 'border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease',
+        width: '100%',
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          right: 16,
+          bottom: 18,
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >
+        <span
+          style={{
+            borderRadius: 999,
+            background: selected ? A.gold : 'rgba(0,0,0,0.45)',
+            color: selected ? A.black : 'rgba(255,255,255,0.78)',
+            fontFamily: 'Inter, sans-serif',
+            fontSize: 11,
+            fontWeight: 800,
+            padding: '7px 10px',
+          }}
+        >
+          {selected ? 'Editing image' : hasImage ? 'Change image' : 'Add image'}
+        </span>
+      </div>
+    </button>
+  );
+}
+
 function AppContentPhonePreview({
-  activeScreen,
+  activeOnboardingStep,
   activeLanguage,
   selectedFieldKey,
   getValue,
+  getMediaValue,
   onSelectField,
-  onSelectScreen,
+  onSelectOnboardingStep,
 }: {
-  activeScreen: AppPreviewScreenKey;
+  activeOnboardingStep: 1 | 2 | 3;
   activeLanguage: string;
   selectedFieldKey: string | null;
   getValue: (fieldKey: string) => string;
+  getMediaValue: (fieldKey: string) => string;
   onSelectField: (fieldKey: string) => void;
-  onSelectScreen: (screen: AppPreviewScreenKey) => void;
+  onSelectOnboardingStep: (step: 1 | 2 | 3) => void;
 }) {
   const text = (key: string) => getValue(`app.${key}`);
+  const image = (key: string) => getMediaValue(`app.${key}`);
   const textNode = (key: string, variant?: AppPreviewTextVariant) => {
     const fieldKey = `app.${key}`;
     return (
@@ -512,171 +571,113 @@ function AppContentPhonePreview({
       />
     );
   };
-
-  const screenBody = (() => {
-    if (activeScreen === 'onboarding') {
-      return (
-        <div style={{ display: 'grid', gap: 14, minHeight: 520, alignContent: 'space-between' }}>
-          <div style={{ display: 'grid', gap: 16 }}>
-            {textNode('onboardingBadge', 'badge')}
-            <div style={{ borderRadius: 26, minHeight: 190, background: 'linear-gradient(145deg, #111 0%, #303030 100%)', position: 'relative', overflow: 'hidden', padding: 20 }}>
-              <div style={{ position: 'absolute', width: 190, height: 190, borderRadius: 999, background: 'rgba(255,215,0,0.24)', right: -60, bottom: -70 }} />
-              <div style={{ position: 'absolute', inset: 20, borderRadius: 20, border: '1px solid rgba(255,255,255,0.12)' }} />
-              <div style={{ position: 'relative', color: A.gold, fontFamily: 'Sora, sans-serif', fontWeight: 900, fontSize: 54, lineHeight: 1 }}>SB</div>
-            </div>
-            {textNode('onboarding1Title', 'title')}
-            {textNode('onboarding1Sub', 'body')}
-          </div>
-          {textNode('continue', 'button')}
-        </div>
-      );
-    }
-
-    if (activeScreen === 'home') {
-      return (
-        <div style={{ display: 'grid', gap: 14 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-            <div style={{ display: 'grid', gap: 6 }}>
-              {textNode('readyMvp', 'badge')}
-              <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 900, fontSize: 24, color: A.black }}>{text('defaultUserName')}</div>
-            </div>
-            <div style={{ width: 42, height: 42, borderRadius: 14, background: A.black, color: A.gold, display: 'grid', placeItems: 'center', fontFamily: 'Sora, sans-serif', fontWeight: 900 }}>S</div>
-          </div>
-          {textNode('searchFleet', 'input')}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            {textNode('topPicks', 'label')}
-            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 800, color: A.g500 }}>USD</div>
-          </div>
-          {[0, 1].map((index) => (
-            <div key={index} style={{ display: 'grid', gridTemplateColumns: '74px 1fr', gap: 12, padding: 10, border: `1px solid ${A.g200}`, borderRadius: 18, background: A.white }}>
-              <div style={{ borderRadius: 16, background: index ? A.g100 : 'linear-gradient(145deg,#111,#3a3a3a)', minHeight: 76 }} />
-              <div style={{ display: 'grid', gap: 8, alignContent: 'center' }}>
-                <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 800, fontSize: 15, color: A.black }}>{index ? 'Yamaha NMAX' : 'Honda PCX'}</div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  <Badge color="default">155cc</Badge>
-                  <Badge color="gold">$12/day</Badge>
-                </div>
-              </div>
-            </div>
-          ))}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginTop: 4 }}>
-            {textNode('home', 'tab')}
-            {textNode('fleet', 'tab')}
-            {textNode('bookings', 'tab')}
-            {textNode('profile', 'tab')}
-          </div>
-        </div>
-      );
-    }
-
-    if (activeScreen === 'booking') {
-      return (
-        <div style={{ display: 'grid', gap: 14 }}>
-          {textNode('selectDates', 'title')}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div style={{ border: `1px solid ${A.g200}`, borderRadius: 16, padding: 12, background: A.white }}>
-              {textNode('checkIn', 'label')}
-              <div style={{ marginTop: 8, fontFamily: 'Sora, sans-serif', fontWeight: 800 }}>May 21</div>
-            </div>
-            <div style={{ border: `1px solid ${A.g200}`, borderRadius: 16, padding: 12, background: A.white }}>
-              {textNode('checkOut', 'label')}
-              <div style={{ marginTop: 8, fontFamily: 'Sora, sans-serif', fontWeight: 800 }}>May 24</div>
-            </div>
-          </div>
-          {textNode('deliveryExtras', 'button')}
-          <div style={{ display: 'grid', gap: 10, padding: 14, borderRadius: 18, background: A.g100 }}>
-            {textNode('contactDetails', 'label')}
-            {textNode('messengerHint', 'body')}
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <Badge color="green">Telegram</Badge>
-              <Badge color="blue">WeChat</Badge>
-              <Badge color="orange">WhatsApp</Badge>
-            </div>
-          </div>
-          {textNode('payment', 'button')}
-          <div style={{ display: 'grid', gap: 8 }}>
-            {textNode('bookingReserved', 'body')}
-            {textNode('bookingConfirmed', 'body')}
-          </div>
-        </div>
-      );
-    }
-
-    if (activeScreen === 'profile') {
-      return (
-        <div style={{ display: 'grid', gap: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 58, height: 58, borderRadius: 22, background: A.black, color: A.gold, display: 'grid', placeItems: 'center', fontFamily: 'Sora, sans-serif', fontWeight: 900 }}>SB</div>
-            <div style={{ display: 'grid', gap: 5 }}>
-              {textNode('defaultUserName', 'title')}
-              {textNode('signInHint', 'body')}
-            </div>
-          </div>
-          {[['myBookings', 'bookingReserved'], ['notifications', 'bookingConfirmed'], ['accountSettings', 'registerHint']].map(([titleKey, bodyKey]) => (
-            <div key={titleKey} style={{ display: 'grid', gap: 8, border: `1px solid ${A.g200}`, borderRadius: 18, background: A.white, padding: 14 }}>
-              {textNode(titleKey, 'label')}
-              {textNode(bodyKey, 'body')}
-            </div>
-          ))}
-          {textNode('passwordResetSent', 'body')}
-        </div>
-      );
-    }
-
+  const mediaNode = (key: string) => {
+    const fieldKey = `app.${key}`;
     return (
-      <div style={{ display: 'grid', gap: 14 }}>
-        {textNode('helpSupport', 'title')}
-        {textNode('supportHint', 'body')}
-        {textNode('openLiveChat', 'button')}
-        <div style={{ display: 'grid', gap: 10 }}>
-          <div style={{ justifySelf: 'start', maxWidth: '82%', borderRadius: '18px 18px 18px 6px', background: A.g100, padding: 12 }}>
-            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700 }}>Hi, how can we help?</div>
-          </div>
-          <div style={{ justifySelf: 'end', maxWidth: '82%', borderRadius: '18px 18px 6px 18px', background: A.black, color: A.white, padding: 12 }}>
-            {textNode('openLiveChat', 'body')}
+      <AppPreviewMedia
+        fieldKey={fieldKey}
+        value={image(key)}
+        selected={selectedFieldKey === fieldKey}
+        onSelect={onSelectField}
+      />
+    );
+  };
+
+  const currentStep = activeOnboardingStep;
+  const currentImage = image(`onboarding${currentStep}Image`);
+  const hasImage = Boolean(currentImage.trim());
+  const gradientMap: Record<1 | 2 | 3, string> = {
+    1: 'linear-gradient(180deg, #1A1A1A 0%, #080808 100%)',
+    2: 'linear-gradient(180deg, #141824 0%, #080808 100%)',
+    3: 'linear-gradient(180deg, #1A1410 0%, #080808 100%)',
+  };
+  const screenBody = (
+    <div style={{ display: 'grid', minHeight: 610 }}>
+      <div
+        style={{
+          minHeight: 305,
+          display: 'grid',
+          placeItems: 'center',
+          position: 'relative',
+          background: hasImage ? undefined : gradientMap[currentStep],
+          overflow: 'hidden',
+        }}
+      >
+        {hasImage ? (
+          <div style={{ position: 'absolute', inset: 0, background: `center / cover no-repeat url(${currentImage})` }} />
+        ) : null}
+        {hasImage ? (
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(6,6,8,0.18) 0%, rgba(6,6,8,0.68) 72%, rgba(6,6,8,0.92) 100%)' }} />
+        ) : null}
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 120, background: 'linear-gradient(180deg, rgba(8,8,8,0) 0%, #060608 100%)' }} />
+        <div style={{ position: 'absolute', inset: 0, zIndex: 2 }}>
+          <div style={{ width: '100%', height: '100%' }}>
+            {mediaNode(`onboarding${currentStep}Image`)}
           </div>
         </div>
-        {textNode('accountSettings', 'label')}
+        <div style={{ position: 'relative', zIndex: 3, width: '100%', display: 'grid', placeItems: 'center', paddingInline: 18 }}>
+          {textNode('onboardingBadge', 'badge')}
+        </div>
       </div>
-    );
-  })();
+
+      <div style={{ background: '#060608', padding: '32px 28px 28px', display: 'grid', alignContent: 'space-between', gap: 24, minHeight: 345 }}>
+        <div style={{ display: 'grid', gap: 16 }}>
+          {textNode(`onboarding${currentStep}Title`, 'title')}
+          {textNode(`onboarding${currentStep}Sub`, 'body')}
+        </div>
+        <div style={{ display: 'grid', gap: 28 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[1, 2, 3].map((index) => (
+              <div
+                key={index}
+                style={{
+                  flex: index === currentStep ? 1.5 : 1,
+                  height: 4,
+                  borderRadius: 999,
+                  background: index === currentStep ? A.gold : 'rgba(255,255,255,0.15)',
+                }}
+              />
+            ))}
+          </div>
+          {textNode(`onboarding${currentStep}Cta`, 'button')}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {APP_CONTENT_PREVIEW_SCREENS.map((screen) => (
-          <button
-            key={screen.key}
-            type="button"
-            onClick={() => onSelectScreen(screen.key)}
-            style={{
-              borderRadius: 999,
-              border: `1px solid ${activeScreen === screen.key ? A.black : A.g200}`,
-              background: activeScreen === screen.key ? A.black : A.white,
-              color: activeScreen === screen.key ? A.white : A.black,
-              cursor: 'pointer',
-              padding: '8px 11px',
-              fontFamily: 'Inter, sans-serif',
-              fontSize: 12,
-              fontWeight: activeScreen === screen.key ? 800 : 600,
-            }}
-          >
-            {screen.label}
-          </button>
-        ))}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+          {[1, 2, 3].map((step) => (
+            <button
+              key={step}
+              type="button"
+              onClick={() => onSelectOnboardingStep(step as 1 | 2 | 3)}
+              style={{
+                borderRadius: 999,
+                border: `1px solid ${currentStep === step ? A.black : A.g200}`,
+                background: currentStep === step ? A.black : A.white,
+                color: currentStep === step ? A.white : A.black,
+                cursor: 'pointer',
+                padding: '8px 12px',
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 12,
+                fontWeight: currentStep === step ? 800 : 600,
+              }}
+            >
+              {`Slide ${step}`}
+            </button>
+          ))}
+        </div>
+        <div style={{ borderRadius: 999, background: A.g100, border: `1px solid ${A.g200}`, padding: '8px 12px', fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 800, color: A.g700 }}>
+          {activeLanguage.toUpperCase()}
+        </div>
       </div>
       <div style={{ maxWidth: 390, margin: '0 auto', width: '100%', borderRadius: 38, background: '#121212', padding: 12, boxShadow: '0 24px 70px rgba(0,0,0,0.18)' }}>
-        <div style={{ borderRadius: 30, background: '#fafafa', minHeight: 650, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.18)' }}>
-          <div style={{ height: 30, display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#fafafa' }}>
-            <div style={{ width: 86, height: 7, borderRadius: 999, background: '#171717' }} />
-          </div>
-          <div style={{ padding: '18px 18px 22px', display: 'grid', gap: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: A.g500, fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 800 }}>
-              <span>Scoot Bali</span>
-              <span>{activeLanguage.toUpperCase()}</span>
-            </div>
-            {screenBody}
-          </div>
+        <div style={{ borderRadius: 30, background: '#060608', minHeight: 650, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.18)', position: 'relative' }}>
+          <div style={{ position: 'absolute', top: 11, left: '50%', transform: 'translateX(-50%)', width: 86, height: 7, borderRadius: 999, background: 'rgba(255,255,255,0.22)', zIndex: 10 }} />
+          {screenBody}
         </div>
       </div>
     </div>
@@ -3532,10 +3533,11 @@ function SiteContentView({
   const [activePage, setActivePage] = useState<string>(initialPage || SITE_CONTENT_PAGES[0]?.key || 'home');
   const [activeLanguage, setActiveLanguage] = useState<string>('en');
   const [activePreviewVariant, setActivePreviewVariant] = useState<string>('');
-  const [activeAppPreviewScreen, setActiveAppPreviewScreen] = useState<AppPreviewScreenKey>('onboarding');
+  const [activeAppOnboardingStep, setActiveAppOnboardingStep] = useState<1 | 2 | 3>(1);
   const [selectedFieldKey, setSelectedFieldKey] = useState<string | null>(null);
   const [previewReloadKey, setPreviewReloadKey] = useState(0);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [mediaDrafts, setMediaDrafts] = useState<Record<string, File | null>>({});
   const [error, setError] = useState<string | null>(null);
   const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
 
@@ -3577,8 +3579,14 @@ function SiteContentView({
   );
 
   const pageFields = useMemo(
-    () => SITE_CONTENT_FIELDS.filter((field) => matchesActivePage(field)),
-    [matchesActivePage],
+    () => {
+      const fields = SITE_CONTENT_FIELDS.filter((field) => matchesActivePage(field));
+      if (lockedPage === 'app') {
+        return fields.filter((field) => field.key.startsWith('app.onboarding'));
+      }
+      return fields;
+    },
+    [lockedPage, matchesActivePage],
   );
 
   const pageFieldMap = useMemo(
@@ -3657,6 +3665,11 @@ function SiteContentView({
     return entry.value ?? '';
   }
 
+  function setMediaDraft(field: SiteContentFieldMeta, languageCode: string, file: File | null) {
+    const stateKey = fieldStateKey(field, languageCode);
+    setMediaDrafts((current) => ({ ...current, [stateKey]: file }));
+  }
+
   function setDraftValue(field: SiteContentFieldMeta, languageCode: string, value: string) {
     const stateKey = fieldStateKey(field, languageCode);
     setDrafts((current) => ({ ...current, [stateKey]: value }));
@@ -3667,6 +3680,17 @@ function SiteContentView({
       setSelectedFieldKey(null);
     }
   }, [previewFields, selectedFieldKey]);
+
+  useEffect(() => {
+    if (!selectedFieldKey?.startsWith('app.onboarding')) return;
+
+    const imageMatch = selectedFieldKey.match(/^app\.onboarding([123])Image$/);
+    const contentMatch = selectedFieldKey.match(/^app\.onboarding([123])(Title|Sub|Cta)$/);
+    const stepMatch = imageMatch || contentMatch;
+    if (stepMatch?.[1]) {
+      setActiveAppOnboardingStep(Number(stepMatch[1]) as 1 | 2 | 3);
+    }
+  }, [selectedFieldKey]);
 
   useEffect(() => {
     if (!previewVariants.some((variant) => variant.key === activePreviewVariant)) {
@@ -3935,22 +3959,45 @@ function SiteContentView({
     const language = storageLanguage(field, languageCode);
     const existing = fieldEntry(field, languageCode);
     const draftValue = resolveDraftValue(field, languageCode);
-    const body = field.valueType === 'json'
-      ? {
-          key: field.key,
-          language,
-          value_type: field.valueType,
-          value: '',
-          json_value: draftValue.trim() ? JSON.parse(draftValue) : null,
-          is_active: true,
-        }
-      : {
-          key: field.key,
-          language,
-          value_type: field.valueType,
-          value: draftValue,
-          is_active: true,
-        };
+    const stateKey = fieldStateKey(field, languageCode);
+    const mediaDraft = mediaDrafts[stateKey];
+    let body: FormData | {
+      key: string;
+      language: string;
+      value_type: typeof field.valueType;
+      value: string;
+      json_value?: unknown;
+      is_active: boolean;
+    };
+
+    if (mediaDraft && (field.valueType === 'image' || field.valueType === 'video' || field.valueType === 'file')) {
+      const formData = new FormData();
+      formData.append('key', field.key);
+      formData.append('language', language);
+      formData.append('value_type', field.valueType);
+      formData.append('value', '');
+      formData.append('is_active', 'true');
+      formData.append('media', mediaDraft);
+      body = formData;
+    } else if (field.valueType === 'json') {
+      body = {
+        key: field.key,
+        language,
+        value_type: field.valueType,
+        value: '',
+        json_value: draftValue.trim() ? JSON.parse(draftValue) : null,
+        is_active: true,
+      };
+    } else {
+      body = {
+        key: field.key,
+        language,
+        value_type: field.valueType,
+        value: draftValue,
+        is_active: true,
+      };
+    }
+
     const saved = existing
       ? await endpoints.adminUpdateSiteContent(existing.id, body)
       : await endpoints.adminCreateSiteContent(body);
@@ -3958,6 +4005,12 @@ function SiteContentView({
       const next = current.filter((item) => item.id !== saved.id);
       next.push(saved);
       return next.sort((a, b) => `${a.key}:${a.language}`.localeCompare(`${b.key}:${b.language}`));
+    });
+    setMediaDrafts((current) => {
+      if (!current[stateKey]) return current;
+      const next = { ...current };
+      delete next[stateKey];
+      return next;
     });
   }
 
@@ -3999,6 +4052,11 @@ function SiteContentView({
         delete next[stateKey];
         return next;
       });
+      setMediaDrafts((current) => {
+        const next = { ...current };
+        delete next[stateKey];
+        return next;
+      });
       return;
     }
 
@@ -4008,6 +4066,11 @@ function SiteContentView({
       await endpoints.adminDeleteSiteContent(existing.id);
       setEntries((current) => current.filter((item) => item.id !== existing.id));
       setDrafts((current) => {
+        const next = { ...current };
+        delete next[stateKey];
+        return next;
+      });
+      setMediaDrafts((current) => {
         const next = { ...current };
         delete next[stateKey];
         return next;
@@ -4037,6 +4100,11 @@ function SiteContentView({
           delete next[stateKey];
           return next;
         });
+        setMediaDrafts((current) => {
+          const next = { ...current };
+          delete next[stateKey];
+          return next;
+        });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to reset content');
@@ -4059,12 +4127,48 @@ function SiteContentView({
     return resolveDraftValue(field, activeLanguage);
   }
 
+  function resolveAppPreviewMediaValue(fieldKey: string) {
+    const field = pageFieldMap.get(fieldKey);
+    if (!field) return '';
+    return resolveDraftValue(field, activeLanguage);
+  }
+
+  const onboardingFieldGroups = useMemo(() => {
+    const order = ['Image', 'Title', 'Sub', 'Cta'];
+    const groups = [
+      { key: 'shared', title: 'Shared', subtitle: 'Badge shown above every onboarding slide', fields: [] as SiteContentFieldMeta[] },
+      { key: 'slide-1', title: 'Slide 1', subtitle: 'First screen users see after language selection', fields: [] as SiteContentFieldMeta[] },
+      { key: 'slide-2', title: 'Slide 2', subtitle: 'Dates, delivery, and add-ons message', fields: [] as SiteContentFieldMeta[] },
+      { key: 'slide-3', title: 'Slide 3', subtitle: 'Bookings, updates, and support message', fields: [] as SiteContentFieldMeta[] },
+    ];
+    const byKey = new Map(groups.map((group) => [group.key, group]));
+
+    for (const field of pageFields) {
+      const match = field.key.match(/^app\.onboarding([123])/);
+      const group = match ? byKey.get(`slide-${match[1]}`) : byKey.get('shared');
+      group?.fields.push(field);
+    }
+
+    return groups
+      .map((group) => ({
+        ...group,
+        fields: group.fields.sort((left, right) => {
+          const leftTail = getSiteFieldTail(left.key).replace(/^onboarding[123]/, '');
+          const rightTail = getSiteFieldTail(right.key).replace(/^onboarding[123]/, '');
+          const leftIndex = order.indexOf(leftTail);
+          const rightIndex = order.indexOf(rightTail);
+          return (leftIndex >= 0 ? leftIndex : 99) - (rightIndex >= 0 ? rightIndex : 99);
+        }),
+      }))
+      .filter((group) => group.fields.length > 0);
+  }, [pageFields]);
+
   if (lockedPage === 'app') {
     return (
       <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? 16 : '28px 32px' }}>
         <SectionHeader
-          title="App Content"
-          subtitle="Edit onboarding, home, booking, profile and support texts for the mobile app."
+          title="App Onboarding"
+          subtitle="Edit only the mobile app onboarding with the same 3-slide flow, images, and languages as the real app."
           action={<Button variant="outline" size="md" onClick={load}>Reload</Button>}
         />
 
@@ -4075,22 +4179,23 @@ function SiteContentView({
             <div style={{ display: 'grid', gap: 16 }}>
               <div>
                 <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
-                  App preview
+                  Onboarding preview
                 </div>
                 <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 22, color: A.black, marginBottom: 8 }}>
-                  Click text on the phone
+                  Same layout as the app
                 </div>
                 <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
-                  The preview uses the selected language and your unsaved drafts, so text changes show here immediately.
+                  The phone preview follows the onboarding screen from the mobile app and updates instantly with your draft text and image changes.
                 </div>
               </div>
               <AppContentPhonePreview
-                activeScreen={activeAppPreviewScreen}
+                activeOnboardingStep={activeAppOnboardingStep}
                 activeLanguage={activeLanguage}
                 selectedFieldKey={selectedFieldKey}
                 getValue={resolveAppPreviewValue}
+                getMediaValue={resolveAppPreviewMediaValue}
                 onSelectField={setSelectedFieldKey}
-                onSelectScreen={setActiveAppPreviewScreen}
+                onSelectOnboardingStep={setActiveAppOnboardingStep}
               />
             </div>
           </Panel>
@@ -4099,13 +4204,13 @@ function SiteContentView({
             <div style={{ display: 'grid', gap: 16 }}>
               <div>
                 <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
-                  Mobile app keys
+                  Onboarding fields
                 </div>
                 <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 22, color: A.black, marginBottom: 8 }}>
-                  {`${pageFields.length} editable texts`}
+                  {`${pageFields.length} editable fields`}
                 </div>
                 <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
-                  These values are saved as <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>app.*</span> content and are loaded by the mobile app from the public bootstrap API.
+                  Only onboarding content is shown here. These values are saved as <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>app.onboarding*</span> entries and are loaded by the app from the public bootstrap API.
                 </div>
               </div>
 
@@ -4140,36 +4245,58 @@ function SiteContentView({
               {loading ? (
                 <EmptyState label="Loading site content…" />
               ) : (
-                <div style={{ display: 'grid', gap: 8 }}>
-                  {pageFields.map((field) => {
-                    const selected = selectedFieldKey === field.key;
-                    const customizedCount = SITE_CONTENT_LANGUAGES.reduce((count, lang) => count + (fieldEntry(field, lang.code) ? 1 : 0), 0);
-                    return (
-                      <button
-                        key={field.key}
-                        type="button"
-                        onClick={() => setSelectedFieldKey(field.key)}
-                        style={{
-                          textAlign: 'left',
-                          borderRadius: 14,
-                          border: `1px solid ${selected ? A.gold : A.g200}`,
-                          background: selected ? 'linear-gradient(180deg, rgba(255,215,0,0.14) 0%, rgba(255,215,0,0.05) 100%)' : A.white,
-                          padding: '12px 14px',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
-                          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 800, color: A.black }}>
-                            {field.label}
+                <div style={{ display: 'grid', gap: 14 }}>
+                  {onboardingFieldGroups.map((group) => (
+                    <div key={group.key} style={{ display: 'grid', gap: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-end' }}>
+                        <div>
+                          <div style={{ fontFamily: 'Sora, sans-serif', fontSize: 15, fontWeight: 800, color: A.black }}>
+                            {group.title}
                           </div>
-                          <Badge color={customizedCount ? 'green' : 'default'}>{customizedCount}/6 filled</Badge>
+                          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: A.g500, lineHeight: 1.45 }}>
+                            {group.subtitle}
+                          </div>
                         </div>
-                        <div style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 11, color: A.g500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {field.key}
-                        </div>
-                      </button>
-                    );
-                  })}
+                        <Badge color={group.key === `slide-${activeAppOnboardingStep}` ? 'gold' : 'default'}>
+                          {group.fields.length}
+                        </Badge>
+                      </div>
+                      <div style={{ display: 'grid', gap: 7 }}>
+                        {group.fields.map((field) => {
+                          const selected = selectedFieldKey === field.key;
+                          const customizedCount = field.shared
+                            ? (fieldEntry(field, activeLanguage) ? 1 : 0)
+                            : SITE_CONTENT_LANGUAGES.reduce((count, lang) => count + (fieldEntry(field, lang.code) ? 1 : 0), 0);
+                          const tail = getSiteFieldTail(field.key).replace(/^onboarding[123]/, '');
+                          const label = tail === 'Sub' ? 'Description' : tail === 'Cta' ? 'Button' : tail || field.label;
+                          return (
+                            <button
+                              key={field.key}
+                              type="button"
+                              onClick={() => setSelectedFieldKey(field.key)}
+                              style={{
+                                textAlign: 'left',
+                                borderRadius: 8,
+                                border: `1px solid ${selected ? A.gold : A.g200}`,
+                                background: selected ? 'rgba(255,215,0,0.12)' : A.white,
+                                padding: '10px 12px',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 800, color: A.black }}>
+                                  {label}
+                                </div>
+                                <Badge color={customizedCount ? 'green' : 'default'}>
+                                  {field.shared ? 'shared' : `${customizedCount}/6`}
+                                </Badge>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -4182,10 +4309,10 @@ function SiteContentView({
                   Click To Edit
                 </div>
                 <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 24, color: A.black }}>
-                  Choose an app text key
+                  Choose an onboarding field
                 </div>
-                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: A.g500, lineHeight: 1.65 }}>
-                  Select any mobile app field on the left, then edit and save it for every supported language here.
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: A.g500, lineHeight: 1.65 }}>
+                  Select an onboarding field on the left, then edit it here for every language with the live phone preview beside it.
                 </div>
               </div>
             </Panel>
@@ -4195,13 +4322,13 @@ function SiteContentView({
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                   <div>
                     <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
-                      Selected app text
+                      Selected app field
                     </div>
                     <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 24, color: A.black, marginBottom: 6 }}>
                       {selectedField.label}
                     </div>
                     <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
-                      Mobile App / {selectedField.sectionLabel} / {getSiteFieldElementLabel(selectedField)}
+                      App Onboarding / {getSiteFieldElementLabel(selectedField)}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -4215,7 +4342,7 @@ function SiteContentView({
                 </div>
 
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <Badge color="blue">localized text</Badge>
+                  <Badge color="blue">{selectedField.shared ? 'shared media' : 'localized content'}</Badge>
                   <Badge color="default">{selectedField.key}</Badge>
                 </div>
 
@@ -4227,6 +4354,7 @@ function SiteContentView({
                     <SiteContentValuePreview
                       field={selectedField}
                       value={resolveDraftValue(selectedField, activeLanguage)}
+                      mediaPreviewUrl={resolveDraftValue(selectedField, activeLanguage)}
                     />
                   </div>
                 </div>
@@ -4268,8 +4396,36 @@ function SiteContentView({
                             </div>
                           </div>
 
-                          <Field label="Text">
-                            {selectedField.valueType === 'textarea' ? (
+                          <Field label={selectedField.valueType === 'image' ? 'Image' : selectedField.valueType === 'video' ? 'Video' : selectedField.valueType === 'file' ? 'File' : 'Text'}>
+                            {selectedField.valueType === 'image' || selectedField.valueType === 'video' || selectedField.valueType === 'file' ? (
+                              <div style={{ display: 'grid', gap: 12 }}>
+                                <SiteContentValuePreview
+                                  field={selectedField}
+                                  value={draftValue}
+                                  mediaPreviewUrl={draftValue}
+                                  compact
+                                />
+                                <input
+                                  type="file"
+                                  accept={selectedField.valueType === 'image' ? 'image/*' : selectedField.valueType === 'video' ? 'video/*' : '*'}
+                                  style={{ ...inputStyle, padding: '8px 12px' }}
+                                  onChange={(event) => {
+                                    const file = event.target.files?.[0] ?? null;
+                                    setMediaDraft(selectedField, lang.code, file);
+                                    setDraftValue(selectedField, lang.code, file ? URL.createObjectURL(file) : (currentEntry?.media_url || currentEntry?.value || defaultValue || ''));
+                                  }}
+                                />
+                                <input
+                                  value={draftValue}
+                                  onChange={(event) => {
+                                    setMediaDraft(selectedField, lang.code, null);
+                                    setDraftValue(selectedField, lang.code, event.target.value);
+                                  }}
+                                  style={inputStyle}
+                                  placeholder="Or paste an external media URL"
+                                />
+                              </div>
+                            ) : selectedField.valueType === 'textarea' ? (
                               <textarea
                                 value={draftValue}
                                 onChange={(event) => setDraftValue(selectedField, lang.code, event.target.value)}

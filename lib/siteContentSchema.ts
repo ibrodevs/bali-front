@@ -280,7 +280,7 @@ function getByPath(source: unknown, path: string) {
 
 const generatedFields: SiteContentField[] = [];
 const defaultDictionary = deepMerge(dictionaries.en, SITE_CONTENT_EXTRAS.en);
-const APP_DEFAULTS = {
+const APP_TEXT_DEFAULTS = {
   continue: 'Continue',
   home: 'Home',
   fleet: 'Fleet',
@@ -290,10 +290,13 @@ const APP_DEFAULTS = {
   onboardingBadge: 'Scoot Bali guide',
   onboarding1Title: 'Pick the right\nride for Bali',
   onboarding1Sub: 'Compare scooters by style, price, engine, and comfort before you book.',
+  onboarding1Cta: 'Continue',
   onboarding2Title: 'Choose dates,\ndelivery, extras',
   onboarding2Sub: 'Set your rental dates, delivery time, address, and add-ons in one smooth flow.',
+  onboarding2Cta: 'Next',
   onboarding3Title: 'Track rides,\nupdates, support',
   onboarding3Sub: 'Open your bookings, read updates, and message support whenever you need help.',
+  onboarding3Cta: 'Get started',
   topPicks: 'Top Picks',
   searchFleet: 'Search vehicles...',
   selectDates: 'Select dates',
@@ -316,6 +319,87 @@ const APP_DEFAULTS = {
   helpSupport: 'Help & Support',
   defaultUserName: 'Scoot Bali User',
 } as const;
+
+const APP_TEXT_DEFAULT_OVERRIDES: Partial<Record<Locale, Partial<Record<keyof typeof APP_TEXT_DEFAULTS, string>>>> = {
+  ru: {
+    onboardingBadge: 'гид по Scoot Bali',
+    onboarding1Title: 'Выберите\nидеальный скутер',
+    onboarding1Sub: 'Сравните модели по стилю, цене, мощности и комфорту перед бронированием.',
+    onboarding1Cta: 'Продолжить',
+    onboarding2Title: 'Выберите даты,\nдоставку и допы',
+    onboarding2Sub: 'Укажите даты аренды, время доставки, адрес и нужные дополнения в одном понятном потоке.',
+    onboarding2Cta: 'Дальше',
+    onboarding3Title: 'Брони,\nобновления, поддержка',
+    onboarding3Sub: 'Открывайте свои брони, читайте обновления и пишите в поддержку, когда нужна помощь.',
+    onboarding3Cta: 'Начать',
+  },
+  zh: {
+    onboardingBadge: 'Scoot Bali 指南',
+    onboarding1Title: '挑选最适合\n巴厘岛的车型',
+    onboarding1Sub: '按风格、价格、动力和舒适度比较车型，再决定预订。',
+    onboarding1Cta: '继续',
+    onboarding2Title: '选择日期、\n配送和附加项',
+    onboarding2Sub: '在一个顺畅流程中安排租期、送车时间、地址和附加服务。',
+    onboarding2Cta: '下一步',
+    onboarding3Title: '查看订单、\n更新与支持',
+    onboarding3Sub: '随时查看订单、阅读更新，并在需要帮助时联系支持。',
+    onboarding3Cta: '开始使用',
+  },
+  id: {
+    onboardingBadge: 'panduan Scoot Bali',
+    onboarding1Title: 'Pilih kendaraan\nyang pas untuk Bali',
+    onboarding1Sub: 'Bandingkan skuter berdasarkan gaya, harga, tenaga, dan kenyamanan sebelum memesan.',
+    onboarding1Cta: 'Lanjut',
+    onboarding2Title: 'Atur tanggal,\npengantaran, tambahan',
+    onboarding2Sub: 'Tentukan tanggal sewa, waktu antar, alamat, dan add-on dalam satu alur yang rapi.',
+    onboarding2Cta: 'Berikutnya',
+    onboarding3Title: 'Pantau pesanan,\nupdate, bantuan',
+    onboarding3Sub: 'Buka pesanan Anda, baca pembaruan, dan hubungi bantuan kapan pun diperlukan.',
+    onboarding3Cta: 'Mulai',
+  },
+  de: {
+    onboardingBadge: 'Scoot Bali Guide',
+    onboarding1Title: 'Finde den\npassenden Roller',
+    onboarding1Sub: 'Vergleiche Roller nach Stil, Preis, Leistung und Komfort, bevor du buchst.',
+    onboarding1Cta: 'Weiter',
+    onboarding2Title: 'Wähle Daten,\nLieferung, Extras',
+    onboarding2Sub: 'Lege Miettage, Lieferzeit, Adresse und Extras in einem klaren Ablauf fest.',
+    onboarding2Cta: 'Weiter',
+    onboarding3Title: 'Behalte Fahrten,\nUpdates, Support im Blick',
+    onboarding3Sub: 'Öffne deine Buchungen, lies Updates und kontaktiere den Support, wenn du Hilfe brauchst.',
+    onboarding3Cta: 'Loslegen',
+  },
+  fr: {
+    onboardingBadge: 'guide Scoot Bali',
+    onboarding1Title: 'Choisissez le bon\nscooter pour Bali',
+    onboarding1Sub: 'Comparez les scooters par style, prix, puissance et confort avant de réserver.',
+    onboarding1Cta: 'Continuer',
+    onboarding2Title: 'Choisissez dates,\nlivraison et options',
+    onboarding2Sub: "Définissez vos dates, l'heure de livraison, l'adresse et les options dans un parcours fluide.",
+    onboarding2Cta: 'Suivant',
+    onboarding3Title: 'Suivez trajets,\nactu et support',
+    onboarding3Sub: 'Ouvrez vos réservations, lisez les mises à jour et contactez le support quand vous en avez besoin.',
+    onboarding3Cta: 'Commencer',
+  },
+};
+
+const APP_MEDIA_FIELDS = [
+  {
+    key: 'app.onboarding1Image',
+    label: 'Onboarding 1 Image',
+    shared: true,
+  },
+  {
+    key: 'app.onboarding2Image',
+    label: 'Onboarding 2 Image',
+    shared: true,
+  },
+  {
+    key: 'app.onboarding3Image',
+    label: 'Onboarding 3 Image',
+    shared: true,
+  },
+] as const;
 
 for (const rootKey of EDITABLE_ROOTS) {
   const source = (defaultDictionary as Record<string, unknown>)[rootKey];
@@ -342,7 +426,7 @@ if (homePage) {
 
 const appPage = PAGE_MAP.get('app');
 if (appPage) {
-  for (const [key, value] of Object.entries(APP_DEFAULTS)) {
+  for (const [key, value] of Object.entries(APP_TEXT_DEFAULTS)) {
     generatedFields.push({
       key: `app.${key}`,
       label: titleCaseFromKey(key),
@@ -354,6 +438,22 @@ if (appPage) {
       sectionKey: 'app',
       sectionLabel: ROOT_CONFIG.app.sectionLabel,
       valueType: value.length > 80 ? 'textarea' : 'text',
+    });
+  }
+
+  for (const field of APP_MEDIA_FIELDS) {
+    generatedFields.push({
+      key: field.key,
+      label: field.label,
+      pageKey: appPage.key,
+      pageLabel: appPage.label,
+      pageDescription: appPage.description,
+      pageRoute: appPage.route,
+      pageRouteLabel: appPage.routeLabel,
+      sectionKey: 'app',
+      sectionLabel: ROOT_CONFIG.app.sectionLabel,
+      valueType: 'image',
+      shared: field.shared,
     });
   }
 }
@@ -379,8 +479,8 @@ export function pageMatchesField(page: SiteContentPage, field: SiteContentField)
 export function getDefaultSiteContentValue(key: string, locale: Locale) {
   if (key === 'media.home.heroVideo') return '/hero.mp4';
   if (key.startsWith('app.')) {
-    const appKey = key.slice(4) as keyof typeof APP_DEFAULTS;
-    return APP_DEFAULTS[appKey];
+    const appKey = key.slice(4) as keyof typeof APP_TEXT_DEFAULTS;
+    return APP_TEXT_DEFAULT_OVERRIDES[locale]?.[appKey] ?? APP_TEXT_DEFAULTS[appKey] ?? '';
   }
   return getByPath(deepMerge(dictionaries[locale], SITE_CONTENT_EXTRAS[locale]), key);
 }
