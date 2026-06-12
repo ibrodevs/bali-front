@@ -710,6 +710,8 @@ export const endpoints = {
     api<ApiAdminUser>('/admin/users/', { method: 'POST', body, auth: true }),
   adminUpdateUser: (id: number | string, body: Partial<ApiAdminUser> & { password?: string }) =>
     api<ApiAdminUser>(`/admin/users/${id}/`, { method: 'PATCH', body, auth: true }),
+  adminDeleteUser: (id: number | string) =>
+    api<void>(`/admin/users/${id}/`, { method: 'DELETE', auth: true }),
   adminSetUserPassword: (id: number | string, body: { new_password: string }) =>
     api<{ detail: string }>(`/admin/users/${id}/set-password/`, { method: 'POST', body, auth: true }),
   changeMyPassword: (body: { current_password: string; new_password: string }) =>

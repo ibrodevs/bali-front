@@ -136,10 +136,20 @@ const ADMIN_PERMISSION_OPTIONS: AdminPermission[] = [
   'categories',
   'locations',
   'site',
-  'appContent',
   'promocodes',
   'team',
 ];
+
+function serializeAdminPermissions(permissions: AdminPermission[]) {
+  return Array.from(
+    new Set(
+      permissions.map((permission) => {
+        if (permission === 'appContent') return 'site';
+        return permission;
+      }),
+    ),
+  );
+}
 
 function defaultAdminPermissionsForRole(role?: string | null): AdminPermission[] {
   const normalizedRole = (role || '').toLowerCase();
@@ -147,7 +157,7 @@ function defaultAdminPermissionsForRole(role?: string | null): AdminPermission[]
     return [...ADMIN_PERMISSION_OPTIONS];
   }
   if (normalizedRole === 'manager') {
-    return ['overview', 'bookings', 'fleet', 'calendar', 'crm', 'analytics', 'support', 'news', 'addons', 'categories', 'locations', 'site', 'appContent', 'promocodes'];
+    return ['overview', 'bookings', 'fleet', 'calendar', 'crm', 'analytics', 'support', 'news', 'addons', 'categories', 'locations', 'site', 'promocodes'];
   }
   if (normalizedRole === 'staff') {
     return ['overview', 'bookings', 'calendar', 'support'];
@@ -166,7 +176,11 @@ function normalizeAdminPermissions(raw: unknown, role?: string | null, isSuperus
   }
 
   const normalized = raw
-    .map((item) => String(item || '').trim().toLowerCase())
+    .map((item) => {
+      const value = String(item || '').trim().toLowerCase();
+      if (value === 'appcontent' || value === 'app_content') return 'site';
+      return value;
+    })
     .filter((item): item is AdminPermission => ADMIN_PERMISSION_OPTIONS.includes(item as AdminPermission));
 
   return normalized.length ? Array.from(new Set(normalized)) : fallback;
@@ -2925,6 +2939,7 @@ export default function AdminPage() {
   const [savingScooterId, setSavingScooterId] = useState<number | null>(null);
   const [savingFleetForm, setSavingFleetForm] = useState(false);
   const [savingAdminUser, setSavingAdminUser] = useState(false);
+  const [deletingAdminUserId, setDeletingAdminUserId] = useState<number | null>(null);
   const [changingOwnPassword, setChangingOwnPassword] = useState(false);
   const [settingTeamPasswordId, setSettingTeamPasswordId] = useState<number | null>(null);
   const [activeThreadId, setActiveThreadId] = useState<number | null>(null);
@@ -3021,10 +3036,27 @@ export default function AdminPage() {
   async function handleCreateAdminUser(payload: { email: string; full_name?: string; phone?: string; password: string; role: string; admin_permissions: AdminPermission[] }) {
     setSavingAdminUser(true);
     try {
-      await endpoints.adminCreateUser(payload);
+      await endpoints.adminCreateUser({
+        ...payload,
+        admin_permissions: serializeAdminPermissions(payload.admin_permissions),
+      });
       await loadAdminData();
     } finally {
       setSavingAdminUser(false);
+    }
+  }
+
+  async function handleDeleteAdminUser(userId: number) {
+    setDeletingAdminUserId(userId);
+    setError(null);
+    try {
+      await endpoints.adminDeleteUser(userId);
+      await loadAdminData();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Unable to delete the team member');
+      throw err;
+    } finally {
+      setDeletingAdminUserId(null);
     }
   }
 
@@ -3299,8 +3331,10 @@ export default function AdminPage() {
         users={data.users}
         currentUser={user}
         onCreateAdminUser={handleCreateAdminUser}
+        onDeleteAdminUser={handleDeleteAdminUser}
         onSetTeamUserPassword={handleSetTeamUserPassword}
         savingAdminUser={savingAdminUser}
+        deletingAdminUserId={deletingAdminUserId}
         settingTeamPasswordId={settingTeamPasswordId}
         isMobile={isMobile}
       />
@@ -5001,8 +5035,10 @@ function TeamAccessPanel({
   users,
   currentUser,
   onCreateAdminUser,
+  onDeleteAdminUser,
   onSetTeamUserPassword,
   savingAdminUser,
+  deletingAdminUserId,
   settingTeamPasswordId,
   canManageTeam = true,
   isMobile,
@@ -5010,8 +5046,10 @@ function TeamAccessPanel({
   users: ApiAdminUser[];
   currentUser: ApiUser | null;
   onCreateAdminUser: (payload: { email: string; full_name?: string; phone?: string; password: string; role: string; admin_permissions: AdminPermission[] }) => Promise<void>;
+  onDeleteAdminUser: (userId: number) => Promise<void>;
   onSetTeamUserPassword: (userId: number, newPassword: string) => Promise<void>;
   savingAdminUser: boolean;
+  deletingAdminUserId: number | null;
   settingTeamPasswordId: number | null;
   canManageTeam?: boolean;
   isMobile: boolean;
@@ -5148,6 +5186,28 @@ function TeamAccessPanel({
                 </div>
               ) : (
                 <div style={{ display: 'grid', gap: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <Button
+                      variant="danger"
+                      disabled={deletingAdminUserId === item.id}
+                      onClick={async () => {
+                        const confirmed = typeof window === 'undefined'
+                          ? false
+                          : window.confirm(`Delete team member "${item.full_name || item.email}"? This action cannot be undone.`);
+                        if (!confirmed) return;
+                        try {
+                          await onDeleteAdminUser(item.id);
+                        } catch (err) {
+                          setTeamPasswordStatus((current) => ({
+                            ...current,
+                            [item.id]: { tone: 'error', message: err instanceof Error ? err.message : 'Unable to delete the team member.' },
+                          }));
+                        }
+                      }}
+                    >
+                      {deletingAdminUserId === item.id ? 'Deleting…' : 'Delete member'}
+                    </Button>
+                  </div>
                   <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 280px) auto', gap: 10, alignItems: 'center' }}>
                     <input
                       type="password"
@@ -5211,16 +5271,20 @@ function UsersView({
   users,
   currentUser,
   onCreateAdminUser,
+  onDeleteAdminUser,
   onSetTeamUserPassword,
   savingAdminUser,
+  deletingAdminUserId,
   settingTeamPasswordId,
   isMobile,
 }: {
   users: ApiAdminUser[];
   currentUser: ApiUser | null;
   onCreateAdminUser: (payload: { email: string; full_name?: string; phone?: string; password: string; role: string; admin_permissions: AdminPermission[] }) => Promise<void>;
+  onDeleteAdminUser: (userId: number) => Promise<void>;
   onSetTeamUserPassword: (userId: number, newPassword: string) => Promise<void>;
   savingAdminUser: boolean;
+  deletingAdminUserId: number | null;
   settingTeamPasswordId: number | null;
   isMobile: boolean;
 }) {
@@ -5230,8 +5294,10 @@ function UsersView({
         users={users}
         currentUser={currentUser}
         onCreateAdminUser={onCreateAdminUser}
+        onDeleteAdminUser={onDeleteAdminUser}
         onSetTeamUserPassword={onSetTeamUserPassword}
         savingAdminUser={savingAdminUser}
+        deletingAdminUserId={deletingAdminUserId}
         settingTeamPasswordId={settingTeamPasswordId}
         isMobile={isMobile}
       />
