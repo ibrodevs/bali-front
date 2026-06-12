@@ -9,6 +9,7 @@ export type ApiScooter = {
   title: string;
   slug: string;
   type?: string;
+  type_code?: string;
   engine_capacity?: number;
   price_per_day: string | number;
   main_image?: string | null;
@@ -593,7 +594,7 @@ export const endpoints = {
   scooters: (params?: { search?: string; start_date?: string; end_date?: string; page?: number }, lang?: string) =>
     api<Paginated<ApiScooter> | ApiScooter[]>('/scooters/', { query: params, lang }),
   scooter: (idOrSlug: string | number, lang?: string) => api<ApiScooterDetail>(`/scooters/${idOrSlug}/`, { lang }),
-  scooterTypes: () => api<Paginated<ApiVehicleType> | ApiVehicleType[]>('/scooter-types/'),
+  scooterTypes: (lang?: string) => api<Paginated<ApiVehicleType> | ApiVehicleType[]>('/scooter-types/', { lang }),
   adminCreateScooterType: (body: { code: string; name: string }) =>
     api<ApiVehicleType>('/scooter-types/', { method: 'POST', body, auth: true }),
   adminUpdateScooterType: (id: number | string, body: Partial<{ code: string; name: string }>) =>

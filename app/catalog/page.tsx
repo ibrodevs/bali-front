@@ -1,21 +1,39 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BREyebrow } from '@/components/BR';
 import ScooterCard from '@/components/ScooterCard';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
-import { endpoints, unwrapList } from '@/lib/endpoints';
+import { ApiVehicleType, endpoints, unwrapList } from '@/lib/endpoints';
 import { DisplayScooter, fallbackScooters, mapApiScooter } from '@/lib/displayScooter';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
 
+function deriveFallbackCategories(scooters: DisplayScooter[]): ApiVehicleType[] {
+  const seen = new Set<string>();
+  return scooters
+    .filter((item) => item.type)
+    .map((item) => ({
+      id: Number(item.apiId) || 0,
+      code: item.typeCode || item.type.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+      name: item.type,
+      translations: [],
+    }))
+    .filter((item) => {
+      if (seen.has(item.code)) return false;
+      seen.add(item.code);
+      return true;
+    });
+}
+
 export default function CatalogPage() {
   const { t, locale, tr } = useLocale();
   const { marker } = useSiteContentPreview();
-  const [filter, setFilter] = useState('All');
+  const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('featured');
   const [scooters, setScooters] = useState<DisplayScooter[] | null>(null);
+  const [categories, setCategories] = useState<ApiVehicleType[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -23,16 +41,22 @@ export default function CatalogPage() {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    endpoints.scooters({}, locale)
-      .then((res) => {
+    Promise.all([endpoints.scooters({}, locale), endpoints.scooterTypes(locale)])
+      .then(([scootersRes, typesRes]) => {
         if (cancelled) return;
-        const list = unwrapList(res).map(mapApiScooter);
-        setScooters(list.length ? list : fallbackScooters());
+        const list = unwrapList(scootersRes).map(mapApiScooter);
+        const fallback = fallbackScooters();
+        const nextScooters = list.length ? list : fallback;
+        const nextCategories = unwrapList(typesRes);
+        setScooters(nextScooters);
+        setCategories(nextCategories.length ? nextCategories : deriveFallbackCategories(nextScooters));
         setLoading(false);
       })
       .catch(() => {
         if (cancelled) return;
-        setScooters(fallbackScooters());
+        const fallback = fallbackScooters();
+        setScooters(fallback);
+        setCategories(deriveFallbackCategories(fallback));
         setError(t.catalog.error);
         setLoading(false);
       });
@@ -43,9 +67,19 @@ export default function CatalogPage() {
   const bg = '#fff';
   const sub = 'rgba(0,0,0,0.55)';
   const border = 'rgba(0,0,0,0.08)';
-  const types = ['All', ...Array.from(new Set((scooters || []).map((s) => s.type).filter(Boolean)))];
+  const typeOptions = useMemo(
+    () => [{ code: 'all', name: t.catalog.types.All }, ...categories.map((item) => ({ code: item.code, name: item.name }))],
+    [categories, t.catalog.types.All],
+  );
+
+  useEffect(() => {
+    if (!typeOptions.some((item) => item.code === filter)) {
+      setFilter('all');
+    }
+  }, [filter, typeOptions]);
+
   const visible = (scooters || [])
-    .filter((s) => filter === 'All' || s.type === filter)
+    .filter((s) => filter === 'all' || s.typeCode === filter)
     .filter((s) => {
       if (!search.trim()) return true;
       const query = search.trim().toLowerCase();
@@ -106,14 +140,14 @@ export default function CatalogPage() {
 
       <div className="br-catalog-toolbar" style={{ position: 'sticky', top: 64, background: 'rgba(255,255,255,0.85)', backdropFilter: 'saturate(160%) blur(14px)', WebkitBackdropFilter: 'saturate(160%) blur(14px)', padding: '14px 40px', borderTop: `1px solid ${border}`, borderBottom: `1px solid ${border}`, display: 'flex', gap: 16, alignItems: 'center', zIndex: 4 }}>
         <div className="br-scroll-x" style={{ display: 'flex', gap: 8, flex: 1 }}>
-          {types.map((f) => (
+          {typeOptions.map((item) => (
             <button
               {...marker('catalog.types')}
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`br-filter-chip${filter === f ? ' active' : ''}`}
+              key={item.code}
+              onClick={() => setFilter(item.code)}
+              className={`br-filter-chip${filter === item.code ? ' active' : ''}`}
             >
-              {((t.catalog.types as Record<string, string>)[f] || f).toUpperCase()}
+              {item.name.toUpperCase()}
             </button>
           ))}
         </div>
@@ -151,10 +185,10 @@ export default function CatalogPage() {
           <div style={{ padding: 80, textAlign: 'center' }}>
             <div style={{ fontSize: 48, opacity: 0.25 }}>⌕</div>
             <div {...marker('catalog.empty')} className="br-mono" style={{ color: sub, marginTop: 12, letterSpacing: '0.12em', fontSize: 12 }}>{t.catalog.empty}</div>
-            {(search || filter !== 'All') && (
+            {(search || filter !== 'all') && (
               <button
                 {...marker('catalog.resetFilters')}
-                onClick={() => { setSearch(''); setFilter('All'); }}
+                onClick={() => { setSearch(''); setFilter('all'); }}
                 className="br-btn br-btn-outline"
                 style={{ marginTop: 20 }}
               >

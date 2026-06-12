@@ -58,6 +58,7 @@ const SCOOTER_ROUTE_ALIASES: Record<string, string> = {
 
 export type DisplayScooter = Scooter & {
   apiId?: number | string;
+  typeCode?: string;
   imageUrl?: string;
   imageObjectPosition?: string;
   reviewsCount?: number;
@@ -139,6 +140,7 @@ export function mapApiScooter(s: ApiScooter): DisplayScooter {
     name: s.title,
     cc: s.engine_capacity || 0,
     type: (s.type || 'Touring').toString(),
+    typeCode: s.type_code || undefined,
     price: Number(s.price_per_day) || 0,
     photo: pickTone(id),
     tag: s.is_featured ? 'FEATURED' : (s.type || 'BIKE').toString().toUpperCase(),
@@ -169,6 +171,7 @@ export function fallbackScooters(): DisplayScooter[] {
   return BR_SCOOTERS.map((s) => ({
     ...s,
     apiId: undefined,
+    typeCode: s.type.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
     imageUrl: resolveScooterImage(s.id, s.name),
     imageObjectPosition: resolveScooterImageObjectPosition(s.id, s.name),
   }));
