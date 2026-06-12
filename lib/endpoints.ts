@@ -12,6 +12,7 @@ export type ApiScooter = {
   type_code?: string;
   engine_capacity?: number;
   price_per_day: string | number;
+  pricing_tiers?: ApiScooterRentalRate[];
   main_image?: string | null;
   status?: string;
   rating_avg?: number;
@@ -85,6 +86,7 @@ export type ApiScooterDetail = ApiScooter & {
   rental_terms?: string;
   model_info?: Partial<ApiVehicleModel>;
   translations?: ApiVehicleTranslation[];
+  pricing_tiers?: ApiScooterRentalRate[];
 };
 
 export type ApiAddon = {
@@ -326,6 +328,31 @@ export type ApiChatThread = {
 };
 
 export type ApiDeliveryZone = { id: number; name: string; price: string | number; is_active: boolean; bounds?: unknown };
+export type ApiScooterRentalRate = {
+  id: number;
+  scooter?: number;
+  scooter_id?: number;
+  scooter_title?: string;
+  scooter_slug?: string;
+  min_days: number;
+  max_days?: number | null;
+  price_usd: string | number;
+  billing_period_days: number;
+  effective_daily_price_usd?: string | number;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type ApiAppliedTariff = {
+  id?: number | null;
+  min_days: number;
+  max_days?: number | null;
+  price_usd: string | number;
+  billing_period_days: number;
+  billed_periods: number;
+  effective_daily_price_usd: string | number;
+};
+
 export type ApiBookingQuote = {
   scooter_id: number;
   start_datetime: string;
@@ -337,6 +364,7 @@ export type ApiBookingQuote = {
   discount_amount: string | number;
   markup_amount: string | number;
   total_price: string | number;
+  applied_tariff?: ApiAppliedTariff | null;
   promo_code?: string | null;
   currency: string;
   payment_method: string;
@@ -498,6 +526,14 @@ export type AdminScooterPayload = {
   is_featured: boolean;
 };
 
+export type AdminScooterRentalRatePayload = {
+  scooter: number;
+  min_days: number;
+  max_days?: number | null;
+  price_usd: string | number;
+  billing_period_days: number;
+};
+
 export type ApiVehicleTranslation = {
   language: string;
   title: string;
@@ -610,6 +646,10 @@ export const endpoints = {
     api<ApiVehicleModel>('/scooter-models/', { method: 'POST', body, auth: true }),
   scooterAvailability: (id: number | string, params: { year?: number; month?: number; start_date?: string; end_date?: string }) =>
     api<ApiAvailabilityCalendar | { vehicle_id: number; start_date: string; end_date: string; is_available: boolean }>(`/scooters/${id}/availability/`, { query: params }),
+  scooterRates: (id: number | string) =>
+    api<ApiScooterRentalRate[]>(`/scooters/${id}/rates/`),
+  pricingRates: (params?: { scooter?: number | string }) =>
+    api<ApiScooterRentalRate[]>('/pricing/rental-rates/', { query: params }),
 
   addons: (lang?: string) => api<Paginated<ApiAddon> | ApiAddon[]>('/add-ons/', { lang }),
 
@@ -691,6 +731,14 @@ export const endpoints = {
     api<ApiScooterDetail>(`/admin/scooters/${id}/`, { method: 'PATCH', body, auth: true }),
   adminDeleteScooter: (id: number | string) =>
     api<void>(`/admin/scooters/${id}/`, { method: 'DELETE', auth: true }),
+  adminRentalRates: (params?: { scooter?: number | string }) =>
+    api<Paginated<ApiScooterRentalRate> | ApiScooterRentalRate[]>('/admin/pricing/rental-rates/', { auth: true, query: params }),
+  adminCreateRentalRate: (body: AdminScooterRentalRatePayload) =>
+    api<ApiScooterRentalRate>('/admin/pricing/rental-rates/', { method: 'POST', body, auth: true }),
+  adminUpdateRentalRate: (id: number | string, body: Partial<AdminScooterRentalRatePayload>) =>
+    api<ApiScooterRentalRate>(`/admin/pricing/rental-rates/${id}/`, { method: 'PATCH', body, auth: true }),
+  adminDeleteRentalRate: (id: number | string) =>
+    api<void>(`/admin/pricing/rental-rates/${id}/`, { method: 'DELETE', auth: true }),
 
   adminBookings: (params?: { page?: number; status?: string }) =>
     api<Paginated<ApiBooking> | ApiBooking[]>('/admin/bookings/', { auth: true, query: params }),

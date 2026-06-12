@@ -243,6 +243,22 @@ const EXACT_TRANSLATIONS: Record<string, TranslationPair> = {
   'Description will come from the selected model.': { ru: 'Описание будет взято из выбранной модели.', id: 'Deskripsi akan diambil dari model yang dipilih.' },
   'Detailed description will appear here.': { ru: 'Здесь появится подробное описание.', id: 'Deskripsi lengkap akan muncul di sini.' },
   'Save and publish': { ru: 'Сохранить и опубликовать', id: 'Simpan dan publikasikan' },
+  'Tariffs': { ru: 'Тарифы', id: 'Tarif' },
+  'Set rental ranges without overlaps. Use billing period `30` for monthly prices.': {
+    ru: 'Задавайте диапазоны аренды без пересечений. Для месячных цен используйте период тарифа `30`.',
+    id: 'Atur rentang sewa tanpa tumpang tindih. Gunakan periode tagihan `30` untuk harga bulanan.',
+  },
+  'Keep the ranges non-overlapping. Use billing period `30` for monthly plans.': {
+    ru: 'Сохраняйте диапазоны без пересечений. Для месячных планов используйте период тарифа `30`.',
+    id: 'Pastikan rentangnya tidak tumpang tindih. Gunakan periode tagihan `30` untuk paket bulanan.',
+  },
+  'Fill from base price': { ru: 'Заполнить из базовой цены', id: 'Isi dari harga dasar' },
+  'Reset from base price': { ru: 'Сбросить из базовой цены', id: 'Reset dari harga dasar' },
+  'Add range': { ru: 'Добавить диапазон', id: 'Tambah rentang' },
+  'From': { ru: 'От', id: 'Dari' },
+  'To': { ru: 'До', id: 'Sampai' },
+  'Price USD': { ru: 'Цена USD', id: 'Harga USD' },
+  'Billing days': { ru: 'Дней тарифа', id: 'Hari tagihan' },
   'Saved content reaches the website from the same API the storefront already uses:': { ru: 'Сохранённый контент попадает на сайт через тот же API, который уже использует витрина:', id: 'Konten tersimpan masuk ke situs melalui API yang sama yang dipakai storefront:' },
   'description and rental terms from vehicle model,': { ru: 'описание и условия аренды из модели транспорта,', id: 'deskripsi dan syarat sewa dari model kendaraan,' },
   'photos from vehicle gallery,': { ru: 'фотографии из галереи транспорта,', id: 'foto dari galeri kendaraan,' },
@@ -672,6 +688,42 @@ const DYNAMIC_TRANSLATIONS: DynamicRule[] = [
     translate: (match, locale) => locale === 'ru'
       ? `${match[1]} всего`
       : `${match[1]} total`,
+  },
+  {
+    pattern: /^Tariff row (\d+): "From" must be a whole number greater than 0\.$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `Строка тарифа ${match[1]}: поле "От" должно быть целым числом больше 0.`
+      : `Baris tarif ${match[1]}: kolom "Dari" harus berupa bilangan bulat lebih besar dari 0.`,
+  },
+  {
+    pattern: /^Tariff row (\d+): "To" must be empty or greater than or equal to "From"\.$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `Строка тарифа ${match[1]}: поле "До" должно быть пустым или больше либо равно полю "От".`
+      : `Baris tarif ${match[1]}: kolom "Sampai" harus kosong atau lebih besar maupun sama dengan kolom "Dari".`,
+  },
+  {
+    pattern: /^Tariff row (\d+): enter a valid price\.$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `Строка тарифа ${match[1]}: укажите корректную цену.`
+      : `Baris tarif ${match[1]}: masukkan harga yang valid.`,
+  },
+  {
+    pattern: /^Tariff row (\d+): billing period must be a whole number greater than 0\.$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `Строка тарифа ${match[1]}: период тарифа должен быть целым числом больше 0.`
+      : `Baris tarif ${match[1]}: periode tagihan harus berupa bilangan bulat lebih besar dari 0.`,
+  },
+  {
+    pattern: /^Tariff ranges overlap between rows (\d+) and (\d+)\.$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `Диапазоны тарифов пересекаются между строками ${match[1]} и ${match[2]}.`
+      : `Rentang tarif bertumpang tindih antara baris ${match[1]} dan ${match[2]}.`,
+  },
+  {
+    pattern: /^Add at least one tariff\.$/,
+    translate: (_match, locale) => locale === 'ru'
+      ? 'Добавьте хотя бы один тариф.'
+      : 'Tambahkan setidaknya satu tarif.',
   },
   {
     pattern: /^Name in (.+)$/,

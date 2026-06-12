@@ -16,12 +16,13 @@ import {
   SparkIcon,
   renderAddonIcon,
 } from '@/components/Icons';
-import { endpoints, ApiAddon, unwrapList } from '@/lib/endpoints';
+import { endpoints, ApiAddon, ApiScooterDetail, unwrapList } from '@/lib/endpoints';
 import { mediaUrl } from '@/lib/api';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { BR_ADDONS } from '@/lib/data';
 import { BR_SCOOTERS } from '@/lib/data';
 import { mapApiScooterDetail, DisplayScooter, pickTone, resolveScooterImage, resolveScooterRouteId } from '@/lib/displayScooter';
+import { formatBillingLabel, formatRateRange } from '@/lib/rentalRates';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
 
 type AddonView = { id: string | number; apiId?: number; name: string; icon: string; price: number };
@@ -64,6 +65,7 @@ export default function ScooterDetailPage() {
   const [selectedAddOnIds, setSelectedAddOnIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [pricingTiers, setPricingTiers] = useState<ApiScooterDetail['pricing_tiers']>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,6 +83,7 @@ export default function ScooterDetailPage() {
         setDescription(detail.full_description || '');
         setRentalTerms(detail.rental_terms || '');
         setCharacteristics(detail.characteristics || {});
+        setPricingTiers(detail.pricing_tiers || []);
         const imgs = (detail.gallery || []).map((g) => mediaUrl(g.image)).filter(Boolean);
         if (detail.main_image) imgs.unshift(mediaUrl(detail.main_image));
         const localImage = resolveScooterImage(detail.slug || detail.id, detail.title);
@@ -110,6 +113,7 @@ export default function ScooterDetailPage() {
           setDescription('');
           setRentalTerms('');
           setCharacteristics({});
+          setPricingTiers([]);
           setPhotoIdx(0);
           setAddons(BR_ADDONS.map((a) => ({ id: a.id, name: a.name, icon: a.icon, price: a.price })));
           setLoading(false);
@@ -316,9 +320,37 @@ export default function ScooterDetailPage() {
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 12 }}>
               <BRPrice amount={scooter.price} size={36} />
               <span className="br-mono" style={{ fontSize: 12, color: sub }}>
-                · <span {...marker('detail.baseRate')}>{t.detail.baseRate}</span>
+                · <span {...marker('catalog.from')}>{t.catalog.from}</span>
               </span>
             </div>
+
+            {pricingTiers && pricingTiers.length > 0 ? (
+              <div style={{ marginTop: 20, display: 'grid', gap: 8 }}>
+                <BREyebrow>Rates</BREyebrow>
+                {pricingTiers.map((tier) => (
+                  <div
+                    key={tier.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      alignItems: 'baseline',
+                      padding: '10px 12px',
+                      borderRadius: 10,
+                      background: bg,
+                    }}
+                  >
+                    <span className="br-mono" style={{ fontSize: 12, color: sub }}>
+                      {formatRateRange(tier.min_days, tier.max_days, locale)} · {formatBillingLabel(tier.billing_period_days, locale)}
+                    </span>
+                    <span className="br-mono" style={{ fontSize: 12, color: fg }}>
+                      {symbol}
+                      {(Math.round(convertPrice(Number(tier.price_usd || 0)) * 100) / 100).toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
 
             <div style={{ marginTop: 24 }}>
               <BREyebrow><span {...marker('detail.addonsTitle')}>{t.detail.addonsTitle}</span></BREyebrow>

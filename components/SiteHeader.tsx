@@ -19,10 +19,19 @@ export default function SiteHeader({
   dark?: boolean;
   transparent?: boolean;
 }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { marker } = useSiteContentPreview();
   const { user, signOut } = useAuth();
   const pathname = usePathname();
+  const pricingLabels: Record<string, string> = {
+    en: 'Prices',
+    ru: 'Цены',
+    zh: '价格',
+    id: 'Harga',
+    de: 'Preise',
+    fr: 'Tarifs',
+  };
+  const pricingLabel = pricingLabels[(locale || 'en').split('-')[0]] || 'Prices';
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -114,6 +123,7 @@ export default function SiteHeader({
   const navLinks = (
     <>
       <Link {...marker('nav.catalog')} href="/catalog" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.catalog}</Link>
+      <Link href="/prices" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{pricingLabel}</Link>
       <Link {...marker('nav.how')} href="/how-it-works" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.how}</Link>
       <Link {...marker('nav.locations')} href="/locations" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.locations}</Link>
       <Link {...marker('nav.news')} href="/news" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.news}</Link>

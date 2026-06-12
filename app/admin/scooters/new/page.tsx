@@ -6,6 +6,7 @@ import { ApiError } from '@/lib/api';
 import {
   AdminScooterModelPayload,
   AdminScooterPayload,
+  AdminScooterRentalRatePayload,
   ApiVehicleModel,
   ApiVehicleTranslation,
   ApiVehicleType,
@@ -13,6 +14,7 @@ import {
   unwrapList,
 } from '@/lib/endpoints';
 import { useAuth } from '@/lib/i18n/AuthProvider';
+import { createDefaultRentalRateDrafts, RentalRateDraft, validateRentalRateDrafts } from '@/lib/rentalRates';
 import { useRouter } from 'next/navigation';
 
 const A = {
@@ -262,6 +264,7 @@ export default function AdminNewScooterPage() {
   const [mainPhotoIndex, setMainPhotoIndex] = useState(0);
   const [translations, setTranslations] = useState<Record<string, TranslationDraft>>(createEmptyTranslations());
   const [activeLang, setActiveLang] = useState('en');
+  const [rentalRates, setRentalRates] = useState<RentalRateDraft[]>(createDefaultRentalRateDrafts(''));
 
   useEffect(() => {
     return () => {
@@ -307,6 +310,22 @@ export default function AdminNewScooterPage() {
 
   function updateScooterDraft<K extends keyof DraftScooter>(key: K, value: DraftScooter[K]) {
     setScooterDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateRentalRate(index: number, key: keyof RentalRateDraft, value: string) {
+    setRentalRates((current) => current.map((item, itemIndex) => (itemIndex === index ? { ...item, [key]: value } : item)));
+  }
+
+  function addRentalRateRow() {
+    setRentalRates((current) => [...current, { min_days: '', max_days: '', price_usd: '', billing_period_days: '1', isNew: true }]);
+  }
+
+  function removeRentalRateRow(index: number) {
+    setRentalRates((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  }
+
+  function resetRentalRatesFromBasePrice() {
+    setRentalRates(createDefaultRentalRateDrafts(scooterDraft.base_price_usd));
   }
 
   function handlePhotoPick(event: ChangeEvent<HTMLInputElement>) {
@@ -436,6 +455,7 @@ export default function AdminNewScooterPage() {
       }
 
       const translationPayload = validateTranslations();
+      const validatedRates = validateRentalRateDrafts(rentalRates);
 
       const createdScooter = await endpoints.adminCreateScooter({
         model: modelId,
@@ -448,6 +468,15 @@ export default function AdminNewScooterPage() {
         mileage: Number(scooterDraft.mileage || 0),
         is_featured: scooterDraft.is_featured,
       } satisfies AdminScooterPayload);
+      for (const rate of validatedRates) {
+        await endpoints.adminCreateRentalRate({
+          scooter: createdScooter.id,
+          min_days: rate.min_days,
+          max_days: rate.max_days,
+          price_usd: rate.price_usd,
+          billing_period_days: rate.billing_period_days,
+        } satisfies AdminScooterRentalRatePayload);
+      }
 
       await endpoints.adminSaveScooterTranslations(createdScooter.id, translationPayload);
 
@@ -633,6 +662,40 @@ export default function AdminNewScooterPage() {
                   <input type="checkbox" checked={scooterDraft.is_featured} onChange={(event) => updateScooterDraft('is_featured', event.target.checked)} />
                   <span>Feature on website homepage</span>
                 </label>
+              </div>
+            </Panel>
+
+            <Panel style={{ padding: 22 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', marginBottom: 16 }}>
+                <div>
+                  <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18, color: A.black }}>Tariffs</div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, marginTop: 4 }}>
+                    Set rental ranges without overlaps. Use billing period `30` for monthly prices.
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <Button variant="outline" onClick={resetRentalRatesFromBasePrice}>Fill from base price</Button>
+                  <Button variant="outline" onClick={addRentalRateRow}>Add range</Button>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '80px 80px 1fr 120px 88px', gap: 10, fontSize: 12, color: A.g500, fontWeight: 700 }}>
+                  <span>From</span>
+                  <span>To</span>
+                  <span>Price USD</span>
+                  <span>Billing days</span>
+                  <span />
+                </div>
+                {rentalRates.map((rate, index) => (
+                  <div key={`rate-${index}`} style={{ display: 'grid', gridTemplateColumns: '80px 80px 1fr 120px 88px', gap: 10, alignItems: 'center' }}>
+                    <input type="number" min="1" value={rate.min_days} onChange={(event) => updateRentalRate(index, 'min_days', event.target.value)} style={inputStyle} />
+                    <input type="number" min="1" value={rate.max_days} onChange={(event) => updateRentalRate(index, 'max_days', event.target.value)} style={inputStyle} placeholder="∞" />
+                    <input type="number" min="0" step="0.01" value={rate.price_usd} onChange={(event) => updateRentalRate(index, 'price_usd', event.target.value)} style={inputStyle} />
+                    <input type="number" min="1" value={rate.billing_period_days} onChange={(event) => updateRentalRate(index, 'billing_period_days', event.target.value)} style={inputStyle} />
+                    <Button variant="outline" onClick={() => removeRentalRateRow(index)} disabled={rentalRates.length === 1}>Remove</Button>
+                  </div>
+                ))}
               </div>
             </Panel>
 

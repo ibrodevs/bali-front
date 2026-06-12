@@ -21,6 +21,7 @@ import {
 import { bookingDraftStore } from '@/lib/bookingDraft';
 import { convertAmount, formatCurrencyAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
+import { formatAppliedTariffLabel } from '@/lib/rentalRates';
 import { type BookingExtraContent, BOOKING_COPY } from '@/lib/siteContentExtras';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
 
@@ -273,7 +274,13 @@ function BookingPageInner() {
   const hasDeliveryAddress = Boolean(deliveryAddress.trim());
   // Always use the user-selected currency for display — never let the API currency override it.
   const currency = selectedCurrency;
+  // The API always returns amounts in USD regardless of the currency param in the request.
+  const quoteCurrency = 'USD';
   const rentalDays = Number(quote?.rental_days || 0);
+  const appliedTariffLabel = formatAppliedTariffLabel(quote?.applied_tariff, locale);
+  const effectiveRatePerDay = quote?.applied_tariff
+    ? convertAmount(Number(quote.applied_tariff.effective_daily_price_usd || 0), quoteCurrency, selectedCurrency)
+    : 0;
 
   const addonsSubtotal = useMemo(() => {
     return selectedAddOnIds.reduce((sum, id) => {
@@ -282,8 +289,6 @@ function BookingPageInner() {
     }, 0);
   }, [addons, selectedAddOnIds]);
 
-  // The API always returns amounts in USD regardless of the currency param in the request.
-  const quoteCurrency = 'USD';
   const baseTotal = quote
     ? convertAmount(Number(quote.base_price || 0), quoteCurrency, selectedCurrency)
     : convertPrice(initialPrice || 0);
@@ -363,18 +368,6 @@ function BookingPageInner() {
               {loadError ? <div className="br-mono" style={{ marginTop: 16, color: '#B91C1C' }}>{loadError}</div> : null}
             </div>
 
-            <AvailabilityCalendarBlock
-              scooterId={effectiveScooterId}
-              locale={locale}
-              copy={copy}
-              startDateKey={startDateKey}
-              endDateKey={endDateKey}
-              onPick={(start, end) => {
-                setStartDateKey(start);
-                setEndDateKey(end);
-              }}
-            />
-
             <div className="br-booking-card" style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
               <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
                 <span {...marker('booking.timeTitle')}>{copy.timeTitle}</span>
@@ -393,6 +386,18 @@ function BookingPageInner() {
                 </div>
               ) : null}
             </div>
+
+            <AvailabilityCalendarBlock
+              scooterId={effectiveScooterId}
+              locale={locale}
+              copy={copy}
+              startDateKey={startDateKey}
+              endDateKey={endDateKey}
+              onPick={(start, end) => {
+                setStartDateKey(start);
+                setEndDateKey(end);
+              }}
+            />
 
             <div className="br-booking-card" style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
               <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
@@ -498,6 +503,11 @@ function BookingPageInner() {
               <div style={{ marginTop: 8, color: 'rgba(0,0,0,0.58)', lineHeight: 1.55 }}>
                 {rentalDays ? `${rentalDays} ${t.common.day}` : <span {...marker('booking.datesNotSelected')}>{copy.datesNotSelected}</span>}
               </div>
+              {appliedTariffLabel ? (
+                <div className="br-mono" style={{ marginTop: 8, color: 'rgba(0,0,0,0.62)', fontSize: 12 }}>
+                  Tariff: {appliedTariffLabel}
+                </div>
+              ) : null}
               <div style={{ marginTop: 8, color: 'rgba(0,0,0,0.58)', lineHeight: 1.55 }}>
                 {selectedAddOnIds.length
                   ? selectedAddonsLabel
@@ -505,6 +515,13 @@ function BookingPageInner() {
               </div>
 
               <div style={{ display: 'grid', gap: 10, marginTop: 22 }}>
+                {quote?.applied_tariff ? (
+                  <PriceRow
+                    contentKey="booking.dailyRate"
+                    label={`Rate / ${t.common.day}`}
+                    value={formatCurrencyAmount(effectiveRatePerDay, currency)}
+                  />
+                ) : null}
                 <PriceRow contentKey="booking.base" label={copy.base} value={formatCurrencyAmount(baseTotal, currency)} />
                 <PriceRow contentKey="booking.addons" label={copy.addons} value={formatCurrencyAmount(addonsTotal, currency)} />
                 <PriceRow contentKey="booking.delivery" label={copy.delivery} value={formatCurrencyAmount(deliveryTotal, currency)} />

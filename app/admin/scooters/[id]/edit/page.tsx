@@ -5,6 +5,7 @@ import { ChangeEvent, CSSProperties, ReactNode, useEffect, useMemo, useState } f
 import { ApiError, mediaUrl } from '@/lib/api';
 import {
   AdminScooterPayload,
+  AdminScooterRentalRatePayload,
   ApiScooterDetail,
   ApiVehicleModel,
   ApiVehicleType,
@@ -13,6 +14,7 @@ import {
   unwrapList,
 } from '@/lib/endpoints';
 import { useAuth } from '@/lib/i18n/AuthProvider';
+import { createDefaultRentalRateDrafts, draftsFromApiRates, RentalRateDraft, validateRentalRateDrafts } from '@/lib/rentalRates';
 import { useParams } from 'next/navigation';
 
 const A = {
@@ -245,6 +247,8 @@ export default function AdminEditScooterPage() {
 
   const [translations, setTranslations] = useState<Record<string, TranslationDraft>>(emptyTranslations());
   const [activeLang, setActiveLang] = useState('en');
+  const [rentalRates, setRentalRates] = useState<RentalRateDraft[]>(createDefaultRentalRateDrafts(''));
+  const [persistedRentalRateIds, setPersistedRentalRateIds] = useState<number[]>([]);
   const [modelDraft, setModelDraft] = useState<ModelDraft>({
     type: '',
     engine_cc: '',
@@ -286,8 +290,12 @@ export default function AdminEditScooterPage() {
         setVehicleTypes(unwrapList(typesRes));
         setScooter(scooterRes);
         setExistingImages(scooterRes.gallery || []);
-
         const priceRaw = scooterRes.base_price_usd ?? scooterRes.price_per_day;
+        const nextRates = scooterRes.pricing_tiers?.length
+          ? draftsFromApiRates(scooterRes.pricing_tiers)
+          : createDefaultRentalRateDrafts(priceRaw != null ? String(priceRaw) : '');
+        setRentalRates(nextRates);
+        setPersistedRentalRateIds(nextRates.map((item) => item.id).filter((value): value is number => typeof value === 'number'));
         setDraft({
           model: scooterRes.model ? String(scooterRes.model) : '',
           title: scooterRes.title || '',
@@ -342,6 +350,22 @@ export default function AdminEditScooterPage() {
 
   function updateDraft<K extends keyof DraftScooter>(key: K, value: DraftScooter[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateRentalRate(index: number, key: keyof RentalRateDraft, value: string) {
+    setRentalRates((current) => current.map((item, itemIndex) => (itemIndex === index ? { ...item, [key]: value } : item)));
+  }
+
+  function addRentalRateRow() {
+    setRentalRates((current) => [...current, { min_days: '', max_days: '', price_usd: '', billing_period_days: '1', isNew: true }]);
+  }
+
+  function removeRentalRateRow(index: number) {
+    setRentalRates((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  }
+
+  function resetRentalRatesFromBasePrice() {
+    setRentalRates(createDefaultRentalRateDrafts(draft.base_price_usd));
   }
 
   useEffect(() => {
@@ -440,6 +464,7 @@ export default function AdminEditScooterPage() {
       }
 
       const sku = draft.sku.trim();
+      const validatedRates = validateRentalRateDrafts(rentalRates);
       await endpoints.adminUpdateScooter(scooterId, {
         model: Number(draft.model),
         title: draft.title.trim(),
@@ -482,10 +507,45 @@ export default function AdminEditScooterPage() {
         }
       }
 
+      const currentPersistedIds = validatedRates
+        .map((rate) => rate.id)
+        .filter((value): value is number => typeof value === 'number');
+      for (const rateId of persistedRentalRateIds) {
+        if (!currentPersistedIds.includes(rateId)) {
+          await endpoints.adminDeleteRentalRate(rateId);
+        }
+      }
+
+      for (const rate of validatedRates) {
+        if (rate.id) {
+          await endpoints.adminUpdateRentalRate(rate.id, {
+            scooter: Number(scooterId),
+            min_days: rate.min_days,
+            max_days: rate.max_days,
+            price_usd: rate.price_usd,
+            billing_period_days: rate.billing_period_days,
+          } satisfies Partial<AdminScooterRentalRatePayload>);
+          continue;
+        }
+
+        await endpoints.adminCreateRentalRate({
+          scooter: Number(scooterId),
+          min_days: rate.min_days,
+          max_days: rate.max_days,
+          price_usd: rate.price_usd,
+          billing_period_days: rate.billing_period_days,
+        } satisfies AdminScooterRentalRatePayload);
+      }
+
       setSuccess('Changes saved successfully.');
       setNewPhotos([]);
       const refreshed = await endpoints.adminScooter(scooterId);
       setExistingImages(refreshed.gallery || []);
+      const refreshedRates = refreshed.pricing_tiers?.length
+        ? draftsFromApiRates(refreshed.pricing_tiers)
+        : createDefaultRentalRateDrafts(refreshed.base_price_usd ?? refreshed.price_per_day ?? '');
+      setRentalRates(refreshedRates);
+      setPersistedRentalRateIds(refreshedRates.map((item) => item.id).filter((value): value is number => typeof value === 'number'));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Unable to save changes');
     } finally {
@@ -729,6 +789,55 @@ export default function AdminEditScooterPage() {
                   />
                   <span>Feature on website homepage</span>
                 </label>
+              </div>
+            </Panel>
+
+            <Panel style={{ padding: pad }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', marginBottom: 16 }}>
+                <div>
+                  <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18, color: A.black }}>Tariffs</div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, marginTop: 4 }}>
+                    Keep the ranges non-overlapping. Use billing period `30` for monthly plans.
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <Button variant="outline" onClick={resetRentalRatesFromBasePrice}>Reset from base price</Button>
+                  <Button variant="outline" onClick={addRentalRateRow}>Add range</Button>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '80px 80px 1fr 120px 88px', gap: 10, fontSize: 12, color: A.g500, fontWeight: 700 }}>
+                  <span>From</span>
+                  <span>To</span>
+                  {!isMobile && <span>Price USD</span>}
+                  {!isMobile && <span>Billing days</span>}
+                  {!isMobile && <span />}
+                </div>
+                {rentalRates.map((rate, index) => (
+                  <div key={`rate-${rate.id || index}`} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '80px 80px 1fr 120px 88px', gap: 10, alignItems: 'center' }}>
+                    <input type="number" min="1" value={rate.min_days} onChange={(event) => updateRentalRate(index, 'min_days', event.target.value)} style={inputStyle} />
+                    <input type="number" min="1" value={rate.max_days} onChange={(event) => updateRentalRate(index, 'max_days', event.target.value)} style={inputStyle} placeholder="∞" />
+                    {isMobile ? null : (
+                      <input type="number" min="0" step="0.01" value={rate.price_usd} onChange={(event) => updateRentalRate(index, 'price_usd', event.target.value)} style={inputStyle} />
+                    )}
+                    {isMobile ? null : (
+                      <input type="number" min="1" value={rate.billing_period_days} onChange={(event) => updateRentalRate(index, 'billing_period_days', event.target.value)} style={inputStyle} />
+                    )}
+                    {isMobile ? null : (
+                      <Button variant="outline" onClick={() => removeRentalRateRow(index)} disabled={rentalRates.length === 1}>Remove</Button>
+                    )}
+                    {isMobile ? (
+                      <>
+                        <input type="number" min="0" step="0.01" value={rate.price_usd} onChange={(event) => updateRentalRate(index, 'price_usd', event.target.value)} style={inputStyle} placeholder="Price USD" />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10 }}>
+                          <input type="number" min="1" value={rate.billing_period_days} onChange={(event) => updateRentalRate(index, 'billing_period_days', event.target.value)} style={inputStyle} placeholder="Billing days" />
+                          <Button variant="outline" onClick={() => removeRentalRateRow(index)} disabled={rentalRates.length === 1}>Remove</Button>
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
+                ))}
               </div>
             </Panel>
 

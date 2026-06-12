@@ -15,6 +15,12 @@ export default function SiteFooter() {
   };
   const footerRouteMap = new Map<string, string>([
     [t.nav.catalog, '/catalog'],
+    ['Pricing', '/prices'],
+    ['Цены', '/prices'],
+    ['价格', '/prices'],
+    ['Harga', '/prices'],
+    ['Preise', '/prices'],
+    ['Tarifs', '/prices'],
     [t.nav.how, '/how-it-works'],
     [t.nav.locations, '/locations'],
     [t.nav.news, '/news'],
