@@ -3122,6 +3122,21 @@ export default function AdminPage() {
     }
   }
 
+  async function handleDeleteScooter(scooter: ApiScooterDetail) {
+    if (!window.confirm(`Delete scooter "${scooter.title}"? This action cannot be undone.`)) return;
+
+    setSavingScooterId(scooter.id);
+    setError(null);
+    try {
+      await endpoints.adminDeleteScooter(scooter.id);
+      await loadAdminData();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Unable to delete scooter');
+    } finally {
+      setSavingScooterId(null);
+    }
+  }
+
   async function handleBookingAction(
     bookingId: number,
     action: 'confirm' | 'mark-delivery' | 'mark-active' | 'complete' | 'cancel',
@@ -3251,6 +3266,7 @@ export default function AdminPage() {
         savingFleetForm={savingFleetForm}
         onPatchScooter={handlePatchScooter}
         onCreateScooter={handleSaveScooter}
+        onDeleteScooter={handleDeleteScooter}
         isMobile={isMobile}
       />
     ),
@@ -5476,6 +5492,7 @@ function FleetView({
   savingFleetForm,
   onPatchScooter,
   onCreateScooter,
+  onDeleteScooter,
   isMobile,
 }: {
   scooters: ApiScooterDetail[];
@@ -5484,6 +5501,7 @@ function FleetView({
   savingFleetForm: boolean;
   onPatchScooter: (id: number, payload: Record<string, unknown>) => void;
   onCreateScooter: (payload: AdminScooterPayload) => Promise<void>;
+  onDeleteScooter: (scooter: ApiScooterDetail) => Promise<void>;
   isMobile: boolean;
 }) {
   const emptyDraft = useMemo(
@@ -5638,11 +5656,21 @@ function FleetView({
                             {busy ? 'Saving…' : item.is_featured ? 'Disable' : 'Enable'}
                           </Button>
                         </div>
-                        <Link href={`/admin/scooters/${item.id}/edit`} style={{ textDecoration: 'none' }}>
-                          <Button variant="outline" style={{ width: '100%' }}>
-                            Edit scooter
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) auto', gap: 10 }}>
+                          <Link href={`/admin/scooters/${item.id}/edit`} style={{ textDecoration: 'none', display: 'block' }}>
+                            <Button variant="outline" style={{ width: '100%' }}>
+                              Edit scooter
+                            </Button>
+                          </Link>
+                          <Button
+                            variant="danger"
+                            disabled={busy}
+                            onClick={() => void onDeleteScooter(item)}
+                            style={{ width: isMobile ? '100%' : 'auto' }}
+                          >
+                            {busy ? 'Deleting…' : 'Delete'}
                           </Button>
-                        </Link>
+                        </div>
                       </div>
                     </div>
                   </Panel>
