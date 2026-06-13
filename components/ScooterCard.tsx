@@ -88,8 +88,8 @@ export default function ScooterCard({ s, dark = false, large = false }: { s: Dis
             <div className="br-mono" style={{ fontSize: 10, letterSpacing: '0.14em', color: sub }}>{s.type.toUpperCase()}{s.cc ? ` · ${s.cc}CC` : ''}</div>
             <div className="br-display" style={{ fontSize: 22, marginTop: 4, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
           </div>
-          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div {...marker('catalog.from')} className="br-mono" style={{ fontSize: 10, color: sub }}>{t.catalog.from}</div>
+          <div style={{ textAlign: 'right', flexShrink: 0, display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
+            <span {...marker('catalog.from')} className="br-mono" style={{ fontSize: 10, color: sub }}>{t.catalog.from}</span>
             <BRPrice amount={s.price} size={20} />
           </div>
         </div>
