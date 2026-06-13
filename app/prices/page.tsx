@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { BRChip, BREyebrow, BRPhoto, BRPrimary, BROutline } from '@/components/BR';
+import { BREyebrow, BRPhoto, BRPrimary, BROutline } from '@/components/BR';
 import {
   ArrowRightIcon,
   CalendarIcon,
@@ -654,7 +654,6 @@ export default function PricesPage() {
                           {typeLabel.toUpperCase()}
                           {cc ? <span style={{ color: 'rgba(0,0,0,0.45)' }}>· {cc}</span> : null}
                         </span>
-                        {group.scooter?.status ? <BRChip status={group.scooter.status} /> : null}
                       </div>
 
                       <Link
