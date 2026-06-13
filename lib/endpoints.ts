@@ -742,6 +742,8 @@ export const endpoints = {
 
   adminBookings: (params?: { page?: number; status?: string }) =>
     api<Paginated<ApiBooking> | ApiBooking[]>('/admin/bookings/', { auth: true, query: params }),
+  adminDeleteBooking: (id: number | string) =>
+    api<void>(`/admin/bookings/${id}/`, { method: 'DELETE', auth: true }),
   adminConfirmBooking: (id: number | string) =>
     api<{ status: string }>(`/admin/bookings/${id}/confirm/`, { method: 'POST', auth: true }),
   adminMarkBookingDelivery: (id: number | string) =>

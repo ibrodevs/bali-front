@@ -3171,8 +3171,13 @@ export default function AdminPage() {
 
   async function handleBookingAction(
     bookingId: number,
-    action: 'confirm' | 'mark-delivery' | 'mark-active' | 'complete' | 'cancel',
+    action: 'confirm' | 'mark-delivery' | 'mark-active' | 'complete' | 'cancel' | 'delete',
   ) {
+    if (typeof window !== 'undefined') {
+      if (action === 'cancel' && !window.confirm('Cancel this booking? The scooter dates will become available again.')) return;
+      if (action === 'delete' && !window.confirm('Delete this booking permanently? The scooter dates will become available again.')) return;
+    }
+
     setBusyBookingId(bookingId);
     setError(null);
     try {
@@ -3181,6 +3186,7 @@ export default function AdminPage() {
       if (action === 'mark-active') await endpoints.adminMarkBookingActive(bookingId);
       if (action === 'complete') await endpoints.adminCompleteBooking(bookingId);
       if (action === 'cancel') await endpoints.adminCancelBooking(bookingId);
+      if (action === 'delete') await endpoints.adminDeleteBooking(bookingId);
       await loadAdminData();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Unable to update booking');
@@ -5851,7 +5857,7 @@ function BookingsView({
   busyBookingId: number | null;
   onBookingAction: (
     id: number,
-    action: 'confirm' | 'mark-delivery' | 'mark-active' | 'complete' | 'cancel',
+    action: 'confirm' | 'mark-delivery' | 'mark-active' | 'complete' | 'cancel' | 'delete',
   ) => void;
   isMobile: boolean;
 }) {
@@ -5867,7 +5873,7 @@ function BookingsView({
   function actionButtons(item: ApiBooking) {
     const busy = busyBookingId === item.id;
     const buttons: Array<{
-      action: 'confirm' | 'mark-delivery' | 'mark-active' | 'complete' | 'cancel';
+      action: 'confirm' | 'mark-delivery' | 'mark-active' | 'complete' | 'cancel' | 'delete';
       label: string;
       variant: ButtonVariant;
     }> = [];
@@ -5886,6 +5892,7 @@ function BookingsView({
     if (!['completed', 'cancelled'].includes(item.status)) {
       buttons.push({ action: 'cancel', label: 'Cancel', variant: 'ghost' });
     }
+    buttons.push({ action: 'delete', label: 'Delete', variant: 'danger' });
     return (
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
         {buttons.map(({ action, label, variant }) => (
