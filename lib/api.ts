@@ -3,7 +3,7 @@ function trimTrailingSlash(value: string) {
 }
 
 function normalizeApiBase(value?: string) {
-  const fallback = 'https://bali21.pythonanywhere.com/api/v1';
+  const fallback = 'https://api.bali.bike/api/v1';
   const raw = (value || fallback).trim();
   if (!raw) return fallback;
 
@@ -13,7 +13,7 @@ function normalizeApiBase(value?: string) {
 }
 
 function normalizeMediaBase(value?: string) {
-  const fallback = 'https://bali21.pythonanywhere.com';
+  const fallback = 'https://api.bali.bike';
   const raw = (value || fallback).trim();
   if (!raw) return fallback;
   return trimTrailingSlash(raw);
