@@ -1,12 +1,11 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { useCurrency, CURRENCY_SYMBOLS, CURRENCY_RATES } from '@/lib/i18n/CurrencyProvider';
+import { useCurrency, CURRENCY_SYMBOLS } from '@/lib/i18n/CurrencyProvider';
 
 export default function CurrencySwitcher({ dark = false }: { dark?: boolean }) {
-  const { currency, setCurrency } = useCurrency();
+  const { currency, setCurrency, availableCurrencies } = useCurrency();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const availableCurrencies = Object.keys(CURRENCY_RATES);
 
   const handleSetCurrency = (curr: string) => {
     setCurrency(curr);
@@ -50,7 +49,7 @@ export default function CurrencySwitcher({ dark = false }: { dark?: boolean }) {
           {availableCurrencies.map((curr) => (
             <button key={curr} onClick={() => handleSetCurrency(curr)}
               style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 10px', borderRadius: 8, border: 0, background: currency === curr ? (dark ? 'rgba(255,215,0,0.12)' : '#FFF6CC') : 'transparent', color: fg, cursor: 'pointer', textAlign: 'left', fontSize: 13 }}>
-              <span>{CURRENCY_SYMBOLS[curr]}</span>
+              <span>{CURRENCY_SYMBOLS[curr] || curr}</span>
               <span style={{ flex: 1 }}>{curr}</span>
               {currency === curr && <span style={{ fontSize: 12 }}>✓</span>}
             </button>

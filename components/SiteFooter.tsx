@@ -2,12 +2,15 @@
 import Link from 'next/link';
 import { BRLogo } from './BR';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
-import { CURRENCY_RATES } from '@/lib/i18n/CurrencyProvider';
+import { useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
+import { useSiteSettings } from '@/lib/siteSettings';
 
 export default function SiteFooter() {
   const { t } = useLocale();
+  const { availableCurrencies } = useCurrency();
   const { marker } = useSiteContentPreview();
+  const { socialLinks, addresses } = useSiteSettings();
   const footer = t.footer as typeof t.footer & {
     whatsappButton?: string;
     metaLine?: string;
@@ -34,7 +37,24 @@ export default function SiteFooter() {
     }))
     .filter((col) => col.items.length > 0);
   const footerGridTemplate = `minmax(0, 2fr) repeat(${Math.max(cols.length, 1)}, minmax(0, 1fr))`;
-  const supportedCurrencies = Object.keys(CURRENCY_RATES).join(' · ');
+  const supportedCurrencies = availableCurrencies.join(' · ');
+  const footerAddressLine = [
+    addresses.businessName,
+    addresses.street,
+    addresses.district,
+    addresses.postalCode,
+    addresses.country,
+    addresses.license,
+    addresses.copyright,
+  ].filter(Boolean).join(' · ');
+  const extraSocials = [
+    { key: 'instagram', label: 'Instagram', href: socialLinks.instagram },
+    { key: 'telegram', label: 'Telegram', href: socialLinks.telegram },
+    { key: 'wechat', label: 'WeChat', href: socialLinks.wechat },
+    { key: 'tiktok', label: 'TikTok', href: socialLinks.tiktok },
+    { key: 'facebook', label: 'Facebook', href: socialLinks.facebook },
+    { key: 'youtube', label: 'YouTube', href: socialLinks.youtube },
+  ].filter((item) => item.href);
 
   return (
     <div className="br-site-footer" style={{ background: '#000', color: '#fff', padding: '60px 48px 24px', marginTop: 'auto', flexShrink: 0 }}>
@@ -44,9 +64,33 @@ export default function SiteFooter() {
           <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 18, lineHeight: 1.55, maxWidth: 320 }}>
             <span {...marker('footer.tagline')}>{t.footer.tagline}</span>
           </p>
-          <a href="https://wa.me/628135915173" target="_blank" rel="noopener noreferrer" style={{ marginTop: 20, background: '#25D366', color: '#fff', borderRadius: 999, padding: '12px 18px', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+          <a href={socialLinks.whatsapp} target="_blank" rel="noopener noreferrer" style={{ marginTop: 20, background: '#25D366', color: '#fff', borderRadius: 999, padding: '12px 18px', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
             <span style={{ fontSize: 18 }}>◉</span> <span {...marker('footer.whatsappButton')}>{footer.whatsappButton || 'WhatsApp · +62 813-5915-173'}</span>
           </a>
+          {extraSocials.length ? (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
+              {extraSocials.map((item) => (
+                <a
+                  key={item.key}
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="br-mono"
+                  style={{
+                    color: 'rgba(255,255,255,0.78)',
+                    textDecoration: 'none',
+                    border: '1px solid rgba(255,255,255,0.14)',
+                    borderRadius: 999,
+                    padding: '8px 12px',
+                    fontSize: 11,
+                    letterSpacing: '0.08em',
+                  }}
+                >
+                  {item.label}
+                </a>
+              ))}
+            </div>
+          ) : null}
         </div>
         {cols.map((col) => (
           <div key={col.heading}>
@@ -60,7 +104,7 @@ export default function SiteFooter() {
         ))}
       </div>
       <div className="br-site-footer-meta" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 24, gap: 16, flexWrap: 'wrap' }}>
-        <div {...marker('footer.metaLine')} className="br-mono" style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.1em' }}>{footer.metaLine || 'BALI-RENT · JL. PANTAI BERAWA · CANGGU 80361 · LIC. 04/2019 · © 2026'}</div>
+        <div {...marker('footer.metaLine')} className="br-mono" style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.1em' }}>{footer.metaLine || footerAddressLine}</div>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
           <span {...marker('footer.localesLine')} className="br-mono" style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{footer.localesLine || 'EN · ID · RU · DE · FR · ZH'}</span>
           <span className="br-mono" style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{supportedCurrencies}</span>

@@ -12,7 +12,7 @@ import { ApiError, tokens, userStore } from '@/lib/api';
 import { bookingDraftStore } from '@/lib/bookingDraft';
 import { ApiBooking, ApiBookingQuote, endpoints, toApiPaymentMethod } from '@/lib/endpoints';
 import { useAuth } from '@/lib/i18n/AuthProvider';
-import { convertAmount, formatCurrencyAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
+import { formatCurrencyAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { type PaymentExtraContent, PAYMENT_COPY } from '@/lib/siteContentExtras';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
@@ -36,7 +36,7 @@ function PaymentInner() {
     ...(t.payment as Partial<PaymentExtraContent>),
   } as PaymentExtraContent;
   const { user, refresh } = useAuth();
-  const { currency: selectedCurrency } = useCurrency();
+  const { currency: selectedCurrency, convertAmountValue } = useCurrency();
   const search = useSearchParams();
   const existingBookingId = Number(search.get('booking_id') || '0');
   const [draft, setDraft] = useState(bookingDraftStore.get());
@@ -246,7 +246,7 @@ function PaymentInner() {
   const reserveOnly = booking?.payment_method === 'cash_on_delivery' || pm === 'cash';
   const summary = useMemo(() => {
     const toSelectedCurrency = (amount: string | number | undefined, fromCurrency?: string | null) =>
-      convertAmount(Number(amount || 0), fromCurrency || 'USD', selectedCurrency);
+      convertAmountValue(Number(amount || 0), fromCurrency || 'USD', selectedCurrency);
     // Keep the final payment step aligned with step 2:
     // pricing amounts still come back from the API in USD even when another currency is requested.
     const pricingSourceCurrency = 'USD';
@@ -271,7 +271,7 @@ function PaymentInner() {
       total: toSelectedCurrency(quote?.total_price, pricingSourceCurrency),
       currency: selectedCurrency,
     };
-  }, [booking, quote, selectedCurrency]);
+  }, [booking, quote, selectedCurrency, convertAmountValue]);
 
   const trustMarks = [
     { icon: LockIcon, label: stripLeadingSymbol(t.booking.secure), contentKey: 'booking.secure' },

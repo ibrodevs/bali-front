@@ -19,6 +19,7 @@ import { ApiScooterRentalRate, endpoints, unwrapList } from '@/lib/endpoints';
 import { useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { formatBillingLabel, formatRateRange } from '@/lib/rentalRates';
+import { useSiteSettings } from '@/lib/siteSettings';
 
 type RateGroup = {
   scooterId: number;
@@ -48,6 +49,7 @@ function effectiveDailyPrice(rate: ApiScooterRentalRate) {
 export default function PricesPage() {
   const { t, locale } = useLocale();
   const { convertPrice, symbol } = useCurrency();
+  const { socialLinks } = useSiteSettings();
   const [rates, setRates] = useState<ApiScooterRentalRate[]>([]);
   const [fleet, setFleet] = useState<DisplayScooter[]>([]);
   const [loading, setLoading] = useState(true);
@@ -847,7 +849,7 @@ export default function PricesPage() {
 
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
             <a
-              href="https://wa.me/628135915173?text=Hi%2C%20I%E2%80%99d%20like%20help%20choosing%20the%20best%20price%20plan%20for%20my%20Bali%20rental."
+              href={socialLinks.whatsapp}
               target="_blank"
               rel="noopener noreferrer"
               className="br-btn br-btn-primary"

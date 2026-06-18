@@ -10,8 +10,7 @@ import { useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { endpoints } from '@/lib/endpoints';
 import { BR_LOCATIONS } from '@/lib/data';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
-
-const WA_LINK = 'https://wa.me/628135915173?text=Hi%2C%20I%E2%80%99d%20like%20to%20rent%20a%20scooter%20in%20Bali!';
+import { useSiteSettings } from '@/lib/siteSettings';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 28 },
@@ -40,6 +39,7 @@ export default function LocationsPage() {
   const { t, locale } = useLocale();
   const { marker } = useSiteContentPreview();
   const { convertPrice, symbol } = useCurrency();
+  const { socialLinks } = useSiteSettings();
   const [zones, setZones] = useState<Zone[]>([]);
   const [locOver, setLocOver] = useState<LocationOverrides>({});
 
@@ -441,7 +441,7 @@ export default function LocationsPage() {
               <span {...marker('cta.primary')}>{t.cta.primary}</span>
               <ArrowRightIcon size={15} color="#FFD700" strokeWidth={2.5} />
             </a>
-            <a href={WA_LINK} target="_blank" rel="noopener noreferrer" style={{
+            <a href={socialLinks.whatsapp} target="_blank" rel="noopener noreferrer" style={{
               display: 'inline-flex', alignItems: 'center', gap: 10,
               background: '#25D366', color: '#fff',
               fontFamily: 'var(--br-body)', fontSize: 'clamp(14px, 1.4vw, 16px)', fontWeight: 700,

@@ -11,6 +11,8 @@ type TranslationPair = { ru: string; id: string };
 const EXACT_TRANSLATIONS: Record<string, TranslationPair> = {
   'Language': { ru: 'Язык', id: 'Bahasa' },
   'Admin interface language': { ru: 'Язык интерфейса админки', id: 'Bahasa antarmuka admin' },
+  'Currency': { ru: 'Валюта', id: 'Mata uang' },
+  'Admin interface currency': { ru: 'Валюта интерфейса админки', id: 'Mata uang antarmuka admin' },
   'Overview': { ru: 'Обзор', id: 'Ringkasan' },
   'Bookings': { ru: 'Бронирования', id: 'Pesanan' },
   'Fleet': { ru: 'Парк', id: 'Armada' },
@@ -24,6 +26,9 @@ const EXACT_TRANSLATIONS: Record<string, TranslationPair> = {
   'Locations': { ru: 'Локации', id: 'Lokasi' },
   'Site Content': { ru: 'Контент сайта', id: 'Konten situs' },
   'App Content': { ru: 'Контент приложения', id: 'Konten aplikasi' },
+  'Currencies': { ru: 'Валюты', id: 'Mata uang' },
+  'Socials': { ru: 'Соцсети', id: 'Sosial' },
+  'Addresses': { ru: 'Адреса', id: 'Alamat' },
   'Users & Team': { ru: 'Пользователи и команда', id: 'Pengguna & tim' },
   'Promo Codes': { ru: 'Промокоды', id: 'Kode promo' },
   'Team Access': { ru: 'Доступ команды', id: 'Akses tim' },
@@ -67,6 +72,9 @@ const EXACT_TRANSLATIONS: Record<string, TranslationPair> = {
   'Refreshing…': { ru: 'Обновление…', id: 'Menyegarkan…' },
   'Deleting…': { ru: 'Удаление…', id: 'Menghapus…' },
   'Reload': { ru: 'Обновить', id: 'Muat ulang' },
+  'Loading currency settings…': { ru: 'Загрузка настроек валют…', id: 'Memuat pengaturan mata uang…' },
+  'Loading social links…': { ru: 'Загрузка ссылок соцсетей…', id: 'Memuat tautan sosial…' },
+  'Loading address settings…': { ru: 'Загрузка настроек адресов…', id: 'Memuat pengaturan alamat…' },
   'Reload preview': { ru: 'Обновить превью', id: 'Muat ulang preview' },
   'Refresh': { ru: 'Обновить', id: 'Segarkan' },
   'Close': { ru: 'Закрыть', id: 'Tutup' },
@@ -76,8 +84,12 @@ const EXACT_TRANSLATIONS: Record<string, TranslationPair> = {
   'Complete': { ru: 'Завершить', id: 'Selesaikan' },
   'Save': { ru: 'Сохранить', id: 'Simpan' },
   'Reset': { ru: 'Сбросить', id: 'Reset' },
+  'Reset to defaults': { ru: 'Сбросить по умолчанию', id: 'Reset ke default' },
   'Reset field': { ru: 'Сбросить поле', id: 'Reset kolom' },
   'Save changes': { ru: 'Сохранить изменения', id: 'Simpan perubahan' },
+  'Save rates': { ru: 'Сохранить курсы', id: 'Simpan kurs' },
+  'Save links': { ru: 'Сохранить ссылки', id: 'Simpan tautan' },
+  'Save addresses': { ru: 'Сохранить адреса', id: 'Simpan alamat' },
   'Save all languages': { ru: 'Сохранить все языки', id: 'Simpan semua bahasa' },
   'Preview this language': { ru: 'Показать этот язык', id: 'Pratinjau bahasa ini' },
   'Open Analytics': { ru: 'Открыть аналитику', id: 'Buka analitik' },
@@ -162,6 +174,13 @@ const EXACT_TRANSLATIONS: Record<string, TranslationPair> = {
   'No FAQ items yet': { ru: 'FAQ пока пустой', id: 'Belum ada item FAQ' },
   'Add your first question above': { ru: 'Добавьте первый вопрос выше', id: 'Tambahkan pertanyaan pertama di atas' },
   'Code (ID)': { ru: 'Код (ID)', id: 'Kode (ID)' },
+  'Business name': { ru: 'Название компании', id: 'Nama bisnis' },
+  'Street address': { ru: 'Улица и адрес', id: 'Alamat jalan' },
+  'District / Area': { ru: 'Район / зона', id: 'Distrik / area' },
+  'Postal code': { ru: 'Почтовый индекс', id: 'Kode pos' },
+  'Country / Region': { ru: 'Страна / регион', id: 'Negara / wilayah' },
+  'License line': { ru: 'Строка лицензии', id: 'Baris lisensi' },
+  'Copyright line': { ru: 'Строка копирайта', id: 'Baris hak cipta' },
   'Sort order': { ru: 'Порядок сортировки', id: 'Urutan' },
   'Section permissions': { ru: 'Права на разделы', id: 'Izin bagian' },
   'Promo code': { ru: 'Промокод', id: 'Kode promo' },
@@ -289,6 +308,15 @@ const EXACT_TRANSLATIONS: Record<string, TranslationPair> = {
   'Support Thread': { ru: 'Тикет поддержки', id: 'Thread dukungan' },
   'Close Thread': { ru: 'Закрыть тикет', id: 'Tutup thread' },
   'Type a message...': { ru: 'Введите сообщение...', id: 'Tulis pesan...' },
+  'Account Security': { ru: 'Безопасность аккаунта', id: 'Keamanan akun' },
+  'Change your own admin password here. Your current password is required for confirmation.': {
+    ru: 'Здесь можно сменить свой пароль администратора. Для подтверждения нужен текущий пароль.',
+    id: 'Ubah kata sandi admin Anda di sini. Kata sandi saat ini diperlukan untuk konfirmasi.',
+  },
+  'Current password': { ru: 'Текущий пароль', id: 'Kata sandi saat ini' },
+  'New password': { ru: 'Новый пароль', id: 'Kata sandi baru' },
+  'Confirm new password': { ru: 'Подтвердите новый пароль', id: 'Konfirmasi kata sandi baru' },
+  'Set a new password': { ru: 'Установить новый пароль', id: 'Setel kata sandi baru' },
   'Recent admin activity': { ru: 'Недавняя активность админов', id: 'Aktivitas admin terbaru' },
   'Last 12 months from paid bookings': { ru: 'Последние 12 месяцев по оплаченным бронированиям', id: '12 bulan terakhir dari booking berbayar' },
   'Description': { ru: 'Описание', id: 'Deskripsi' },
@@ -331,6 +359,8 @@ const EXACT_TRANSLATIONS: Record<string, TranslationPair> = {
   'New Add-on': { ru: 'Новый доп', id: 'Add-on baru' },
   'New Category': { ru: 'Новая категория', id: 'Kategori baru' },
   'New code': { ru: 'Новый код', id: 'Kode baru' },
+  'Rate vs USD': { ru: 'Курс к USD', id: 'Kurs ke USD' },
+  'Add currency': { ru: 'Добавить валюту', id: 'Tambah mata uang' },
   'Name (EN base)': { ru: 'Название (EN база)', id: 'Nama (basis EN)' },
   'Category name (EN base)': { ru: 'Название категории (EN база)', id: 'Nama kategori (basis EN)' },
   'Price (USD)': { ru: 'Цена (USD)', id: 'Harga (USD)' },
@@ -429,6 +459,24 @@ const EXACT_TRANSLATIONS: Record<string, TranslationPair> = {
   'admin': { ru: 'админ', id: 'admin' },
   'Admin': { ru: 'Админка', id: 'Admin' },
   'Code': { ru: 'Код', id: 'Kode' },
+  'Exchange Rates': { ru: 'Курсы валют', id: 'Kurs mata uang' },
+  'All public price displays': { ru: 'Все публичные отображения цен', id: 'Semua tampilan harga publik' },
+  'Where it applies': { ru: 'Где применяется', id: 'Di mana ini berlaku' },
+  'Stored in site content': { ru: 'Хранится в site content', id: 'Disimpan di site content' },
+  'Current JSON payload': { ru: 'Текущий JSON payload', id: 'Payload JSON saat ini' },
+  'Address Fields': { ru: 'Поля адреса', id: 'Field alamat' },
+  'Public business address': { ru: 'Публичный адрес компании', id: 'Alamat bisnis publik' },
+  'Shared business address line': { ru: 'Общая строка адреса компании', id: 'Baris alamat bisnis bersama' },
+  'Preview line': { ru: 'Строка превью', id: 'Baris pratinjau' },
+  'Social Links': { ru: 'Ссылки на соцсети', id: 'Tautan sosial' },
+  'Website contact links': { ru: 'Контактные ссылки сайта', id: 'Tautan kontak situs' },
+  'WhatsApp': { ru: 'WhatsApp', id: 'WhatsApp' },
+  'Instagram': { ru: 'Instagram', id: 'Instagram' },
+  'Telegram': { ru: 'Telegram', id: 'Telegram' },
+  'WeChat': { ru: 'WeChat', id: 'WeChat' },
+  'TikTok': { ru: 'TikTok', id: 'TikTok' },
+  'Facebook': { ru: 'Facebook', id: 'Facebook' },
+  'YouTube': { ru: 'YouTube', id: 'YouTube' },
   'Code:': { ru: 'Код:', id: 'Kode:' },
   'Content': { ru: 'Контент', id: 'Konten' },
   'Email': { ru: 'Email', id: 'Email' },
@@ -465,6 +513,56 @@ const EXACT_TRANSLATIONS: Record<string, TranslationPair> = {
   'News Management': { ru: 'Управление новостями', id: 'Manajemen berita' },
   'App preview': { ru: 'Превью приложения', id: 'Pratinjau aplikasi' },
   'Site preview': { ru: 'Превью сайта', id: 'Pratinjau situs' },
+  'Manage exchange rates for every public price on the website. USD stays the base currency and all other amounts are recalculated from it.': {
+    ru: 'Управляйте курсами для всех публичных цен на сайте. USD остаётся базовой валютой, а все остальные суммы пересчитываются от него.',
+    id: 'Kelola kurs untuk semua harga publik di situs. USD tetap menjadi mata uang dasar dan semua nilai lain dihitung ulang darinya.',
+  },
+  'Manage the social and contact links used on the public website without editing code.': {
+    ru: 'Управляйте ссылками на соцсети и контактами, которые используются на публичном сайте, без редактирования кода.',
+    id: 'Kelola tautan sosial dan kontak yang digunakan di situs publik tanpa mengedit kode.',
+  },
+  'Manage the business address and footer address details for the public website.': {
+    ru: 'Управляйте адресом компании и деталями адреса в футере для публичного сайта.',
+    id: 'Kelola alamat bisnis dan detail alamat footer untuk situs publik.',
+  },
+  'Set how much of each currency equals 1 USD. Example: if 1 USD = 98.5 RUB, enter 98.5 for RUB.': {
+    ru: 'Укажите, сколько единиц каждой валюты равно 1 USD. Например, если 1 USD = 98.5 RUB, введите 98.5 для RUB.',
+    id: 'Tentukan berapa nilai setiap mata uang terhadap 1 USD. Contoh: jika 1 USD = 98.5 RUB, masukkan 98.5 untuk RUB.',
+  },
+  'Enter a currency code like AED or GBP.': { ru: 'Введите код валюты, например AED или GBP.', id: 'Masukkan kode mata uang seperti AED atau GBP.' },
+  'Enter a valid rate greater than 0.': { ru: 'Введите корректный курс больше 0.', id: 'Masukkan kurs yang valid lebih besar dari 0.' },
+  'Use the WhatsApp fields for CTA buttons and add any public social profiles you want shown in the footer.': {
+    ru: 'Используйте поле WhatsApp для CTA-кнопок и добавляйте любые публичные профили соцсетей, которые должны показываться в футере.',
+    id: 'Gunakan field WhatsApp untuk tombol CTA dan tambahkan profil sosial publik yang ingin ditampilkan di footer.',
+  },
+  'These values build the footer address line and act as the shared address settings for the whole website.': {
+    ru: 'Эти значения собирают адресную строку в футере и служат общими настройками адреса для всего сайта.',
+    id: 'Nilai ini membentuk baris alamat footer dan menjadi pengaturan alamat bersama untuk seluruh situs.',
+  },
+  'Currency rates saved. Public prices now update immediately across the app.': {
+    ru: 'Курсы валют сохранены. Публичные цены теперь обновляются сразу по всему приложению.',
+    id: 'Kurs mata uang tersimpan. Harga publik sekarang langsung diperbarui di seluruh aplikasi.',
+  },
+  'Social links saved. Header, footer, home page, locations, and prices now use these values.': {
+    ru: 'Ссылки на соцсети сохранены. Шапка, футер, главная, локации и цены теперь используют эти значения.',
+    id: 'Tautan sosial tersimpan. Header, footer, beranda, lokasi, dan harga sekarang memakai nilai ini.',
+  },
+  'Address settings saved. Footer address line now uses these values across the website.': {
+    ru: 'Настройки адреса сохранены. Строка адреса в футере теперь использует эти значения по всему сайту.',
+    id: 'Pengaturan alamat tersimpan. Baris alamat footer sekarang memakai nilai ini di seluruh situs.',
+  },
+  'Catalog cards, scooter pages, booking totals, payment summary, profile bookings, prices page, footer currency list, and currency switcher options all use this shared configuration.': {
+    ru: 'Карточки каталога, страницы скутеров, итоги бронирования, сводка оплаты, брони в профиле, страница цен, список валют в футере и опции currency switcher используют эту общую конфигурацию.',
+    id: 'Kartu katalog, halaman skuter, total booking, ringkasan pembayaran, booking di profil, halaman harga, daftar mata uang di footer, dan opsi currency switcher semuanya memakai konfigurasi bersama ini.',
+  },
+  'WhatsApp CTA buttons in the header, home page, locations page, prices page, and footer all use this configuration. Extra social profiles appear in the footer when links are filled in.': {
+    ru: 'Кнопки WhatsApp CTA в шапке, на главной, на странице локаций, на странице цен и в футере используют эту конфигурацию. Дополнительные профили соцсетей появляются в футере, когда ссылки заполнены.',
+    id: 'Tombol CTA WhatsApp di header, beranda, halaman lokasi, halaman harga, dan footer memakai konfigurasi ini. Profil sosial tambahan akan tampil di footer saat tautannya diisi.',
+  },
+  'The public footer uses these values to build the address line shown across the website.': {
+    ru: 'Публичный футер использует эти значения, чтобы собрать строку адреса, которая показывается по всему сайту.',
+    id: 'Footer publik memakai nilai ini untuk membentuk baris alamat yang tampil di seluruh situs.',
+  },
   'Mobile app keys': { ru: 'Ключи мобильного приложения', id: 'Kunci aplikasi mobile' },
   'App Onboarding': { ru: 'Онбоардинг приложения', id: 'Onboarding aplikasi' },
   'Edit only the mobile app onboarding with the same 3-slide flow, images, and languages as the real app.': { ru: 'Редактируйте только онбоардинг мобильного приложения с теми же 3 слайдами, изображениями и языками, что и в реальном приложении.', id: 'Edit hanya onboarding aplikasi mobile dengan alur 3 slide, gambar, dan bahasa yang sama seperti aplikasi asli.' },
@@ -921,6 +1019,12 @@ const DYNAMIC_TRANSLATIONS: DynamicRule[] = [
       : `${match[1]} total entri konten`,
   },
   {
+    pattern: /^(\d+) active currencies$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `${match[1]} активных валют`
+      : `${match[1]} mata uang aktif`,
+  },
+  {
     pattern: /^(\d+) clickable$/,
     translate: (match, locale) => locale === 'ru'
       ? `${match[1]} кликабельно`
@@ -943,6 +1047,12 @@ const DYNAMIC_TRANSLATIONS: DynamicRule[] = [
     translate: (match, locale) => locale === 'ru'
       ? `Отток: ${match[1]}`
       : `Dropoff: ${match[1]}`,
+  },
+  {
+    pattern: /^Currency (.+) already exists\.$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `Валюта ${match[1]} уже существует.`
+      : `Mata uang ${match[1]} sudah ada.`,
   },
   {
     pattern: /^(\d+) live conversations$/,

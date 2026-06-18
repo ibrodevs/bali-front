@@ -2,7 +2,7 @@
 
 import { CSSProperties, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { AdminSidebarLanguageSwitcher } from '@/components/AdminRouteShell';
+import { AdminSidebarCurrencySwitcher, AdminSidebarLanguageSwitcher } from '@/components/AdminRouteShell';
 import { ApiError, ApiUser, mediaUrl } from '@/lib/api';
 import {
   ClipboardIcon,
@@ -47,9 +47,12 @@ import {
   endpoints,
   unwrapList,
 } from '@/lib/endpoints';
+import { useAdminLocale } from '@/lib/i18n/AdminLocaleProvider';
 import { useAuth } from '@/lib/i18n/AuthProvider';
+import { CURRENCY_SYMBOLS, DEFAULT_CURRENCY_RATES, formatCurrencyAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { SITE_CONTENT_FIELDS, SITE_CONTENT_LANGUAGES, SITE_CONTENT_PAGES, getDefaultSiteContentValue, pageMatchesField } from '@/lib/siteContentSchema';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { DEFAULT_ADDRESS_SETTINGS, DEFAULT_SOCIAL_LINKS, type AddressSettingKey, type AddressSettings, type SocialLinkKey, type SocialLinks } from '@/lib/siteSettings';
 
 function useWindowWidth() {
   const [width, setWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1280));
@@ -83,7 +86,7 @@ const A = {
   orangeBg: '#fff7ed',
 };
 
-type AdminView = 'overview' | 'bookings' | 'fleet' | 'calendar' | 'crm' | 'analytics' | 'support' | 'news' | 'addons' | 'categories' | 'locations' | 'site' | 'appContent' | 'users' | 'promocodes';
+type AdminView = 'overview' | 'bookings' | 'fleet' | 'calendar' | 'crm' | 'analytics' | 'support' | 'news' | 'addons' | 'categories' | 'locations' | 'site' | 'appContent' | 'currencies' | 'socials' | 'addresses' | 'users' | 'promocodes';
 type AdminPermission = AdminView | 'team';
 
 const NAV: { id: AdminView; icon: ReactNode; label: string }[] = [
@@ -100,6 +103,9 @@ const NAV: { id: AdminView; icon: ReactNode; label: string }[] = [
   { id: 'locations', icon: <EyeIcon size={18} />, label: 'Locations' },
   { id: 'site', icon: <EyeIcon size={18} />, label: 'Site Content' },
   { id: 'appContent', icon: <EyeIcon size={18} />, label: 'App Content' },
+  { id: 'currencies', icon: <DollarIcon size={18} />, label: 'Currencies' },
+  { id: 'socials', icon: <MessageIcon size={18} />, label: 'Socials' },
+  { id: 'addresses', icon: <ReceiptIcon size={18} />, label: 'Addresses' },
   { id: 'users', icon: <UsersIcon size={18} />, label: 'Users & Team' },
   { id: 'promocodes', icon: <DollarIcon size={18} />, label: 'Promo Codes' },
 ];
@@ -118,6 +124,9 @@ const ADMIN_PERMISSION_LABELS: Record<AdminPermission, string> = {
   locations: 'Locations',
   site: 'Site Content',
   appContent: 'App Content',
+  currencies: 'Currencies',
+  socials: 'Socials',
+  addresses: 'Addresses',
   users: 'Users & Team',
   promocodes: 'Promo Codes',
   team: 'Team Access',
@@ -136,6 +145,9 @@ const ADMIN_PERMISSION_OPTIONS: AdminPermission[] = [
   'categories',
   'locations',
   'site',
+  'currencies',
+  'socials',
+  'addresses',
   'promocodes',
   'team',
 ];
@@ -441,6 +453,691 @@ function ErrorBanner({ error, onClose }: { error: string | null; onClose?: () =>
           <CloseIcon size={16} color={A.red} />
         </button>
       ) : null}
+    </div>
+  );
+}
+
+const CURRENCY_RATES_ENTRY_KEY = 'settings.currencyRates';
+
+function normalizeAdminCurrencyRates(raw: unknown) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ...DEFAULT_CURRENCY_RATES };
+  }
+
+  const next: Record<string, number> = {};
+  for (const [code, value] of Object.entries(raw)) {
+    const normalizedCode = String(code || '').trim().toUpperCase();
+    const numericValue = Number(value);
+    if (!normalizedCode || !Number.isFinite(numericValue) || numericValue <= 0) continue;
+    next[normalizedCode] = numericValue;
+  }
+
+  if (!next.USD) next.USD = 1;
+  return Object.keys(next).length ? next : { ...DEFAULT_CURRENCY_RATES };
+}
+
+const SOCIAL_LINKS_ENTRY_KEY = 'settings.socialLinks';
+const ADDRESS_SETTINGS_ENTRY_KEY = 'settings.addresses';
+const SOCIAL_LINK_LABELS: Record<SocialLinkKey, string> = {
+  whatsapp: 'WhatsApp',
+  instagram: 'Instagram',
+  telegram: 'Telegram',
+  wechat: 'WeChat',
+  tiktok: 'TikTok',
+  facebook: 'Facebook',
+  youtube: 'YouTube',
+};
+const ADDRESS_SETTING_LABELS: Record<AddressSettingKey, string> = {
+  businessName: 'Business name',
+  street: 'Street address',
+  district: 'District / Area',
+  postalCode: 'Postal code',
+  country: 'Country / Region',
+  license: 'License line',
+  copyright: 'Copyright line',
+};
+
+function normalizeAdminSocialLinks(raw: unknown): SocialLinks {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ...DEFAULT_SOCIAL_LINKS };
+  }
+
+  const next: SocialLinks = { ...DEFAULT_SOCIAL_LINKS };
+  for (const key of Object.keys(DEFAULT_SOCIAL_LINKS) as SocialLinkKey[]) {
+    next[key] = typeof (raw as Record<string, unknown>)[key] === 'string'
+      ? String((raw as Record<string, unknown>)[key] || '').trim()
+      : DEFAULT_SOCIAL_LINKS[key];
+  }
+  return next;
+}
+
+function normalizeAdminAddressSettings(raw: unknown): AddressSettings {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ...DEFAULT_ADDRESS_SETTINGS };
+  }
+
+  const next: AddressSettings = { ...DEFAULT_ADDRESS_SETTINGS };
+  for (const key of Object.keys(DEFAULT_ADDRESS_SETTINGS) as AddressSettingKey[]) {
+    next[key] = typeof (raw as Record<string, unknown>)[key] === 'string'
+      ? String((raw as Record<string, unknown>)[key] || '').trim()
+      : DEFAULT_ADDRESS_SETTINGS[key];
+  }
+  return next;
+}
+
+function CurrencySettingsView({ isMobile }: { isMobile: boolean }) {
+  const { setRates: syncCurrencyRates } = useCurrency();
+  const [entry, setEntry] = useState<ApiAdminSiteContentEntry | null>(null);
+  const [rates, setRates] = useState<Record<string, number>>({ ...DEFAULT_CURRENCY_RATES });
+  const [newCurrencyCode, setNewCurrencyCode] = useState('');
+  const [newCurrencyRate, setNewCurrencyRate] = useState('1');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  const orderedCodes = useMemo(() => {
+    const defaults = Object.keys(DEFAULT_CURRENCY_RATES);
+    const extras = Object.keys(rates).filter((code) => !defaults.includes(code)).sort((a, b) => a.localeCompare(b));
+    return [...defaults, ...extras];
+  }, [rates]);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    setSaveMessage(null);
+    endpoints.adminSiteContent()
+      .then((response) => {
+        const entries = unwrapList(response);
+        const currentEntry = entries.find((item) => item.key === CURRENCY_RATES_ENTRY_KEY && item.language === 'all') || null;
+        const normalizedRates = normalizeAdminCurrencyRates(currentEntry?.json_value);
+        setEntry(currentEntry);
+        setRates(normalizedRates);
+        syncCurrencyRates(normalizedRates);
+      })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Unable to load currency settings'))
+      .finally(() => setLoading(false));
+  }, [syncCurrencyRates]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  function updateRate(code: string, value: string) {
+    const numericValue = Number(value);
+    setRates((current) => ({
+      ...current,
+      [code]: value === '' ? 0 : (Number.isFinite(numericValue) ? numericValue : current[code] || 0),
+    }));
+    setSaveMessage(null);
+  }
+
+  function addCurrency() {
+    const normalizedCode = String(newCurrencyCode || '').trim().toUpperCase();
+    const numericRate = Number(newCurrencyRate);
+    if (!/^[A-Z]{3}$/.test(normalizedCode)) {
+      setError('Enter a currency code like AED or GBP.');
+      return;
+    }
+    if (rates[normalizedCode]) {
+      setError(`Currency ${normalizedCode} already exists.`);
+      return;
+    }
+    if (!Number.isFinite(numericRate) || numericRate <= 0) {
+      setError('Enter a valid rate greater than 0.');
+      return;
+    }
+    setRates((current) => ({ ...current, [normalizedCode]: numericRate }));
+    setNewCurrencyCode('');
+    setNewCurrencyRate('1');
+    setError(null);
+    setSaveMessage(null);
+  }
+
+  function renameCurrency(code: string, nextCodeRaw: string) {
+    const nextCode = String(nextCodeRaw || '').trim().toUpperCase();
+    if (!nextCode || nextCode === code) return;
+    if (!/^[A-Z]{3}$/.test(nextCode)) {
+      setError('Enter a currency code like AED or GBP.');
+      return;
+    }
+    setRates((current) => {
+      if (current[nextCode]) return current;
+      const next = { ...current };
+      next[nextCode] = next[code];
+      delete next[code];
+      return next;
+    });
+    setError(null);
+    setSaveMessage(null);
+  }
+
+  function removeCurrency(code: string) {
+    if (code === 'USD') return;
+    setRates((current) => {
+      const next = { ...current };
+      delete next[code];
+      return next;
+    });
+    setSaveMessage(null);
+  }
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    setSaveMessage(null);
+
+    try {
+      const normalizedRates = normalizeAdminCurrencyRates(rates);
+      const body = {
+        key: CURRENCY_RATES_ENTRY_KEY,
+        language: 'all',
+        value_type: 'json' as const,
+        value: '',
+        json_value: normalizedRates,
+        is_active: true,
+      };
+      const saved = entry
+        ? await endpoints.adminUpdateSiteContent(entry.id, body)
+        : await endpoints.adminCreateSiteContent(body);
+      const normalizedSavedRates = normalizeAdminCurrencyRates(saved.json_value);
+      setEntry(saved);
+      setRates(normalizedSavedRates);
+      syncCurrencyRates(normalizedSavedRates);
+      setSaveMessage('Currency rates saved. Public prices now update immediately across the app.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to save currency settings');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function resetDefaults() {
+    setRates({ ...DEFAULT_CURRENCY_RATES });
+    setSaveMessage(null);
+  }
+
+  return (
+    <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? 16 : '28px 32px' }}>
+      <SectionHeader
+        title="Currencies"
+        subtitle="Manage exchange rates for every public price on the website. USD stays the base currency and all other amounts are recalculated from it."
+        action={<Button variant="outline" size="md" onClick={load}>Reload</Button>}
+      />
+
+      <ErrorBanner error={error} onClose={() => setError(null)} />
+
+      {loading ? (
+        <EmptyState label="Loading currency settings…" />
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.35fr) minmax(320px, 0.8fr)', gap: 16, alignItems: 'start' }}>
+          <Panel style={{ padding: isMobile ? 16 : 20 }}>
+            <div style={{ display: 'grid', gap: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                    Exchange Rates
+                  </div>
+                  <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 22, color: A.black, marginBottom: 6 }}>
+                    {`${orderedCodes.length} active currencies`}
+                  </div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
+                    Set how much of each currency equals 1 USD. Example: if 1 USD = 98.5 RUB, enter <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>98.5</span> for RUB.
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <Button variant="outline" onClick={resetDefaults}>Reset to defaults</Button>
+                  <Button variant="dark" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save rates'}</Button>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '140px minmax(0, 1fr) 160px', gap: 10, alignItems: 'end', border: `1px solid ${A.g200}`, borderRadius: 14, padding: 12, background: A.g100 }}>
+                <Field label="New code" style={{ margin: 0 }}>
+                  <input
+                    value={newCurrencyCode}
+                    onChange={(event) => setNewCurrencyCode(event.target.value)}
+                    placeholder="AED"
+                    style={inputStyle}
+                  />
+                </Field>
+                <Field label="Rate vs USD" style={{ margin: 0 }}>
+                  <input
+                    type="number"
+                    min="0.0001"
+                    step="0.0001"
+                    value={newCurrencyRate}
+                    onChange={(event) => setNewCurrencyRate(event.target.value)}
+                    style={inputStyle}
+                  />
+                </Field>
+                <Button variant="ghost" onClick={addCurrency} style={{ width: '100%' }}>
+                  Add currency
+                </Button>
+              </div>
+
+              {saveMessage ? (
+                <div style={{ borderRadius: 12, border: `1px solid ${A.green}`, background: A.greenBg, padding: '12px 14px', fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.green }}>
+                  {saveMessage}
+                </div>
+              ) : null}
+
+              <div style={{ display: 'grid', gap: 10 }}>
+                {orderedCodes.map((code) => (
+                  <div
+                    key={code}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: isMobile ? '1fr' : '120px minmax(0, 1fr) 160px 96px',
+                      gap: 10,
+                      alignItems: 'center',
+                      border: `1px solid ${A.g200}`,
+                      borderRadius: 14,
+                      padding: 12,
+                      background: A.white,
+                    }}
+                  >
+                    <Field label="Code" style={{ margin: 0 }}>
+                      <input
+                        defaultValue={code}
+                        onBlur={(event) => renameCurrency(code, event.target.value)}
+                        style={inputStyle}
+                        disabled={code === 'USD'}
+                      />
+                    </Field>
+                    <Field label="Rate vs USD" style={{ margin: 0 }}>
+                      <input
+                        type="number"
+                        min="0.0001"
+                        step="0.0001"
+                        value={rates[code] ?? 0}
+                        onChange={(event) => updateRate(code, event.target.value)}
+                        style={inputStyle}
+                        disabled={code === 'USD'}
+                      />
+                    </Field>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500 }}>
+                      Symbol: <strong style={{ color: A.black }}>{CURRENCY_SYMBOLS[code] || code}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end' }}>
+                      <Button variant="danger" onClick={() => removeCurrency(code)} disabled={code === 'USD'} style={{ width: isMobile ? '100%' : undefined }}>
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Panel>
+
+          <Panel style={{ padding: isMobile ? 16 : 20 }}>
+            <div style={{ display: 'grid', gap: 16 }}>
+              <div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  Where it applies
+                </div>
+                <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 20, color: A.black, marginBottom: 8 }}>
+                  All public price displays
+                </div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
+                  Catalog cards, scooter pages, booking totals, payment summary, profile bookings, prices page, footer currency list, and currency switcher options all use this shared configuration.
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gap: 8 }}>
+                <Badge color="blue">Stored in site content</Badge>
+                <Badge color="default">{CURRENCY_RATES_ENTRY_KEY}</Badge>
+              </div>
+
+              <div style={{ borderTop: `1px solid ${A.g200}`, paddingTop: 14, display: 'grid', gap: 10 }}>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  Current JSON payload
+                </div>
+                <pre
+                  style={{
+                    margin: 0,
+                    borderRadius: 14,
+                    padding: 14,
+                    background: A.g100,
+                    border: `1px solid ${A.g200}`,
+                    overflowX: 'auto',
+                    fontSize: 12,
+                    lineHeight: 1.6,
+                    color: A.black,
+                  }}
+                >
+                  {JSON.stringify(normalizeAdminCurrencyRates(rates), null, 2)}
+                </pre>
+              </div>
+            </div>
+          </Panel>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SocialSettingsView({ isMobile }: { isMobile: boolean }) {
+  const [entry, setEntry] = useState<ApiAdminSiteContentEntry | null>(null);
+  const [links, setLinks] = useState<SocialLinks>({ ...DEFAULT_SOCIAL_LINKS });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    setSaveMessage(null);
+    endpoints.adminSiteContent()
+      .then((response) => {
+        const entries = unwrapList(response);
+        const currentEntry = entries.find((item) => item.key === SOCIAL_LINKS_ENTRY_KEY && item.language === 'all') || null;
+        setEntry(currentEntry);
+        setLinks(normalizeAdminSocialLinks(currentEntry?.json_value));
+      })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Unable to load social links'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  function updateLink(key: SocialLinkKey, value: string) {
+    setLinks((current) => ({ ...current, [key]: value }));
+    setSaveMessage(null);
+  }
+
+  function resetDefaults() {
+    setLinks({ ...DEFAULT_SOCIAL_LINKS });
+    setSaveMessage(null);
+  }
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    setSaveMessage(null);
+    try {
+      const body = {
+        key: SOCIAL_LINKS_ENTRY_KEY,
+        language: 'all',
+        value_type: 'json' as const,
+        value: '',
+        json_value: links,
+        is_active: true,
+      };
+      const saved = entry
+        ? await endpoints.adminUpdateSiteContent(entry.id, body)
+        : await endpoints.adminCreateSiteContent(body);
+      setEntry(saved);
+      setLinks(normalizeAdminSocialLinks(saved.json_value));
+      setSaveMessage('Social links saved. Header, footer, home page, locations, and prices now use these values.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to save social links');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const socialKeys = Object.keys(DEFAULT_SOCIAL_LINKS) as SocialLinkKey[];
+
+  return (
+    <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? 16 : '28px 32px' }}>
+      <SectionHeader
+        title="Socials"
+        subtitle="Manage the social and contact links used on the public website without editing code."
+        action={<Button variant="outline" size="md" onClick={load}>Reload</Button>}
+      />
+
+      <ErrorBanner error={error} onClose={() => setError(null)} />
+
+      {loading ? (
+        <EmptyState label="Loading social links…" />
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.35fr) minmax(320px, 0.8fr)', gap: 16, alignItems: 'start' }}>
+          <Panel style={{ padding: isMobile ? 16 : 20 }}>
+            <div style={{ display: 'grid', gap: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                    Social Links
+                  </div>
+                  <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 22, color: A.black, marginBottom: 6 }}>
+                    Website contact links
+                  </div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
+                    Use the WhatsApp fields for CTA buttons and add any public social profiles you want shown in the footer.
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <Button variant="outline" onClick={resetDefaults}>Reset defaults</Button>
+                  <Button variant="dark" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save links'}</Button>
+                </div>
+              </div>
+
+              {saveMessage ? (
+                <div style={{ borderRadius: 12, border: `1px solid ${A.green}`, background: A.greenBg, padding: '12px 14px', fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.green }}>
+                  {saveMessage}
+                </div>
+              ) : null}
+
+              <div style={{ display: 'grid', gap: 12 }}>
+                {socialKeys.map((key) => (
+                  <div key={key} style={{ border: `1px solid ${A.g200}`, borderRadius: 14, padding: 12, background: A.white }}>
+                    <Field label={SOCIAL_LINK_LABELS[key]} style={{ margin: 0 }}>
+                      <input
+                        value={links[key]}
+                        onChange={(event) => updateLink(key, event.target.value)}
+                        style={inputStyle}
+                        placeholder={DEFAULT_SOCIAL_LINKS[key] || 'https://'}
+                      />
+                    </Field>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Panel>
+
+          <Panel style={{ padding: isMobile ? 16 : 20 }}>
+            <div style={{ display: 'grid', gap: 16 }}>
+              <div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  Where it applies
+                </div>
+                <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 20, color: A.black, marginBottom: 8 }}>
+                  Shared public website links
+                </div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
+                  WhatsApp CTA buttons in the header, home page, locations page, prices page, and footer all use this configuration. Extra social profiles appear in the footer when links are filled in.
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gap: 8 }}>
+                <Badge color="blue">Stored in site content</Badge>
+                <Badge color="default">{SOCIAL_LINKS_ENTRY_KEY}</Badge>
+              </div>
+
+              <div style={{ borderTop: `1px solid ${A.g200}`, paddingTop: 14, display: 'grid', gap: 10 }}>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  Current JSON payload
+                </div>
+                <pre
+                  style={{
+                    margin: 0,
+                    borderRadius: 14,
+                    padding: 14,
+                    background: A.g100,
+                    border: `1px solid ${A.g200}`,
+                    overflowX: 'auto',
+                    fontSize: 12,
+                    lineHeight: 1.6,
+                    color: A.black,
+                  }}
+                >
+                  {JSON.stringify(links, null, 2)}
+                </pre>
+              </div>
+            </div>
+          </Panel>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AddressSettingsView({ isMobile }: { isMobile: boolean }) {
+  const [entry, setEntry] = useState<ApiAdminSiteContentEntry | null>(null);
+  const [addresses, setAddresses] = useState<AddressSettings>({ ...DEFAULT_ADDRESS_SETTINGS });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    setSaveMessage(null);
+    endpoints.adminSiteContent()
+      .then((response) => {
+        const entries = unwrapList(response);
+        const currentEntry = entries.find((item) => item.key === ADDRESS_SETTINGS_ENTRY_KEY && item.language === 'all') || null;
+        setEntry(currentEntry);
+        setAddresses(normalizeAdminAddressSettings(currentEntry?.json_value));
+      })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Unable to load address settings'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  function updateAddress(key: AddressSettingKey, value: string) {
+    setAddresses((current) => ({ ...current, [key]: value }));
+    setSaveMessage(null);
+  }
+
+  function resetDefaults() {
+    setAddresses({ ...DEFAULT_ADDRESS_SETTINGS });
+    setSaveMessage(null);
+  }
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    setSaveMessage(null);
+    try {
+      const body = {
+        key: ADDRESS_SETTINGS_ENTRY_KEY,
+        language: 'all',
+        value_type: 'json' as const,
+        value: '',
+        json_value: addresses,
+        is_active: true,
+      };
+      const saved = entry
+        ? await endpoints.adminUpdateSiteContent(entry.id, body)
+        : await endpoints.adminCreateSiteContent(body);
+      setEntry(saved);
+      setAddresses(normalizeAdminAddressSettings(saved.json_value));
+      setSaveMessage('Address settings saved. Footer address line now uses these values across the website.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to save address settings');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const addressKeys = Object.keys(DEFAULT_ADDRESS_SETTINGS) as AddressSettingKey[];
+
+  return (
+    <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? 16 : '28px 32px' }}>
+      <SectionHeader
+        title="Addresses"
+        subtitle="Manage the business address and footer address details for the public website."
+        action={<Button variant="outline" size="md" onClick={load}>Reload</Button>}
+      />
+
+      <ErrorBanner error={error} onClose={() => setError(null)} />
+
+      {loading ? (
+        <EmptyState label="Loading address settings…" />
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.35fr) minmax(320px, 0.8fr)', gap: 16, alignItems: 'start' }}>
+          <Panel style={{ padding: isMobile ? 16 : 20 }}>
+            <div style={{ display: 'grid', gap: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                    Address Fields
+                  </div>
+                  <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 22, color: A.black, marginBottom: 6 }}>
+                    Public business address
+                  </div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
+                    These values build the footer address line and act as the shared address settings for the whole website.
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <Button variant="outline" onClick={resetDefaults}>Reset defaults</Button>
+                  <Button variant="dark" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save addresses'}</Button>
+                </div>
+              </div>
+
+              {saveMessage ? (
+                <div style={{ borderRadius: 12, border: `1px solid ${A.green}`, background: A.greenBg, padding: '12px 14px', fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.green }}>
+                  {saveMessage}
+                </div>
+              ) : null}
+
+              <div style={{ display: 'grid', gap: 12 }}>
+                {addressKeys.map((key) => (
+                  <div key={key} style={{ border: `1px solid ${A.g200}`, borderRadius: 14, padding: 12, background: A.white }}>
+                    <Field label={ADDRESS_SETTING_LABELS[key]} style={{ margin: 0 }}>
+                      <input
+                        value={addresses[key]}
+                        onChange={(event) => updateAddress(key, event.target.value)}
+                        style={inputStyle}
+                        placeholder={DEFAULT_ADDRESS_SETTINGS[key]}
+                      />
+                    </Field>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Panel>
+
+          <Panel style={{ padding: isMobile ? 16 : 20 }}>
+            <div style={{ display: 'grid', gap: 16 }}>
+              <div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  Where it applies
+                </div>
+                <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 20, color: A.black, marginBottom: 8 }}>
+                  Shared business address line
+                </div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
+                  The public footer uses these values to build the address line shown across the website.
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gap: 8 }}>
+                <Badge color="blue">Stored in site content</Badge>
+                <Badge color="default">{ADDRESS_SETTINGS_ENTRY_KEY}</Badge>
+              </div>
+
+              <div style={{ borderTop: `1px solid ${A.g200}`, paddingTop: 14, display: 'grid', gap: 10 }}>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  Preview line
+                </div>
+                <div style={{ borderRadius: 14, padding: 14, background: A.g100, border: `1px solid ${A.g200}`, fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.black, lineHeight: 1.6 }}>
+                  {[addresses.businessName, addresses.street, addresses.district, addresses.postalCode, addresses.country, addresses.license, addresses.copyright].filter(Boolean).join(' · ')}
+                </div>
+              </div>
+            </div>
+          </Panel>
+        </div>
+      )}
     </div>
   );
 }
@@ -1163,13 +1860,22 @@ function scorePreviewTextMatch(candidate: string, variant: string) {
   return 0;
 }
 
-function formatMoney(value: string | number | undefined | null) {
-  const amount = Number(value || 0);
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: amount % 1 === 0 ? 0 : 2,
-  }).format(amount);
+function useAdminMoneyFormatter() {
+  const { currency, convertAmountValue } = useCurrency();
+  const { locale } = useAdminLocale();
+
+  return useCallback((value: string | number | undefined | null, sourceCurrency = 'USD') => {
+    const amount = Number(value ?? 0);
+    const normalizedAmount = Number.isFinite(amount) ? amount : 0;
+    const convertedAmount = convertAmountValue(normalizedAmount, sourceCurrency, currency);
+    const intlLocale = locale === 'ru' ? 'ru-RU' : locale === 'id' ? 'id-ID' : 'en-US';
+    const hasFraction = Math.abs(convertedAmount % 1) > 0.000001;
+
+    return formatCurrencyAmount(convertedAmount, currency, intlLocale, {
+      minimumFractionDigits: hasFraction ? 2 : 0,
+      maximumFractionDigits: hasFraction ? 2 : 0,
+    });
+  }, [convertAmountValue, currency, locale]);
 }
 
 function formatShortDate(value?: string | Date | null) {
@@ -3332,6 +4038,9 @@ export default function AdminPage() {
     locations: <LocationsView isMobile={isMobile} />,
     site: <SiteContentView isMobile={isMobile} />,
     appContent: <SiteContentView isMobile={isMobile} initialPage="app" lockedPage="app" />,
+    currencies: <CurrencySettingsView isMobile={isMobile} />,
+    socials: <SocialSettingsView isMobile={isMobile} />,
+    addresses: <AddressSettingsView isMobile={isMobile} />,
     users: (
       <UsersView
         users={data.users}
@@ -3408,6 +4117,9 @@ export default function AdminPage() {
       <div style={{ padding: '16px 14px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
         <div style={{ marginBottom: 16 }}>
           <AdminSidebarLanguageSwitcher />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <AdminSidebarCurrencySwitcher />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
           <div style={{ width: 36, height: 36, background: 'rgba(255,215,0,0.15)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Sora, sans-serif', fontWeight: 800, fontSize: 14, color: A.gold }}>
@@ -5329,6 +6041,7 @@ function OverviewView({
   isMobile: boolean;
 }) {
   const { bookings, scooters, users, revenue, payments } = data;
+  const formatMoney = useAdminMoneyFormatter();
 
   const paidBookings = bookings.filter(
     (item) => item.payment_status === 'paid' || item.latest_payment?.status === 'succeeded',
@@ -5576,6 +6289,7 @@ function FleetView({
   onDeleteScooter: (scooter: ApiScooterDetail) => Promise<void>;
   isMobile: boolean;
 }) {
+  const formatMoney = useAdminMoneyFormatter();
   const emptyDraft = useMemo(
     () => ({
       model: '',
@@ -5862,6 +6576,7 @@ function BookingsView({
   isMobile: boolean;
 }) {
   const [filter, setFilter] = useState('all');
+  const formatMoney = useAdminMoneyFormatter();
   const filtered = filter === 'all' ? bookings : bookings.filter((item) => item.status === filter);
   const contactBadges = (item: ApiBooking) =>
     [
@@ -6034,6 +6749,7 @@ function CRMView({
   bookings: ApiBooking[];
   isMobile: boolean;
 }) {
+  const formatMoney = useAdminMoneyFormatter();
   const bookingStats = new Map<string, { bookings: number; total: number; last: string | null }>();
   for (const booking of bookings) {
     const key = booking.user || 'Guest';
@@ -6184,6 +6900,7 @@ function CRMView({
 }
 
 function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]; scooters: ApiScooterDetail[]; isMobile: boolean }) {
+  const formatMoney = useAdminMoneyFormatter();
   type CalendarBlock = { id: number; vehicle: number; start_at: string; end_at: string; type: string; comment?: string };
   type CalendarBooking = ApiBooking & { startDate: Date; endDate: Date };
   type CalendarSelection = {
@@ -6982,6 +7699,7 @@ function AnalyticsView({
   bookings: ApiBooking[];
   isMobile: boolean;
 }) {
+  const formatMoney = useAdminMoneyFormatter();
   const vehicleTotals = new Map<string, number>();
   const zoneTotals = new Map<string, number>();
 

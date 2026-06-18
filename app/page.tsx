@@ -27,6 +27,7 @@ import {
   resolveScooterImageObjectPosition,
 } from '@/lib/displayScooter';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
+import { useSiteSettings } from '@/lib/siteSettings';
 
 function FAQItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
@@ -81,7 +82,6 @@ const stagger = {
   visible: { transition: { staggerChildren: 0.09 } },
 };
 
-const WA_LINK = 'https://wa.me/628135915173?text=Hi%2C%20I%E2%80%99d%20like%20to%20rent%20a%20scooter%20in%20Bali!';
 const SUPPORT_CHAT_LINK = '/profile?tab=support';
 const SUPPORT_CHAT_COPY = {
   en: 'Support chat',
@@ -96,6 +96,7 @@ export default function LandingPage() {
   const { t, locale } = useLocale();
   const { marker } = useSiteContentPreview();
   const { convertPrice, symbol } = useCurrency();
+  const { socialLinks } = useSiteSettings();
   const [featured, setFeatured] = useState<DisplayScooter[]>(fallbackScooters().slice(0, 3));
   const [zones, setZones] = useState<Array<{ id: number; name: string; freeDelivery?: boolean }>>([]);
   const [apiFaqs, setApiFaqs] = useState<Array<{ q: string; a: string }>>([]);
@@ -206,7 +207,7 @@ export default function LandingPage() {
               <ArrowRightIcon size={17} color="#0A0A0F" strokeWidth={2.5} />
             </a>
 
-            <a href={WA_LINK} target="_blank" rel="noopener noreferrer" style={{
+            <a href={socialLinks.whatsapp} target="_blank" rel="noopener noreferrer" style={{
               display: 'inline-flex', alignItems: 'center', gap: 9,
               background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)',
               border: '1px solid rgba(255,255,255,0.2)',
@@ -231,8 +232,10 @@ export default function LandingPage() {
             </Link>
 
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-              <button
-                type="button"
+              <a
+                href={socialLinks.telegram || undefined}
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label="Telegram"
                 title="Telegram"
                 style={{
@@ -242,14 +245,19 @@ export default function LandingPage() {
                   background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)',
                   border: '1px solid rgba(255,255,255,0.2)',
                   color: '#2AABEE',
-                  cursor: 'default',
+                  cursor: socialLinks.telegram ? 'pointer' : 'default',
+                  textDecoration: 'none',
+                  pointerEvents: socialLinks.telegram ? 'auto' : 'none',
+                  opacity: socialLinks.telegram ? 1 : 0.55,
                 }}
               >
                 <TelegramIcon size={22} color="#2AABEE" />
-              </button>
+              </a>
 
-              <button
-                type="button"
+              <a
+                href={socialLinks.wechat || undefined}
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label="WeChat"
                 title="WeChat"
                 style={{
@@ -259,11 +267,14 @@ export default function LandingPage() {
                   background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)',
                   border: '1px solid rgba(255,255,255,0.2)',
                   color: '#7BB32E',
-                  cursor: 'default',
+                  cursor: socialLinks.wechat ? 'pointer' : 'default',
+                  textDecoration: 'none',
+                  pointerEvents: socialLinks.wechat ? 'auto' : 'none',
+                  opacity: socialLinks.wechat ? 1 : 0.55,
                 }}
               >
                 <WeChatIcon size={22} color="#7BB32E" />
-              </button>
+              </a>
             </div>
           </motion.div>
 
@@ -558,7 +569,7 @@ export default function LandingPage() {
               <span {...marker('cta.primary')}>{t.cta.primary}</span>
               <ArrowRightIcon size={15} color="#FFD700" strokeWidth={2.5} />
             </a>
-            <a href={WA_LINK} target="_blank" rel="noopener noreferrer" style={{
+            <a href={socialLinks.whatsapp} target="_blank" rel="noopener noreferrer" style={{
               display: 'inline-flex', alignItems: 'center', gap: 10,
               background: '#25D366', color: '#fff',
               fontFamily: 'var(--br-body)', fontSize: 'clamp(14px, 1.4vw, 16px)', fontWeight: 700,
@@ -586,7 +597,7 @@ export default function LandingPage() {
         padding: '10px 14px calc(10px + env(safe-area-inset-bottom))',
         display: 'none', gap: 10, alignItems: 'center',
       }}>
-        <a href={WA_LINK} target="_blank" rel="noopener noreferrer" style={{
+        <a href={socialLinks.whatsapp} target="_blank" rel="noopener noreferrer" style={{
           flexShrink: 0, width: 52, height: 52,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           background: '#25D366', borderRadius: 12, textDecoration: 'none',

@@ -19,7 +19,7 @@ import {
   unwrapList,
 } from '@/lib/endpoints';
 import { bookingDraftStore } from '@/lib/bookingDraft';
-import { convertAmount, formatCurrencyAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
+import { formatCurrencyAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { formatAppliedTariffLabel } from '@/lib/rentalRates';
 import { type BookingExtraContent, BOOKING_COPY } from '@/lib/siteContentExtras';
@@ -85,7 +85,7 @@ export default function BookingPage() {
 function BookingPageInner() {
   const { t, locale } = useLocale();
   const { marker } = useSiteContentPreview();
-  const { currency: selectedCurrency, convertPrice } = useCurrency();
+  const { currency: selectedCurrency, convertPrice, convertAmountValue } = useCurrency();
   const copy = {
     ...BOOKING_COPY.en,
     ...(BOOKING_COPY[locale as keyof typeof BOOKING_COPY] || BOOKING_COPY.en),
@@ -279,7 +279,7 @@ function BookingPageInner() {
   const rentalDays = Number(quote?.rental_days || 0);
   const appliedTariffLabel = formatAppliedTariffLabel(quote?.applied_tariff, locale);
   const effectiveRatePerDay = quote?.applied_tariff
-    ? convertAmount(Number(quote.applied_tariff.effective_daily_price_usd || 0), quoteCurrency, selectedCurrency)
+    ? convertAmountValue(Number(quote.applied_tariff.effective_daily_price_usd || 0), quoteCurrency, selectedCurrency)
     : 0;
 
   const addonsSubtotal = useMemo(() => {
@@ -290,20 +290,20 @@ function BookingPageInner() {
   }, [addons, selectedAddOnIds]);
 
   const baseTotal = quote
-    ? convertAmount(Number(quote.base_price || 0), quoteCurrency, selectedCurrency)
+    ? convertAmountValue(Number(quote.base_price || 0), quoteCurrency, selectedCurrency)
     : convertPrice(initialPrice || 0);
   const addonsTotal = quote
-    ? convertAmount(Number(quote.add_ons_price || 0), quoteCurrency, selectedCurrency)
+    ? convertAmountValue(Number(quote.add_ons_price || 0), quoteCurrency, selectedCurrency)
     : convertPrice(addonsSubtotal);
   const deliveryTotal = quote
-    ? convertAmount(Number(quote.delivery_price || 0), quoteCurrency, selectedCurrency)
+    ? convertAmountValue(Number(quote.delivery_price || 0), quoteCurrency, selectedCurrency)
     : 0;
   const rawGrandTotal = quote ? Number(quote.total_price || 0) : 0;
   const grandTotal = quote && rawGrandTotal > 0
-    ? convertAmount(rawGrandTotal, quoteCurrency, selectedCurrency)
+    ? convertAmountValue(rawGrandTotal, quoteCurrency, selectedCurrency)
     : baseTotal + addonsTotal + deliveryTotal;
   const discountTotal = quote && Number(quote.discount_amount || 0) > 0
-    ? convertAmount(Number(quote.discount_amount), quoteCurrency, selectedCurrency)
+    ? convertAmountValue(Number(quote.discount_amount), quoteCurrency, selectedCurrency)
     : 0;
   const promoApplied = Boolean(promoCode.trim() && discountTotal > 0);
   const selectedAddonsLabel = copy.selectedAddons

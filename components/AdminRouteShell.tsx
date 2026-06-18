@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import { AdminLocaleProvider, useAdminLocale } from '@/lib/i18n/AdminLocaleProvider';
 import { ADMIN_UI_LOCALES, translateAdminUiText } from '@/lib/i18n/adminUi';
+import { CURRENCY_SYMBOLS, useCurrency } from '@/lib/i18n/CurrencyProvider';
 
 type AttrKey = 'placeholder' | 'title' | 'aria-label' | 'value';
 
@@ -61,6 +62,73 @@ export function AdminSidebarLanguageSwitcher() {
               }}
             >
               {item.code.toUpperCase()}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function AdminSidebarCurrencySwitcher() {
+  const { currency, setCurrency, availableCurrencies } = useCurrency();
+  const { locale } = useAdminLocale();
+  const currencyLabel = translateAdminUiText('Currency', locale);
+  const switcherLabel = translateAdminUiText('Admin interface currency', locale);
+
+  return (
+    <div
+      data-admin-i18n-skip="true"
+      style={{
+        zIndex: 1400,
+        display: 'grid',
+        gap: 10,
+      }}
+      aria-label={switcherLabel}
+      title={switcherLabel}
+    >
+      <div
+        style={{
+          fontFamily: 'Inter, sans-serif',
+          fontSize: 10,
+          letterSpacing: '0.08em',
+          color: 'rgba(255,255,255,0.25)',
+          textTransform: 'uppercase',
+          padding: '0 4px',
+        }}
+      >
+        {currencyLabel}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {availableCurrencies.map((item) => {
+          const active = item === currency;
+          return (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setCurrency(item)}
+              title={item}
+              aria-label={item}
+              style={{
+                border: `1px solid ${active ? 'rgba(255,215,0,0.45)' : 'rgba(255,255,255,0.12)'}`,
+                cursor: 'pointer',
+                borderRadius: 999,
+                padding: '8px 12px',
+                minWidth: 64,
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                background: active ? 'rgba(255,215,0,0.14)' : 'transparent',
+                color: active ? '#FFD700' : 'rgba(255,255,255,0.72)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+              }}
+            >
+              <span>{CURRENCY_SYMBOLS[item] || item}</span>
+              <span>{item}</span>
             </button>
           );
         })}

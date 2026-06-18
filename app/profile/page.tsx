@@ -9,17 +9,8 @@ import SiteHeader from '@/components/SiteHeader';
 import { ApiError } from '@/lib/api';
 import { ApiChatMessage, ApiChatThread, endpoints, unwrapList } from '@/lib/endpoints';
 import { useAuth } from '@/lib/i18n/AuthProvider';
-import { convertAmount, formatCurrencyAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
+import { formatCurrencyAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
-
-const PROFILE_CURRENCIES = [
-  { value: 'USD', label: 'USD (base)' },
-  { value: 'RUB', label: 'RUB' },
-  { value: 'EUR', label: 'EUR' },
-  { value: 'CNY', label: 'CNY' },
-  { value: 'AUD', label: 'AUD' },
-  { value: 'IDR', label: 'IDR' },
-] as const;
 
 const PROFILE_LANGUAGES = [
   { value: 'en', label: 'English' },
@@ -65,9 +56,13 @@ export default function ProfilePage() {
   const { t, locale } = useLocale();
   const copy = PROFILE_COPY[locale as keyof typeof PROFILE_COPY] || PROFILE_COPY.en;
   const { user, loading: authLoading, signOut, refresh } = useAuth();
-  const { currency: activeCurrency, setCurrency } = useCurrency();
+  const { currency: activeCurrency, setCurrency, availableCurrencies, convertAmountValue } = useCurrency();
   const searchParams = useSearchParams();
   const bookings = user?.bookings ?? [];
+  const profileCurrencies = useMemo(
+    () => availableCurrencies.map((value) => ({ value, label: value === 'USD' ? 'USD (base)' : value })),
+    [availableCurrencies],
+  );
 
   const [activeTab, setActiveTab] = useState<Tab>('profile');
   const [bookingFilter, setBookingFilter] = useState<BookingFilter>('all');
@@ -434,7 +429,7 @@ export default function ProfilePage() {
                     </ProfileField>
                     <ProfileField label={copy.currency}>
                       <select value={form.currency} onChange={(e) => setForm((c) => ({ ...c, currency: e.target.value }))} style={darkInputStyle}>
-                        {PROFILE_CURRENCIES.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                        {profileCurrencies.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                       </select>
                     </ProfileField>
                   </div>
@@ -546,7 +541,7 @@ export default function ProfilePage() {
                           <BookingMeta
                             label={copy.total}
                             value={formatCurrencyAmount(
-                              convertAmount(
+                              convertAmountValue(
                                 Number(booking.total_price || 0),
                                 BOOKING_PRICE_SOURCE_CURRENCY,
                                 activeCurrency,

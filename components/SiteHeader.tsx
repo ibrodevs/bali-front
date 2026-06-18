@@ -9,8 +9,7 @@ import CurrencySwitcher from './CurrencySwitcher';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { useAuth } from '@/lib/i18n/AuthProvider';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
-
-const WA_LINK = 'https://wa.me/628135915173?text=Hi%2C%20I%E2%80%99d%20like%20to%20rent%20a%20scooter%20in%20Bali!';
+import { useSiteSettings } from '@/lib/siteSettings';
 
 export default function SiteHeader({
   dark = false,
@@ -22,6 +21,7 @@ export default function SiteHeader({
   const { t, locale } = useLocale();
   const { marker } = useSiteContentPreview();
   const { user, signOut } = useAuth();
+  const { socialLinks } = useSiteSettings();
   const pathname = usePathname();
   const pricingLabels: Record<string, string> = {
     en: 'Prices',
@@ -296,7 +296,7 @@ export default function SiteHeader({
 
         {/* Mobile CTA row */}
         <div style={{ padding: '24px 20px 0', borderTop: '1px solid rgba(0,0,0,0.08)', marginTop: 24, display: 'flex', gap: 10, flexDirection: 'column' }}>
-          <a href={WA_LINK} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: '#25D366', color: '#fff', fontFamily: 'var(--br-body)', fontSize: 16, fontWeight: 600, borderRadius: 14, padding: '15px', textDecoration: 'none', width: '100%' }}>
+          <a href={socialLinks.whatsapp} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: '#25D366', color: '#fff', fontFamily: 'var(--br-body)', fontSize: 16, fontWeight: 600, borderRadius: 14, padding: '15px', textDecoration: 'none', width: '100%' }}>
             💬 Chat on WhatsApp
           </a>
           <a href="/catalog" onClick={closeAll} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: '#FFD700', color: '#0A0A0F', fontFamily: 'var(--br-body)', fontSize: 16, fontWeight: 700, borderRadius: 14, padding: '15px', textDecoration: 'none', width: '100%', letterSpacing: '-0.01em' }}>
