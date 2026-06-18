@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { BREyebrow } from '@/components/BR';
 import ScooterCard from '@/components/ScooterCard';
 import SiteHeader from '@/components/SiteHeader';
@@ -29,7 +30,9 @@ function deriveFallbackCategories(scooters: DisplayScooter[]): ApiVehicleType[] 
 export default function CatalogPage() {
   const { t, locale, tr } = useLocale();
   const { marker } = useSiteContentPreview();
-  const [filter, setFilter] = useState('all');
+  const searchParams = useSearchParams();
+  const requestedTypeFilter = searchParams.get('type')?.trim().toLowerCase() || 'all';
+  const [filter, setFilter] = useState(requestedTypeFilter);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('featured');
   const [scooters, setScooters] = useState<DisplayScooter[] | null>(null);
@@ -71,6 +74,13 @@ export default function CatalogPage() {
     () => [{ code: 'all', name: t.catalog.types.All }, ...categories.map((item) => ({ code: item.code, name: item.name }))],
     [categories, t.catalog.types.All],
   );
+
+  useEffect(() => {
+    if (requestedTypeFilter === 'all') return;
+    if (typeOptions.some((item) => item.code.toLowerCase() === requestedTypeFilter) && filter !== requestedTypeFilter) {
+      setFilter(requestedTypeFilter);
+    }
+  }, [filter, requestedTypeFilter, typeOptions]);
 
   useEffect(() => {
     if (!typeOptions.some((item) => item.code === filter)) {

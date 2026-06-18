@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { CSSProperties, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { BRPhoto, BREyebrow, BRPrice, BRPrimary } from '@/components/BR';
@@ -184,6 +184,13 @@ export default function ScooterDetailPage() {
 
   const photoSrc = gallery[photoIdx];
   const fallbackTone = FALLBACK_TONES[photoIdx % FALLBACK_TONES.length];
+  const breadcrumbTypeCode = scooter.typeCode || scooter.type.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  const breadcrumbScooterHref = `/scooter/${resolveScooterRouteId(scooter.id, scooter.name) || scooter.id}`;
+  const breadcrumbLinkStyle = {
+    color: sub,
+    textDecoration: 'none',
+    transition: 'color 160ms ease',
+  } satisfies CSSProperties;
   const specItems = [
     [EngineIcon, t.detail.engine, characteristics.engine_cc ? `${characteristics.engine_cc}cc` : scooter.cc ? `${scooter.cc}cc` : '—'],
     [SparkIcon, t.detail.transmission, characteristics.transmission || '—'],
@@ -199,9 +206,23 @@ export default function ScooterDetailPage() {
     <div className="br-has-mobile-cta" style={{ background: bg, color: fg, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <SiteHeader />
       <div className="br-detail-breadcrumb" style={{ padding: '12px 40px', borderBottom: `1px solid ${border}` }}>
-        <span className="br-mono" style={{ fontSize: 11, color: sub, letterSpacing: '0.12em' }}>
-          {t.nav.catalog} / {scooter.type.toUpperCase()} / {scooter.name.toUpperCase()}
-        </span>
+        <nav
+          aria-label="Breadcrumb"
+          className="br-mono"
+          style={{ fontSize: 11, color: sub, letterSpacing: '0.12em', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, rowGap: 4 }}
+        >
+          <Link href="/catalog" style={breadcrumbLinkStyle}>
+            {t.nav.catalog}
+          </Link>
+          <span aria-hidden="true">/</span>
+          <Link href={`/catalog?type=${encodeURIComponent(breadcrumbTypeCode)}`} style={breadcrumbLinkStyle}>
+            {scooter.type.toUpperCase()}
+          </Link>
+          <span aria-hidden="true">/</span>
+          <Link href={breadcrumbScooterHref} aria-current="page" style={{ ...breadcrumbLinkStyle, color: '#000' }}>
+            {scooter.name.toUpperCase()}
+          </Link>
+        </nav>
       </div>
 
       <div className="br-detail-shell" style={{ display: 'grid', gridTemplateColumns: '55fr 45fr', gap: 0 }}>
