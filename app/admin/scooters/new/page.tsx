@@ -33,6 +33,8 @@ const A = {
   greenBg: '#f0fdf4',
 };
 
+const IDR_RATE = DEFAULT_CURRENCY_RATES.IDR || 15650;
+
 function slugify(value?: string | null) {
   return (value || '')
     .toLowerCase()
@@ -59,11 +61,43 @@ function isAdminLike(user: { role?: string; is_staff?: boolean; is_superuser?: b
 }
 
 function formatIdrPreview(value?: string | number | null) {
+  const amountIdr = Number(value ?? 0);
+  const normalizedIdr = Number.isFinite(amountIdr) ? amountIdr : 0;
+  const hasFraction = Math.abs(normalizedIdr % 1) > 0.000001;
+  return formatCurrencyAmount(normalizedIdr, 'IDR', 'id-ID', {
+    minimumFractionDigits: hasFraction ? 2 : 0,
+    maximumFractionDigits: hasFraction ? 2 : 0,
+  });
+}
+
+function usdToIdrInput(value?: string | number | null) {
   const amountUsd = Number(value ?? 0);
   const normalizedUsd = Number.isFinite(amountUsd) ? amountUsd : 0;
-  const amountIdr = normalizedUsd * (DEFAULT_CURRENCY_RATES.IDR || 15650);
+  return String(Math.round(normalizedUsd * IDR_RATE));
+}
+
+function idrToUsdNumber(value?: string | number | null) {
+  const amountIdr = Number(value ?? 0);
+  const normalizedIdr = Number.isFinite(amountIdr) ? amountIdr : 0;
+  return Number((normalizedIdr / IDR_RATE).toFixed(2));
+}
+
+function mapRentalRatesIdrToUsd(rates: RentalRateDraft[]) {
+  return rates.map((rate) => ({
+    ...rate,
+    price_usd: String(idrToUsdNumber(rate.price_usd)),
+  }));
+}
+
+function createDefaultRentalRateDraftsInIdr(value?: string | number | null) {
+  return createDefaultRentalRateDrafts(usdToIdrInput(value));
+}
+
+function formatIdrPreviewText(value?: string | number | null) {
+  const amountIdr = Number(value ?? 0);
+  const normalizedIdr = Number.isFinite(amountIdr) ? amountIdr : 0;
   const hasFraction = Math.abs(amountIdr % 1) > 0.000001;
-  return formatCurrencyAmount(amountIdr, 'IDR', 'id-ID', {
+  return formatCurrencyAmount(normalizedIdr, 'IDR', 'id-ID', {
     minimumFractionDigits: hasFraction ? 2 : 0,
     maximumFractionDigits: hasFraction ? 2 : 0,
   });
@@ -276,7 +310,7 @@ export default function AdminNewScooterPage() {
   const [mainPhotoIndex, setMainPhotoIndex] = useState(0);
   const [translations, setTranslations] = useState<Record<string, TranslationDraft>>(createEmptyTranslations());
   const [activeLang, setActiveLang] = useState('en');
-  const [rentalRates, setRentalRates] = useState<RentalRateDraft[]>(createDefaultRentalRateDrafts(''));
+  const [rentalRates, setRentalRates] = useState<RentalRateDraft[]>(createDefaultRentalRateDraftsInIdr(''));
 
   useEffect(() => {
     return () => {
@@ -467,7 +501,7 @@ export default function AdminNewScooterPage() {
       }
 
       const translationPayload = validateTranslations();
-      const validatedRates = validateRentalRateDrafts(rentalRates);
+      const validatedRates = validateRentalRateDrafts(mapRentalRatesIdrToUsd(rentalRates));
 
       const createdScooter = await endpoints.adminCreateScooter({
         model: modelId,
@@ -475,7 +509,7 @@ export default function AdminNewScooterPage() {
         slug: scooterDraft.slug.trim(),
         sku: scooterDraft.sku.trim(),
         color: scooterDraft.color.trim(),
-        base_price_usd: scooterDraft.base_price_usd,
+        base_price_usd: String(idrToUsdNumber(scooterDraft.base_price_usd)),
         status: scooterDraft.status,
         mileage: Number(scooterDraft.mileage || 0),
         is_featured: scooterDraft.is_featured,
@@ -655,8 +689,8 @@ export default function AdminNewScooterPage() {
                   <Field label="Color">
                     <input value={scooterDraft.color} onChange={(event) => updateScooterDraft('color', event.target.value)} style={inputStyle} placeholder="White" />
                   </Field>
-                  <Field label="Base price / day (USD)" hint="Stored in USD base, preview uses IDR by default.">
-                    <input type="number" step="0.01" value={scooterDraft.base_price_usd} onChange={(event) => updateScooterDraft('base_price_usd', event.target.value)} style={inputStyle} />
+                  <Field label="Price / day (IDR)">
+                    <input type="number" step="1" value={scooterDraft.base_price_usd} onChange={(event) => updateScooterDraft('base_price_usd', event.target.value)} style={inputStyle} />
                   </Field>
                   <Field label="Mileage">
                     <input type="number" min="0" value={scooterDraft.mileage} onChange={(event) => updateScooterDraft('mileage', event.target.value)} style={inputStyle} />
@@ -695,7 +729,7 @@ export default function AdminNewScooterPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: '80px 80px 1fr 120px 88px', gap: 10, fontSize: 12, color: A.g500, fontWeight: 700 }}>
                   <span>From</span>
                   <span>To</span>
-                  <span>Base price USD</span>
+                  <span>Price IDR</span>
                   <span>Billing days</span>
                   <span />
                 </div>
@@ -703,7 +737,7 @@ export default function AdminNewScooterPage() {
                   <div key={`rate-${index}`} style={{ display: 'grid', gridTemplateColumns: '80px 80px 1fr 120px 88px', gap: 10, alignItems: 'center' }}>
                     <input type="number" min="1" value={rate.min_days} onChange={(event) => updateRentalRate(index, 'min_days', event.target.value)} style={inputStyle} />
                     <input type="number" min="1" value={rate.max_days} onChange={(event) => updateRentalRate(index, 'max_days', event.target.value)} style={inputStyle} placeholder="∞" />
-                    <input type="number" min="0" step="0.01" value={rate.price_usd} onChange={(event) => updateRentalRate(index, 'price_usd', event.target.value)} style={inputStyle} />
+                    <input type="number" min="0" step="1" value={rate.price_usd} onChange={(event) => updateRentalRate(index, 'price_usd', event.target.value)} style={inputStyle} />
                     <input type="number" min="1" value={rate.billing_period_days} onChange={(event) => updateRentalRate(index, 'billing_period_days', event.target.value)} style={inputStyle} />
                     <Button variant="outline" onClick={() => removeRentalRateRow(index)} disabled={rentalRates.length === 1}>Remove</Button>
                   </div>
@@ -913,7 +947,7 @@ export default function AdminNewScooterPage() {
                     </div>
                   </div>
                   <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 800, fontSize: 22 }}>
-                    {formatIdrPreview(scooterDraft.base_price_usd)}
+                    {formatIdrPreviewText(scooterDraft.base_price_usd)}
                   </div>
                 </div>
                 <div style={{ fontSize: 14, color: A.g700, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>

@@ -1878,6 +1878,20 @@ function useAdminMoneyFormatter() {
   }, [convertAmountValue, currency, locale]);
 }
 
+const ADMIN_IDR_RATE = DEFAULT_CURRENCY_RATES.IDR || 15650;
+
+function usdToIdrInput(value?: string | number | null) {
+  const amountUsd = Number(value ?? 0);
+  const normalizedUsd = Number.isFinite(amountUsd) ? amountUsd : 0;
+  return String(Math.round(normalizedUsd * ADMIN_IDR_RATE));
+}
+
+function idrToUsdNumber(value?: string | number | null) {
+  const amountIdr = Number(value ?? 0);
+  const normalizedIdr = Number.isFinite(amountIdr) ? amountIdr : 0;
+  return Number((normalizedIdr / ADMIN_IDR_RATE).toFixed(2));
+}
+
 function formatShortDate(value?: string | Date | null) {
   if (!value) return '—';
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(value));
@@ -2429,7 +2443,7 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
         [addon.id]: {
           name: addon.name,
           description: addon.description || '',
-          price_usd: String(addon.price_usd || addon.priceUSD || 0),
+          price_usd: usdToIdrInput(addon.price_usd || addon.priceUSD || 0),
           price_type: addon.price_type || addon.priceType || 'per_day',
           is_active: addon.is_active !== false,
           sort_order: addon.sort_order || 0,
@@ -2464,7 +2478,7 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
       await endpoints.adminUpdateAddon(addon.id, {
         name: draft.name,
         description: draft.description,
-        price_usd: parseFloat(draft.price_usd) || 0,
+        price_usd: idrToUsdNumber(draft.price_usd),
         price_type: draft.price_type,
         is_active: draft.is_active,
         sort_order: draft.sort_order,
@@ -2488,7 +2502,7 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
       const created = await endpoints.adminCreateAddon({
         name: newAddon.name,
         description: newAddon.description,
-        price_usd: parseFloat(newAddon.price_usd) || 0,
+        price_usd: idrToUsdNumber(newAddon.price_usd),
         price_type: newAddon.price_type,
         is_active: newAddon.is_active,
         sort_order: newAddon.sort_order,
@@ -2561,8 +2575,8 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
             <input style={inputStyle} value={draft.name} onChange={(e) => onChange('name', e.target.value)} placeholder="Addon name" />
           </div>
           <div>
-            <label style={labelStyle}>Base price (USD)</label>
-            <input style={inputStyle} type="number" step="0.01" value={draft.price_usd} onChange={(e) => onChange('price_usd', e.target.value)} />
+            <label style={labelStyle}>Price (IDR)</label>
+            <input style={inputStyle} type="number" step="1" value={draft.price_usd} onChange={(e) => onChange('price_usd', e.target.value)} />
           </div>
           <div>
             <label style={labelStyle}>Price Type</label>
@@ -2701,8 +2715,8 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
                 <input style={inputStyle} value={newAddon.name} onChange={(e) => setNewAddon((p) => ({ ...p, name: e.target.value }))} placeholder="Addon name" />
               </div>
               <div>
-                <label style={labelStyle}>Base price (USD)</label>
-                <input style={inputStyle} type="number" step="0.01" value={newAddon.price_usd} onChange={(e) => setNewAddon((p) => ({ ...p, price_usd: e.target.value }))} />
+                <label style={labelStyle}>Price (IDR)</label>
+                <input style={inputStyle} type="number" step="1" value={newAddon.price_usd} onChange={(e) => setNewAddon((p) => ({ ...p, price_usd: e.target.value }))} />
               </div>
               <div>
                 <label style={labelStyle}>Price Type</label>
@@ -6327,7 +6341,7 @@ function FleetView({
       slug: draft.slug.trim(),
       sku: draft.sku.trim(),
       color: draft.color.trim(),
-      base_price_usd: draft.base_price_usd,
+      base_price_usd: String(idrToUsdNumber(draft.base_price_usd)),
       status: draft.status,
       mileage: Number(draft.mileage || 0),
       is_featured: draft.is_featured,
@@ -6537,11 +6551,11 @@ function FleetView({
                 <input value={draft.color} onChange={(event) => updateDraft('color', event.target.value)} placeholder="Black" style={inputStyle} />
               </Field>
             </div>
-            <Field label="Base price per day (USD)">
+            <Field label="Price per day (IDR)">
               <input
                 type="number"
                 min="0"
-                step="0.01"
+                step="1"
                 value={draft.base_price_usd}
                 onChange={(event) => updateDraft('base_price_usd', event.target.value)}
                 style={inputStyle}

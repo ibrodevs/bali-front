@@ -887,7 +887,7 @@ function FleetView({
                 <Input value={draft.color} onChange={(event) => updateDraft('color', event.target.value)} placeholder="Black" />
               </Field>
             </div>
-            <Field label="Base price per day (USD)">
+            <Field label="Price per day (IDR)">
               <Input type="number" min="0" step="0.01" value={draft.base_price_usd} onChange={(event) => updateDraft('base_price_usd', event.target.value)} />
             </Field>
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'Inter', fontSize: 14, color: A.black }}>
