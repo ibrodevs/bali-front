@@ -2392,6 +2392,7 @@ type CategoryDraft = {
 };
 
 function AddonsView({ isMobile }: { isMobile: boolean }) {
+  const formatMoney = useAdminMoneyFormatter();
   const [addons, setAddons] = useState<ApiAddon[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -2560,7 +2561,7 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
             <input style={inputStyle} value={draft.name} onChange={(e) => onChange('name', e.target.value)} placeholder="Addon name" />
           </div>
           <div>
-            <label style={labelStyle}>Price (USD)</label>
+            <label style={labelStyle}>Base price (USD)</label>
             <input style={inputStyle} type="number" step="0.01" value={draft.price_usd} onChange={(e) => onChange('price_usd', e.target.value)} />
           </div>
           <div>
@@ -2642,7 +2643,7 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 14, color: A.black }}>{addon.name}</div>
                     <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginTop: 2 }}>
-                      ${Number(addon.price_usd || addon.priceUSD || 0).toFixed(2)} · {addon.price_type || 'per_day'}
+                      {formatMoney(addon.price_usd || addon.priceUSD || 0)} · {addon.price_type || 'per_day'}
                       {addon.is_active === false && <span style={{ marginLeft: 8, color: A.red }}>inactive</span>}
                     </div>
                   </div>
@@ -2700,7 +2701,7 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
                 <input style={inputStyle} value={newAddon.name} onChange={(e) => setNewAddon((p) => ({ ...p, name: e.target.value }))} placeholder="Addon name" />
               </div>
               <div>
-                <label style={labelStyle}>Price (USD)</label>
+                <label style={labelStyle}>Base price (USD)</label>
                 <input style={inputStyle} type="number" step="0.01" value={newAddon.price_usd} onChange={(e) => setNewAddon((p) => ({ ...p, price_usd: e.target.value }))} />
               </div>
               <div>
@@ -6536,7 +6537,7 @@ function FleetView({
                 <input value={draft.color} onChange={(event) => updateDraft('color', event.target.value)} placeholder="Black" style={inputStyle} />
               </Field>
             </div>
-            <Field label="Price per day, USD">
+            <Field label="Base price per day (USD)">
               <input
                 type="number"
                 min="0"

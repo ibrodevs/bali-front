@@ -226,7 +226,7 @@ export const en = {
     stickyBookNow: 'Book Now',
   },
   common: {
-    loading: 'Loading…', tryAgain: 'Try again', currency: 'USD', day: 'day', noData: 'No data',
+    loading: 'Loading…', tryAgain: 'Try again', currency: 'IDR', day: 'day', noData: 'No data',
     statusLabels: {
       available: 'AVAILABLE', booked: 'BOOKED', partial: 'PARTIAL', service: 'SERVICE',
       confirmed: 'CONFIRMED', active: 'ACTIVE', completed: 'COMPLETED', cancelled: 'CANCELLED', created: 'CREATED',
@@ -437,7 +437,7 @@ export const ru: typeof en = {
     stickyBookNow: 'Забронировать',
   },
   common: {
-    loading: 'Загрузка…', tryAgain: 'Повторить', currency: 'USD', day: 'день', noData: 'Нет данных',
+    loading: 'Загрузка…', tryAgain: 'Повторить', currency: 'IDR', day: 'день', noData: 'Нет данных',
     statusLabels: {
       available: 'ДОСТУПНО', booked: 'ЗАНЯТО', partial: 'ЧАСТИЧНО', service: 'СЕРВИС',
       confirmed: 'ПОДТВЕРЖДЕНО', active: 'АКТИВНО', completed: 'ЗАВЕРШЕНО', cancelled: 'ОТМЕНЕНО', created: 'СОЗДАНО',
@@ -571,7 +571,7 @@ export const zh: typeof en = {
     whatsapp: 'WhatsApp',
     stickyBookNow: '立即预订',
   },
-  common: { loading: '加载中…', tryAgain: '重试', currency: 'USD', day: '天', noData: '暂无数据', statusLabels: { available: '可用', booked: '已订', partial: '部分', service: '维护', confirmed: '已确认', active: '进行中', completed: '已完成', cancelled: '已取消', created: '已创建' } },
+  common: { loading: '加载中…', tryAgain: '重试', currency: 'IDR', day: '天', noData: '暂无数据', statusLabels: { available: '可用', booked: '已订', partial: '部分', service: '维护', confirmed: '已确认', active: '进行中', completed: '已完成', cancelled: '已取消', created: '已创建' } },
   news: { eyebrow: '09 — 新闻', title: '新闻动态。', desc: '随时了解 Bali-Rent 的最新新闻、技巧和故事。', loading: '加载新闻中…', empty: '暂无新闻。', error: '无法加载新闻。', readMore: '阅读更多 →', backToNews: '← 返回新闻', adminTitle: '新闻管理', addArticle: '+ 添加文章', editArticle: '编辑', deleteArticle: '删除', confirmDelete: '确认删除该文章？', slug: 'Slug', publishedAt: '发布日期', isActive: '已发布', sortOrder: '排序', translations: '翻译', titleLabel: '标题', descriptionLabel: '描述', save: '保存', cancel: '取消', imageLabel: '图片' },
 };
 
@@ -690,7 +690,7 @@ export const id: typeof en = {
     whatsapp: 'WhatsApp',
     stickyBookNow: 'Pesan sekarang',
   },
-  common: { loading: 'Memuat…', tryAgain: 'Coba lagi', currency: 'USD', day: 'hari', noData: 'Belum ada data', statusLabels: { available: 'TERSEDIA', booked: 'DIPESAN', partial: 'SEBAGIAN', service: 'SERVIS', confirmed: 'DIKONFIRMASI', active: 'AKTIF', completed: 'SELESAI', cancelled: 'DIBATALKAN', created: 'DIBUAT' } },
+  common: { loading: 'Memuat…', tryAgain: 'Coba lagi', currency: 'IDR', day: 'hari', noData: 'Belum ada data', statusLabels: { available: 'TERSEDIA', booked: 'DIPESAN', partial: 'SEBAGIAN', service: 'SERVIS', confirmed: 'DIKONFIRMASI', active: 'AKTIF', completed: 'SELESAI', cancelled: 'DIBATALKAN', created: 'DIBUAT' } },
   news: { eyebrow: '09 — BERITA', title: 'Berita & Update.', desc: 'Tetap update dengan berita, tips, dan cerita terbaru dari Bali-Rent.', loading: 'Memuat berita…', empty: 'Belum ada berita.', error: 'Gagal memuat berita.', readMore: 'Baca lebih →', backToNews: '← Kembali ke berita', adminTitle: 'Manajemen Berita', addArticle: '+ Tambah artikel', editArticle: 'Edit', deleteArticle: 'Hapus', confirmDelete: 'Hapus artikel ini?', slug: 'Slug', publishedAt: 'Tanggal terbit', isActive: 'Terbit', sortOrder: 'Urutan', translations: 'Terjemahan', titleLabel: 'Judul', descriptionLabel: 'Deskripsi', save: 'Simpan', cancel: 'Batal', imageLabel: 'Gambar' },
 };
 
@@ -809,7 +809,7 @@ export const de: typeof en = {
     whatsapp: 'WhatsApp',
     stickyBookNow: 'Jetzt buchen',
   },
-  common: { loading: 'Laden…', tryAgain: 'Erneut', currency: 'USD', day: 'Tag', noData: 'Keine Daten', statusLabels: { available: 'VERFÜGBAR', booked: 'GEBUCHT', partial: 'TEILWEISE', service: 'SERVICE', confirmed: 'BESTÄTIGT', active: 'AKTIV', completed: 'ABGESCHLOSSEN', cancelled: 'STORNIERT', created: 'ERSTELLT' } },
+  common: { loading: 'Laden…', tryAgain: 'Erneut', currency: 'IDR', day: 'Tag', noData: 'Keine Daten', statusLabels: { available: 'VERFÜGBAR', booked: 'GEBUCHT', partial: 'TEILWEISE', service: 'SERVICE', confirmed: 'BESTÄTIGT', active: 'AKTIV', completed: 'ABGESCHLOSSEN', cancelled: 'STORNIERT', created: 'ERSTELLT' } },
   news: { eyebrow: '09 — NEWS', title: 'News & Updates.', desc: 'Bleib auf dem Laufenden mit den neuesten Nachrichten, Tipps und Stories von Bali-Rent.', loading: 'News laden…', empty: 'Noch keine News.', error: 'News konnten nicht geladen werden.', readMore: 'Mehr lesen →', backToNews: '← Zurück zu den News', adminTitle: 'News-Verwaltung', addArticle: '+ Artikel hinzufügen', editArticle: 'Bearbeiten', deleteArticle: 'Löschen', confirmDelete: 'Diesen Artikel löschen?', slug: 'Slug', publishedAt: 'Veröffentlichungsdatum', isActive: 'Veröffentlicht', sortOrder: 'Reihenfolge', translations: 'Übersetzungen', titleLabel: 'Titel', descriptionLabel: 'Beschreibung', save: 'Speichern', cancel: 'Abbrechen', imageLabel: 'Bild' },
 };
 
@@ -928,7 +928,7 @@ export const fr: typeof en = {
     whatsapp: 'WhatsApp',
     stickyBookNow: 'Reserver',
   },
-  common: { loading: 'Chargement…', tryAgain: 'Réessayer', currency: 'USD', day: 'jour', noData: 'Aucune donnée', statusLabels: { available: 'DISPONIBLE', booked: 'RÉSERVÉ', partial: 'PARTIEL', service: 'SERVICE', confirmed: 'CONFIRMÉ', active: 'ACTIF', completed: 'TERMINÉ', cancelled: 'ANNULÉ', created: 'CRÉÉ' } },
+  common: { loading: 'Chargement…', tryAgain: 'Réessayer', currency: 'IDR', day: 'jour', noData: 'Aucune donnée', statusLabels: { available: 'DISPONIBLE', booked: 'RÉSERVÉ', partial: 'PARTIEL', service: 'SERVICE', confirmed: 'CONFIRMÉ', active: 'ACTIF', completed: 'TERMINÉ', cancelled: 'ANNULÉ', created: 'CRÉÉ' } },
   news: { eyebrow: '09 — ACTUALITÉS', title: 'Actualités.', desc: 'Restez informé des dernières nouvelles, conseils et histoires de Bali-Rent.', loading: 'Chargement des actus…', empty: 'Aucune actualité pour le moment.', error: 'Impossible de charger les actus.', readMore: 'Lire plus →', backToNews: '← Retour aux actus', adminTitle: 'Gestion des actualités', addArticle: '+ Ajouter un article', editArticle: 'Modifier', deleteArticle: 'Supprimer', confirmDelete: 'Supprimer cet article ?', slug: 'Slug', publishedAt: 'Date de publication', isActive: 'Publié', sortOrder: 'Ordre', translations: 'Traductions', titleLabel: 'Titre', descriptionLabel: 'Description', save: 'Enregistrer', cancel: 'Annuler', imageLabel: 'Image' },
 };
 

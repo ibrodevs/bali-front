@@ -14,6 +14,7 @@ import {
   unwrapList,
 } from '@/lib/endpoints';
 import { useAuth } from '@/lib/i18n/AuthProvider';
+import { DEFAULT_CURRENCY_RATES, formatCurrencyAmount } from '@/lib/i18n/CurrencyProvider';
 import { createDefaultRentalRateDrafts, RentalRateDraft, validateRentalRateDrafts } from '@/lib/rentalRates';
 import { useRouter } from 'next/navigation';
 
@@ -55,6 +56,17 @@ function isAdminLike(user: { role?: string; is_staff?: boolean; is_superuser?: b
   if (!user) return false;
   if (user.is_staff || user.is_superuser) return true;
   return ['admin', 'manager', 'staff'].includes((user.role || '').toLowerCase());
+}
+
+function formatIdrPreview(value?: string | number | null) {
+  const amountUsd = Number(value ?? 0);
+  const normalizedUsd = Number.isFinite(amountUsd) ? amountUsd : 0;
+  const amountIdr = normalizedUsd * (DEFAULT_CURRENCY_RATES.IDR || 15650);
+  const hasFraction = Math.abs(amountIdr % 1) > 0.000001;
+  return formatCurrencyAmount(amountIdr, 'IDR', 'id-ID', {
+    minimumFractionDigits: hasFraction ? 2 : 0,
+    maximumFractionDigits: hasFraction ? 2 : 0,
+  });
 }
 
 function Panel({ children, style }: { children: ReactNode; style?: CSSProperties }) {
@@ -643,7 +655,7 @@ export default function AdminNewScooterPage() {
                   <Field label="Color">
                     <input value={scooterDraft.color} onChange={(event) => updateScooterDraft('color', event.target.value)} style={inputStyle} placeholder="White" />
                   </Field>
-                  <Field label="Price / day">
+                  <Field label="Base price / day (USD)" hint="Stored in USD base, preview uses IDR by default.">
                     <input type="number" step="0.01" value={scooterDraft.base_price_usd} onChange={(event) => updateScooterDraft('base_price_usd', event.target.value)} style={inputStyle} />
                   </Field>
                   <Field label="Mileage">
@@ -683,7 +695,7 @@ export default function AdminNewScooterPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: '80px 80px 1fr 120px 88px', gap: 10, fontSize: 12, color: A.g500, fontWeight: 700 }}>
                   <span>From</span>
                   <span>To</span>
-                  <span>Price USD</span>
+                  <span>Base price USD</span>
                   <span>Billing days</span>
                   <span />
                 </div>
@@ -901,7 +913,7 @@ export default function AdminNewScooterPage() {
                     </div>
                   </div>
                   <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 800, fontSize: 22 }}>
-                    {scooterDraft.base_price_usd ? `$${scooterDraft.base_price_usd}` : '$0'}
+                    {formatIdrPreview(scooterDraft.base_price_usd)}
                   </div>
                 </div>
                 <div style={{ fontSize: 14, color: A.g700, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>

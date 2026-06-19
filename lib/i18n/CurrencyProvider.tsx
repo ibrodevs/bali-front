@@ -4,12 +4,12 @@ import { useAuth } from './AuthProvider';
 import { endpoints } from '@/lib/endpoints';
 
 export const DEFAULT_CURRENCY_RATES: Record<string, number> = {
+  'IDR': 15650,
   'USD': 1,
   'RUB': 98.50,
   'EUR': 0.92,
   'CNY': 7.24,
   'AUD': 1.52,
-  'IDR': 15650,
 };
 
 export const CURRENCY_RATES = DEFAULT_CURRENCY_RATES;
@@ -29,7 +29,7 @@ function normalizeCurrencyCode(value: unknown) {
 
 function getCurrencyDisplayToken(currency?: string | null) {
   const normalizedCurrency = normalizeCurrencyCode(currency);
-  if (!normalizedCurrency) return '$';
+  if (!normalizedCurrency) return 'Rp';
   return CURRENCY_SYMBOLS[normalizedCurrency] || normalizedCurrency;
 }
 
@@ -89,11 +89,11 @@ export function convertAmount(amount: number, fromCurrency = 'USD', toCurrency =
 
 export function formatCurrencyAmount(
   amount: number,
-  currency = 'USD',
+  currency = 'IDR',
   locale = 'en-US',
   options?: { minimumFractionDigits?: number; maximumFractionDigits?: number },
 ): string {
-  const normalizedCurrency = normalizeCurrencyCode(currency) || 'USD';
+  const normalizedCurrency = normalizeCurrencyCode(currency) || 'IDR';
   const displayToken = getCurrencyDisplayToken(normalizedCurrency);
   const normalizedAmount = Number.isFinite(amount) ? amount : 0;
   const formattedAmount = new Intl.NumberFormat(locale, {
@@ -138,17 +138,17 @@ function persistCurrencyRates(rates: Record<string, number>) {
 }
 
 function detectInitial(userCurrency?: string, rates: Record<string, number> = DEFAULT_CURRENCY_RATES): string {
-  if (typeof window === 'undefined') return 'USD';
+  if (typeof window === 'undefined') return 'IDR';
   const saved = localStorage.getItem(STORAGE_KEY) as string | null;
   if (isSupportedCurrencyCode(saved, rates)) return normalizeCurrencyCode(saved);
   if (isSupportedCurrencyCode(userCurrency, rates)) return normalizeCurrencyCode(userCurrency);
-  return 'USD';
+  return 'IDR';
 }
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [rates, setRatesState] = useState<Record<string, number>>(DEFAULT_CURRENCY_RATES);
-  const [currency, setCurrencyState] = useState<string>('USD');
+  const [currency, setCurrencyState] = useState<string>('IDR');
   const [hydrated, setHydrated] = useState(false);
 
   const applyRates = useCallback((nextRatesRaw: Record<string, number>, options?: { persist?: boolean }) => {
@@ -251,7 +251,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     return convertWithRates(amount, rates, fromCurrency, target);
   }, [currency, rates]);
 
-  const symbol = CURRENCY_SYMBOLS[currency] || (currency ? `${currency} ` : '$');
+  const symbol = CURRENCY_SYMBOLS[currency] || (currency ? `${currency} ` : 'Rp');
   const availableCurrencies = useMemo(() => {
     const defaults = Object.keys(DEFAULT_CURRENCY_RATES);
     const extra = Object.keys(rates).filter((code) => !defaults.includes(code));

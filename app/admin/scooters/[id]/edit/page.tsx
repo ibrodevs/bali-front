@@ -14,6 +14,7 @@ import {
   unwrapList,
 } from '@/lib/endpoints';
 import { useAuth } from '@/lib/i18n/AuthProvider';
+import { DEFAULT_CURRENCY_RATES, formatCurrencyAmount } from '@/lib/i18n/CurrencyProvider';
 import { createDefaultRentalRateDrafts, draftsFromApiRates, RentalRateDraft, validateRentalRateDrafts } from '@/lib/rentalRates';
 import { useParams } from 'next/navigation';
 
@@ -65,6 +66,17 @@ function isAdminLike(user: { role?: string; is_staff?: boolean; is_superuser?: b
   if (!user) return false;
   if (user.is_staff || user.is_superuser) return true;
   return ['admin', 'manager', 'staff'].includes((user.role || '').toLowerCase());
+}
+
+function formatIdrPreview(value?: string | number | null) {
+  const amountUsd = Number(value ?? 0);
+  const normalizedUsd = Number.isFinite(amountUsd) ? amountUsd : 0;
+  const amountIdr = normalizedUsd * (DEFAULT_CURRENCY_RATES.IDR || 15650);
+  const hasFraction = Math.abs(amountIdr % 1) > 0.000001;
+  return formatCurrencyAmount(amountIdr, 'IDR', 'id-ID', {
+    minimumFractionDigits: hasFraction ? 2 : 0,
+    maximumFractionDigits: hasFraction ? 2 : 0,
+  });
 }
 
 function Panel({ children, style }: { children: ReactNode; style?: CSSProperties }) {
@@ -753,7 +765,7 @@ export default function AdminEditScooterPage() {
                       placeholder="White"
                     />
                   </Field>
-                  <Field label="Price / day">
+                  <Field label="Base price / day (USD)" hint="Stored in USD base, preview uses IDR by default.">
                     <input
                       type="number"
                       step="0.01"
@@ -814,7 +826,7 @@ export default function AdminEditScooterPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '80px 80px 1fr 120px 88px', gap: 10, fontSize: 12, color: A.g500, fontWeight: 700 }}>
                   <span>From</span>
                   <span>To</span>
-                  {!isMobile && <span>Price USD</span>}
+                  {!isMobile && <span>Base price USD</span>}
                   {!isMobile && <span>Billing days</span>}
                   {!isMobile && <span />}
                 </div>
@@ -833,7 +845,7 @@ export default function AdminEditScooterPage() {
                     )}
                     {isMobile ? (
                       <>
-                        <input type="number" min="0" step="0.01" value={rate.price_usd} onChange={(event) => updateRentalRate(index, 'price_usd', event.target.value)} style={inputStyle} placeholder="Price USD" />
+                        <input type="number" min="0" step="0.01" value={rate.price_usd} onChange={(event) => updateRentalRate(index, 'price_usd', event.target.value)} style={inputStyle} placeholder="Base price USD" />
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10 }}>
                           <input type="number" min="1" value={rate.billing_period_days} onChange={(event) => updateRentalRate(index, 'billing_period_days', event.target.value)} style={inputStyle} placeholder="Billing days" />
                           <Button variant="outline" onClick={() => removeRentalRateRow(index)} disabled={rentalRates.length === 1}>Remove</Button>
@@ -1227,7 +1239,7 @@ export default function AdminEditScooterPage() {
                     </div>
                   </div>
                   <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 800, fontSize: 20 }}>
-                    {draft.base_price_usd ? `$${draft.base_price_usd}` : '$0'}
+                    {formatIdrPreview(draft.base_price_usd)}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
