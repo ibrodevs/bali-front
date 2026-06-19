@@ -6363,10 +6363,26 @@ function FleetView({
                         height: 180,
                         position: 'relative',
                         background: image
-                          ? `center / cover no-repeat url(${image})`
+                          ? A.white
                           : 'linear-gradient(145deg,#111 0%,#2a2a2a 100%)',
+                        overflow: 'hidden',
                       }}
                     >
+                      {image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={image}
+                          alt={item.title}
+                          style={{
+                            position: 'absolute',
+                            inset: 0,
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            display: 'block',
+                          }}
+                        />
+                      ) : null}
                       {!image ? (
                         <div
                           style={{

@@ -779,8 +779,15 @@ function FleetView({
                   >
                     <div
                       onClick={() => handleSelect(item)}
-                      style={{ cursor: 'pointer', height: 180, position: 'relative', background: item.main_image ? `center / cover no-repeat url(${item.main_image})` : 'linear-gradient(145deg,#111 0%,#2a2a2a 100%)' }}
+                      style={{ cursor: 'pointer', height: 180, position: 'relative', background: item.main_image ? A.white : 'linear-gradient(145deg,#111 0%,#2a2a2a 100%)', overflow: 'hidden' }}
                     >
+                      {item.main_image ? (
+                        <img
+                          src={item.main_image}
+                          alt={item.title}
+                          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        />
+                      ) : null}
                       {!item.main_image ? (
                         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Sora', fontWeight: 700, fontSize: 20, color: 'rgba(255,255,255,0.7)', padding: 16, textAlign: 'center' }}>
                           {item.title}

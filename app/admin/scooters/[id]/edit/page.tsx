@@ -1186,7 +1186,7 @@ export default function AdminEditScooterPage() {
                 style={{
                   height: isMobile ? 180 : 220,
                   background: mainPreviewUrl
-                    ? `center / cover no-repeat url(${mainPreviewUrl})`
+                    ? A.white
                     : 'linear-gradient(145deg,#111 0%,#2a2a2a 100%)',
                   display: 'flex',
                   alignItems: 'center',
@@ -1197,8 +1197,23 @@ export default function AdminEditScooterPage() {
                   fontSize: isMobile ? 18 : 22,
                   textAlign: 'center',
                   padding: 18,
+                  position: 'relative',
+                  overflow: 'hidden',
                 }}
               >
+                {mainPreviewUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={mainPreviewUrl}
+                    alt={draft.title || 'Scooter preview'}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      display: 'block',
+                    }}
+                  />
+                ) : null}
                 {!mainPreviewUrl ? draft.title || 'Scooter' : null}
               </div>
               <div style={{ padding: 16 }}>
