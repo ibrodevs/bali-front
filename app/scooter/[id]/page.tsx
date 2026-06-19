@@ -28,6 +28,13 @@ import { useSiteContentPreview } from '@/lib/siteContentPreview';
 type AddonView = { id: string | number; apiId?: number; name: string; icon: string; price: number };
 
 const FALLBACK_TONES = ['sand', 'jungle', 'sunset', 'ocean'];
+const richTextStyle = {
+  margin: '10px 0 0',
+  lineHeight: 1.65,
+  fontSize: 14,
+  color: 'rgba(0,0,0,0.55)',
+  whiteSpace: 'pre-wrap',
+} satisfies CSSProperties;
 
 function addonPriceValue(addon: ApiAddon): number {
   return Number(addon.priceUSD ?? addon.price_usd ?? addon.price ?? 0);
@@ -320,13 +327,13 @@ export default function ScooterDetailPage() {
                 {description && (
                   <div style={{ background: surf, borderRadius: 12, padding: 18 }}>
                     <BREyebrow><span {...marker('detail.descriptionTitle')}>{t.detail.descriptionTitle}</span></BREyebrow>
-                    <p style={{ margin: '10px 0 0', lineHeight: 1.65, fontSize: 14, color: sub }}>{description}</p>
+                    <p style={richTextStyle}>{description}</p>
                   </div>
                 )}
                 {rentalTerms && (
                   <div style={{ background: surf, borderRadius: 12, padding: 18 }}>
                     <BREyebrow><span {...marker('detail.rentalTermsTitle')}>{t.detail.rentalTermsTitle}</span></BREyebrow>
-                    <p style={{ margin: '10px 0 0', lineHeight: 1.65, fontSize: 14, color: sub }}>{rentalTerms}</p>
+                    <p style={richTextStyle}>{rentalTerms}</p>
                   </div>
                 )}
               </div>
