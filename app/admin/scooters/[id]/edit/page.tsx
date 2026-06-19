@@ -201,11 +201,15 @@ type NewPhoto = {
 
 type ExistingImage = {
   id: number;
-  image: string;
+  image: string | null;
   alt_text?: string;
   sort_order?: number;
   is_main?: boolean;
 };
+
+function validExistingImages(images: ExistingImage[]) {
+  return images.filter((image) => Boolean(image.image));
+}
 
 export default function AdminEditScooterPage() {
   const { user, loading: authLoading } = useAuth();
@@ -289,7 +293,7 @@ export default function AdminEditScooterPage() {
         setScooterModels(models);
         setVehicleTypes(unwrapList(typesRes));
         setScooter(scooterRes);
-        setExistingImages(scooterRes.gallery || []);
+        setExistingImages(validExistingImages(scooterRes.gallery || []));
         const priceRaw = scooterRes.base_price_usd ?? scooterRes.price_per_day;
         const nextRates = scooterRes.pricing_tiers?.length
           ? draftsFromApiRates(scooterRes.pricing_tiers)
@@ -483,7 +487,7 @@ export default function AdminEditScooterPage() {
         await endpoints.adminUploadScooterImage(scooterId, item.file, {
           alt_text: item.alt_text.trim() || draft.title,
           sort_order: startOrder + i,
-          is_main: existingImages.length === 0 && i === newMainIndex,
+          is_main: i === newMainIndex,
         });
       }
 
@@ -540,7 +544,7 @@ export default function AdminEditScooterPage() {
       setSuccess('Changes saved successfully.');
       setNewPhotos([]);
       const refreshed = await endpoints.adminScooter(scooterId);
-      setExistingImages(refreshed.gallery || []);
+      setExistingImages(validExistingImages(refreshed.gallery || []));
       const refreshedRates = refreshed.pricing_tiers?.length
         ? draftsFromApiRates(refreshed.pricing_tiers)
         : createDefaultRentalRateDrafts(refreshed.base_price_usd ?? refreshed.price_per_day ?? '');
@@ -1140,16 +1144,14 @@ export default function AdminEditScooterPage() {
                             style={inputStyle}
                           />
                         </Field>
-                        {existingImages.length === 0 ? (
-                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
-                            <input
-                              type="radio"
-                              checked={newMainIndex === index}
-                              onChange={() => setNewMainIndex(index)}
-                            />
-                            <span>Main photo</span>
-                          </label>
-                        ) : null}
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
+                          <input
+                            type="radio"
+                            checked={newMainIndex === index}
+                            onChange={() => setNewMainIndex(index)}
+                          />
+                          <span>{existingImages.length === 0 ? 'Main photo' : 'Replace main photo'}</span>
+                        </label>
                         {isMobile && (
                           <Button variant="outline" onClick={() => removeNewPhoto(index)} style={{ justifySelf: 'start' }}>
                             Remove
