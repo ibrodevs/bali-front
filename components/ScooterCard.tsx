@@ -2,18 +2,26 @@
 import Link from 'next/link';
 import { BRPhoto, BRChip, BRPrice } from './BR';
 import { GaugeIcon, LightningIcon, WeightIcon } from './Icons';
+import { useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { DisplayScooter, resolveScooterRouteId } from '@/lib/displayScooter';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
 
 export default function ScooterCard({ s, dark = false, large = false }: { s: DisplayScooter; dark?: boolean; large?: boolean }) {
   const { t } = useLocale();
+  const { currency } = useCurrency();
   const { marker } = useSiteContentPreview();
   const fg = dark ? '#fff' : '#000';
   const sub = dark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.55)';
   const isAvail = s.status === 'available';
   const hasImage = Boolean(s.imageUrl);
   const routeId = s.apiId ?? resolveScooterRouteId(s.id, s.name) ?? s.id;
+  const approxUsdLabel = currency === 'USD'
+    ? null
+    : `~USD ${new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      }).format(Number(s.price || 0))}`;
   return (
     <Link
       href={`/scooter/${routeId}`}
@@ -88,9 +96,16 @@ export default function ScooterCard({ s, dark = false, large = false }: { s: Dis
             <div className="br-mono" style={{ fontSize: 10, letterSpacing: '0.14em', color: sub }}>{s.type.toUpperCase()}{s.cc ? ` · ${s.cc}CC` : ''}</div>
             <div className="br-display" style={{ fontSize: 22, marginTop: 4, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
           </div>
-          <div style={{ textAlign: 'right', flexShrink: 0, display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
-            <span {...marker('catalog.from')} className="br-mono" style={{ fontSize: 10, color: sub }}>{t.catalog.from}</span>
-            <BRPrice amount={s.price} size={20} />
+          <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
+              <span {...marker('catalog.from')} className="br-mono" style={{ fontSize: 10, color: sub }}>{t.catalog.from}</span>
+              <BRPrice amount={s.price} size={20} />
+            </div>
+            {approxUsdLabel ? (
+              <span className="br-mono" style={{ fontSize: 11, color: sub }}>
+                {approxUsdLabel}
+              </span>
+            ) : null}
           </div>
         </div>
         {(s.range > 0 || s.top > 0 || s.weight > 0) && (
