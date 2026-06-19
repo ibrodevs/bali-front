@@ -24,7 +24,9 @@ export const CURRENCY_SYMBOLS: Record<string, string> = {
 };
 
 function normalizeCurrencyCode(value: unknown) {
-  return String(value || '').trim().toUpperCase();
+  const normalized = String(value || '').trim().toUpperCase();
+  if (normalized === 'IRD') return 'IDR';
+  return normalized;
 }
 
 function getCurrencyDisplayToken(currency?: string | null) {

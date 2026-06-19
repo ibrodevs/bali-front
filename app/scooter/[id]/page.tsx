@@ -2,7 +2,7 @@
 import { CSSProperties, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { BRPhoto, BREyebrow, BRPrice, BRPrimary } from '@/components/BR';
+import { BRPhoto, BREyebrow, BRPrimary } from '@/components/BR';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import { useCurrency } from '@/lib/i18n/CurrencyProvider';
@@ -53,7 +53,7 @@ export default function ScooterDetailPage() {
   const router = useRouter();
   const { t, locale } = useLocale();
   const { marker } = useSiteContentPreview();
-  const { convertPrice, symbol } = useCurrency();
+  const { convertPrice, symbol, currency } = useCurrency();
   const [scooter, setScooter] = useState<DisplayScooter | null>(null);
   const [addons, setAddons] = useState<AddonView[]>([]);
   const [gallery, setGallery] = useState<string[]>([]);
@@ -147,6 +147,19 @@ export default function ScooterDetailPage() {
     [addons, selectedAddOnIds]
   );
   const total = Number((scooter?.price || 0) + addonTotal);
+  const baseDailyPrice = Number(scooter?.price || 0);
+  const displayDailyPrice = convertPrice(baseDailyPrice);
+  const displayDailyPriceLabel = `${currency === 'IDR' ? 'Rp' : symbol} ${new Intl.NumberFormat(currency === 'IDR' ? 'en-US' : locale, {
+    minimumFractionDigits: currency === 'IDR' ? 0 : 2,
+    maximumFractionDigits: currency === 'IDR' ? 0 : 2,
+  }).format(displayDailyPrice)}`;
+  const dailyBillingLabel = formatBillingLabel(1, locale);
+  const approxUsdLabel = currency === 'USD'
+    ? null
+    : `~USD ${new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      }).format(baseDailyPrice)}`;
 
   const goBook = () => {
     if (!scooter) return;
@@ -345,11 +358,28 @@ export default function ScooterDetailPage() {
           <div className="br-detail-side" style={{ background: surf, borderRadius: 16, padding: 28, position: 'sticky', top: 96 }}>
             <BREyebrow>{scooter.type.toUpperCase()}{scooter.cc ? ` · ${scooter.cc}CC` : ''} · {scooter.tag}</BREyebrow>
             <h1 className="br-display" style={{ fontSize: 48, lineHeight: 0.98, margin: '12px 0 4px', letterSpacing: '-0.03em' }}>{scooter.name}</h1>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 12 }}>
-              <BRPrice amount={scooter.price} size={36} />
-              <span className="br-mono" style={{ fontSize: 12, color: sub }}>
-                · <span {...marker('catalog.from')}>{t.catalog.from}</span>
-              </span>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 16,
+                marginTop: 16,
+                padding: '16px 18px',
+                borderRadius: 14,
+                background: bg,
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <div className="br-display" style={{ fontSize: 28, lineHeight: 1.05, letterSpacing: '-0.03em' }}>
+                  {displayDailyPriceLabel} / {dailyBillingLabel}
+                </div>
+              </div>
+              {approxUsdLabel ? (
+                <div className="br-mono" style={{ fontSize: 14, color: fg, whiteSpace: 'nowrap' }}>
+                  {approxUsdLabel}
+                </div>
+              ) : null}
             </div>
 
             {pricingTiers && pricingTiers.length > 0 ? (
