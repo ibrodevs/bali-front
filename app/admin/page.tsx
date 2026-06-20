@@ -386,7 +386,7 @@ function Panel({ children, style }: { children: ReactNode; style?: CSSProperties
   );
 }
 
-function Field({ label, children, style }: { label: string; children: ReactNode; style?: CSSProperties }) {
+function Field({ label, children, style, hint }: { label: string; children: ReactNode; style?: CSSProperties; hint?: string }) {
   return (
     <label style={{ display: 'grid', gap: 8, ...style }}>
       <span
@@ -402,6 +402,9 @@ function Field({ label, children, style }: { label: string; children: ReactNode;
         {label}
       </span>
       {children}
+      {hint ? (
+        <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: A.g500 }}>{hint}</span>
+      ) : null}
     </label>
   );
 }
@@ -473,6 +476,7 @@ function normalizeAdminCurrencyRates(raw: unknown) {
   }
 
   if (!next.USD) next.USD = 1;
+  next.IDR = DEFAULT_CURRENCY_RATES.IDR;
   return Object.keys(next).length ? next : { ...DEFAULT_CURRENCY_RATES };
 }
 
@@ -744,7 +748,7 @@ function CurrencySettingsView({ isMobile }: { isMobile: boolean }) {
                         disabled={code === 'USD'}
                       />
                     </Field>
-                    <Field label="Rate vs USD" style={{ margin: 0 }}>
+                    <Field label="Rate vs USD" style={{ margin: 0 }} hint={code === 'IDR' ? 'Fixed — IDR is the real price, never recalculated.' : undefined}>
                       <input
                         type="number"
                         min="0.0001"
@@ -752,14 +756,14 @@ function CurrencySettingsView({ isMobile }: { isMobile: boolean }) {
                         value={rates[code] ?? 0}
                         onChange={(event) => updateRate(code, event.target.value)}
                         style={inputStyle}
-                        disabled={code === 'USD'}
+                        disabled={code === 'USD' || code === 'IDR'}
                       />
                     </Field>
                     <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500 }}>
                       Symbol: <strong style={{ color: A.black }}>{CURRENCY_SYMBOLS[code] || code}</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end' }}>
-                      <Button variant="danger" onClick={() => removeCurrency(code)} disabled={code === 'USD'} style={{ width: isMobile ? '100%' : undefined }}>
+                      <Button variant="danger" onClick={() => removeCurrency(code)} disabled={code === 'USD' || code === 'IDR'} style={{ width: isMobile ? '100%' : undefined }}>
                         Remove
                       </Button>
                     </div>

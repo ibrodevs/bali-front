@@ -70,6 +70,16 @@ function isAdminLike(user: { role?: string; is_staff?: boolean; is_superuser?: b
   return ['admin', 'manager', 'staff'].includes((user.role || '').toLowerCase());
 }
 
+function groupDigits(value?: string | number | null) {
+  const digits = String(value ?? '').replace(/[^\d]/g, '');
+  if (!digits) return '';
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+}
+
+function ungroupDigits(value: string) {
+  return value.replace(/[^\d]/g, '');
+}
+
 function formatIdrPreview(value?: string | number | null) {
   const amountIdr = Number(value ?? 0);
   const normalizedIdr = Number.isFinite(amountIdr) ? amountIdr : 0;
@@ -510,15 +520,6 @@ export default function AdminEditScooterPage() {
         trunk: (translations[locale.code]?.trunk || '').trim() || (locale.code === 'en' ? modelDraft.trunk.trim() : ''),
         color: (translations[locale.code]?.color || '').trim() || (locale.code === 'en' ? draft.color.trim() : ''),
       }));
-      const requiredFields: Array<keyof ApiVehicleTranslation> = ['title', 'description', 'rental_terms', 'transmission', 'trunk', 'color'];
-      for (const locale of LOCALES) {
-        const item = translationList.find((translation) => translation.language === locale.code);
-        const missing = requiredFields.filter((field) => !String(item?.[field] || '').trim());
-        if (missing.length > 0) {
-          setActiveLang(locale.code);
-          throw new Error(`Fill all translation fields for ${locale.label}: ${missing.join(', ')}`);
-        }
-      }
 
       const sku = draft.sku.trim();
       const validatedRates = validateRentalRateDrafts(rentalRatesFromIdrToUsd(rentalRates));
@@ -808,10 +809,10 @@ export default function AdminEditScooterPage() {
                   </Field>
                   <Field label="Price / day (IDR)">
                     <input
-                      type="number"
-                      step="1"
-                      value={draft.base_price_usd}
-                      onChange={(e) => updateDraft('base_price_usd', e.target.value)}
+                      type="text"
+                      inputMode="numeric"
+                      value={groupDigits(draft.base_price_usd)}
+                      onChange={(e) => updateDraft('base_price_usd', ungroupDigits(e.target.value))}
                       style={inputStyle}
                     />
                   </Field>
@@ -876,7 +877,7 @@ export default function AdminEditScooterPage() {
                     <input type="number" min="1" value={rate.min_days} onChange={(event) => updateRentalRate(index, 'min_days', event.target.value)} style={inputStyle} />
                     <input type="number" min="1" value={rate.max_days} onChange={(event) => updateRentalRate(index, 'max_days', event.target.value)} style={inputStyle} placeholder="∞" />
                     {isMobile ? null : (
-                      <input type="number" min="0" step="1" value={rate.price_usd} onChange={(event) => updateRentalRate(index, 'price_usd', event.target.value)} style={inputStyle} />
+                      <input type="text" inputMode="numeric" value={groupDigits(rate.price_usd)} onChange={(event) => updateRentalRate(index, 'price_usd', ungroupDigits(event.target.value))} style={inputStyle} />
                     )}
                     {isMobile ? null : (
                       <input type="number" min="1" value={rate.billing_period_days} onChange={(event) => updateRentalRate(index, 'billing_period_days', event.target.value)} style={inputStyle} />
@@ -886,7 +887,7 @@ export default function AdminEditScooterPage() {
                     )}
                     {isMobile ? (
                       <>
-                        <input type="number" min="0" step="1" value={rate.price_usd} onChange={(event) => updateRentalRate(index, 'price_usd', event.target.value)} style={inputStyle} placeholder="Price IDR" />
+                        <input type="text" inputMode="numeric" value={groupDigits(rate.price_usd)} onChange={(event) => updateRentalRate(index, 'price_usd', ungroupDigits(event.target.value))} style={inputStyle} placeholder="Price IDR" />
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10 }}>
                           <input type="number" min="1" value={rate.billing_period_days} onChange={(event) => updateRentalRate(index, 'billing_period_days', event.target.value)} style={inputStyle} placeholder="Billing days" />
                           <Button variant="outline" onClick={() => removeRentalRateRow(index)} disabled={rentalRates.length === 1}>Remove</Button>

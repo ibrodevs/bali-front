@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
-import { useCurrency } from '@/lib/i18n/CurrencyProvider';
+import { formatGroupedAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
 
@@ -120,14 +120,16 @@ export function BREyebrow({ children, style }: { children: React.ReactNode; styl
 export function BRPrice({ amount, currency = '$', per = 'day', size = 22 }: { amount: number; currency?: string; per?: string; size?: number }) {
   const { t } = useLocale();
   const { marker } = useSiteContentPreview();
-  const { convertPrice, symbol } = useCurrency();
-  const convertedAmount = Math.round(convertPrice(amount) * 100) / 100;
+  const { currency: activeCurrency, convertPrice, symbol } = useCurrency();
+  const decimals = activeCurrency === 'IDR' ? 0 : 2;
+  const convertedAmount = Math.round(convertPrice(amount) * 10 ** decimals) / 10 ** decimals;
+  const displayAmount = formatGroupedAmount(convertedAmount, decimals);
   const period = per === 'day' ? t.common.day : per;
-  
+
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4 }}>
       <span className="br-mono" style={{ fontSize: size * 0.6, opacity: 0.6 }}>{symbol}</span>
-      <span className="br-mono" style={{ fontSize: size, fontWeight: 600, letterSpacing: '-0.02em' }}>{convertedAmount}</span>
+      <span className="br-mono" style={{ fontSize: size, fontWeight: 600, letterSpacing: '-0.02em' }}>{displayAmount}</span>
       <span {...(per === 'day' ? marker('common.day') : {})} className="br-mono" style={{ fontSize: size * 0.5, opacity: 0.55 }}>/{period}</span>
     </span>
   );

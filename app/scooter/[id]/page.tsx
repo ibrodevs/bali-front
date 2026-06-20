@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { BRPhoto, BREyebrow, BRPrimary } from '@/components/BR';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
-import { useCurrency } from '@/lib/i18n/CurrencyProvider';
+import { formatGroupedAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
 import {
   EngineIcon,
   FuelIcon,
@@ -149,10 +149,12 @@ export default function ScooterDetailPage() {
   const total = Number((scooter?.price || 0) + addonTotal);
   const baseDailyPrice = Number(scooter?.price || 0);
   const displayDailyPrice = convertPrice(baseDailyPrice);
-  const displayDailyPriceLabel = `${currency === 'IDR' ? 'Rp' : symbol} ${new Intl.NumberFormat(currency === 'IDR' ? 'en-US' : locale, {
-    minimumFractionDigits: currency === 'IDR' ? 0 : 2,
-    maximumFractionDigits: currency === 'IDR' ? 0 : 2,
-  }).format(displayDailyPrice)}`;
+  const displayDailyPriceLabel = currency === 'IDR'
+    ? `Rp ${formatGroupedAmount(displayDailyPrice, 0)}`
+    : `${symbol} ${new Intl.NumberFormat(locale, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(displayDailyPrice)}`;
   const dailyBillingLabel = formatBillingLabel(1, locale);
   const approxUsdLabel = currency === 'USD'
     ? null

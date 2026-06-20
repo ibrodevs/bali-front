@@ -64,6 +64,7 @@ function normalizeCurrencyRates(raw: unknown): Record<string, number> {
   if (!next.USD) {
     next.USD = 1;
   }
+  next.IDR = DEFAULT_CURRENCY_RATES.IDR;
 
   return Object.keys(next).length ? next : DEFAULT_CURRENCY_RATES;
 }
@@ -72,12 +73,20 @@ function isSupportedCurrencyCode(currency?: string | null, rates: Record<string,
   return Boolean(currency && normalizeCurrencyCode(currency) in rates);
 }
 
+// IDR is the real-world price the admin sets (e.g. when editing a scooter's tariff in IDR).
+// It must stay fixed no matter how exchange rates are reconfigured later — only USD and
+// other secondary currencies are allowed to move when rates change.
+function rateFor(code: string, rates: Record<string, number>): number {
+  if (code === 'IDR') return DEFAULT_CURRENCY_RATES.IDR;
+  return rates[code] || 1;
+}
+
 function convertWithRates(amount: number, rates: Record<string, number>, fromCurrency = 'USD', toCurrency = 'USD'): number {
   const normalizedAmount = Number.isFinite(amount) ? amount : 0;
   const safeFrom = isSupportedCurrencyCode(fromCurrency, rates) ? normalizeCurrencyCode(fromCurrency) : 'USD';
   const safeTo = isSupportedCurrencyCode(toCurrency, rates) ? normalizeCurrencyCode(toCurrency) : 'USD';
-  const fromRate = rates[safeFrom] || 1;
-  const toRate = rates[safeTo] || 1;
+  const fromRate = rateFor(safeFrom, rates);
+  const toRate = rateFor(safeTo, rates);
   return (normalizedAmount / fromRate) * toRate;
 }
 
@@ -87,6 +96,16 @@ export function isSupportedCurrency(currency?: string | null): currency is strin
 
 export function convertAmount(amount: number, fromCurrency = 'USD', toCurrency = 'USD'): number {
   return convertWithRates(amount, DEFAULT_CURRENCY_RATES, fromCurrency, toCurrency);
+}
+
+export function formatGroupedAmount(amount: number, decimals = 0): string {
+  const normalizedAmount = Number.isFinite(amount) ? amount : 0;
+  const fixed = normalizedAmount.toFixed(decimals);
+  const [intPart, fracPart] = fixed.split('.');
+  const sign = intPart.startsWith('-') ? '-' : '';
+  const digits = sign ? intPart.slice(1) : intPart;
+  const grouped = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return fracPart ? `${sign}${grouped}.${fracPart}` : `${sign}${grouped}`;
 }
 
 export function formatCurrencyAmount(

@@ -16,7 +16,7 @@ import SiteHeader from '@/components/SiteHeader';
 import { ApiError } from '@/lib/api';
 import { DisplayScooter, mapApiScooter, resolveScooterImage, resolveScooterImageObjectPosition, resolveScooterRouteId } from '@/lib/displayScooter';
 import { ApiScooterRentalRate, endpoints, unwrapList } from '@/lib/endpoints';
-import { useCurrency } from '@/lib/i18n/CurrencyProvider';
+import { formatGroupedAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { formatBillingLabel, formatRateRange } from '@/lib/rentalRates';
 import { useSiteSettings } from '@/lib/siteSettings';
@@ -48,8 +48,12 @@ function effectiveDailyPrice(rate: ApiScooterRentalRate) {
 
 export default function PricesPage() {
   const { t, locale } = useLocale();
-  const { convertPrice, symbol } = useCurrency();
+  const { convertPrice, currency, symbol } = useCurrency();
   const { socialLinks } = useSiteSettings();
+  const formatPrice = (amountUsd: number) => {
+    const decimals = currency === 'IDR' ? 0 : 2;
+    return `${symbol}${formatGroupedAmount(convertPrice(amountUsd), decimals)}`;
+  };
   const [rates, setRates] = useState<ApiScooterRentalRate[]>([]);
   const [fleet, setFleet] = useState<DisplayScooter[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,7 +157,7 @@ export default function PricesPage() {
   }, [fleetById, rates]);
 
   const lowestDailyUsd = groups[0]?.minDailyUsd || 0;
-  const minDailyLabel = `${symbol}${(Math.round(convertPrice(lowestDailyUsd) * 100) / 100).toFixed(2)}`;
+  const minDailyLabel = formatPrice(lowestDailyUsd);
   const headlinePrice = loading ? '...' : lowestDailyUsd ? minDailyLabel : '—';
 
   const copy = {
@@ -578,7 +582,7 @@ export default function PricesPage() {
               {groups.map((group) => {
                 const cc = group.scooter?.cc ? `${group.scooter.cc}CC` : null;
                 const typeLabel = group.scooter?.type || copy.scooter;
-                const minDaily = `${symbol}${(Math.round(convertPrice(group.minDailyUsd) * 100) / 100).toFixed(2)}`;
+                const minDaily = formatPrice(group.minDailyUsd);
 
                 return (
                   <div
@@ -734,8 +738,8 @@ export default function PricesPage() {
 
                       <div style={{ display: 'grid', gap: 10 }}>
                         {group.rates.map((rate) => {
-                          const convertedTotal = `${symbol}${(Math.round(convertPrice(toNumber(rate.price_usd)) * 100) / 100).toFixed(2)}`;
-                          const convertedDaily = `${symbol}${(Math.round(convertPrice(effectiveDailyPrice(rate)) * 100) / 100).toFixed(2)}`;
+                          const convertedTotal = formatPrice(toNumber(rate.price_usd));
+                          const convertedDaily = formatPrice(effectiveDailyPrice(rate));
                           const isFeatured = group.featuredRateId === rate.id;
 
                           return (
