@@ -265,14 +265,6 @@ button, a { -webkit-tap-highlight-color: transparent; }
   white-space: nowrap;
 }
 
-@media (min-width: 1101px) {
-  .br-scooter-card-title {
-    overflow: visible;
-    text-overflow: unset;
-    white-space: normal;
-  }
-}
-
 /* Image zoom on scooter card hover */
 .br-scooter-card:hover .br-scooter-card-img {
   transform: scale(1.06);
@@ -1681,7 +1673,6 @@ input[type="time"]:hover::-webkit-calendar-picker-indicator {
 
   .br-scooter-card-head {
     flex-direction: column !important;
-    align-items: flex-start !important;
     gap: 10px !important;
   }
 

@@ -396,9 +396,13 @@ export default function ScooterDetailPage() {
                     <span className="br-mono" style={{ fontSize: 12, color: sub }}>
                       {formatRateRange(tier.min_days, tier.max_days, locale)} · {formatBillingLabel(tier.billing_period_days, locale)}
                     </span>
-                    <span className="br-mono" style={{ fontSize: 12, color: fg }}>
-                      {symbol}
-                      {(Math.round(convertPrice(Number(tier.price_usd || 0)) * 100) / 100).toFixed(2)}
+                    <span className="br-mono" style={{ fontSize: 12, color: fg, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                      <span>Rp {formatGroupedAmount(convertPrice(Number(tier.price_usd || 0), 'IDR'), 0)}</span>
+                      {currency !== 'IDR' ? (
+                        <span style={{ fontSize: 10, opacity: 0.65 }}>
+                          ≈ {symbol}{formatGroupedAmount(convertPrice(Number(tier.price_usd || 0)), 2)}
+                        </span>
+                      ) : null}
                     </span>
                   </div>
                 ))}

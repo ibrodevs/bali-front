@@ -747,6 +747,7 @@ export default function PricesPage() {
                         {group.rates.map((rate) => {
                           const convertedTotal = formatPrice(toNumber(rate.price_usd));
                           const convertedDaily = formatPrice(effectiveDailyPrice(rate));
+                          const convertedTotalApprox = formatApprox(toNumber(rate.price_usd));
                           const isFeatured = group.featuredRateId === rate.id;
 
                           return (
@@ -794,6 +795,11 @@ export default function PricesPage() {
                                   {convertedDaily}
                                   {copy.perDay}
                                 </div>
+                                {convertedTotalApprox ? (
+                                  <div className="br-mono" style={{ marginTop: 2, fontSize: 10, letterSpacing: '0.06em', opacity: 0.55 }}>
+                                    {convertedTotalApprox}
+                                  </div>
+                                ) : null}
                               </div>
                             </div>
                           );

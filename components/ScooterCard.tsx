@@ -90,12 +90,12 @@ export default function ScooterCard({ s, dark = false, large = false }: { s: Dis
         </div>
       </div>
       <div className="br-scooter-card-body" style={{ padding: 22, color: fg, display: 'flex', flexDirection: 'column', flex: 1 }}>
-        <div className="br-scooter-card-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16 }}>
-          <div style={{ minWidth: 0 }}>
+        <div className="br-scooter-card-head" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ minWidth: 0, width: '100%' }}>
             <div className="br-mono" style={{ fontSize: 10, letterSpacing: '0.14em', color: sub }}>{s.type.toUpperCase()}{s.cc ? ` · ${s.cc}CC` : ''}</div>
             <div className="br-display br-scooter-card-title" style={{ fontSize: 22, marginTop: 4, letterSpacing: '-0.02em' }}>{s.name}</div>
           </div>
-          <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-end', flexDirection: 'column', gap: 2 }}>
             <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
               <span {...marker('catalog.from')} className="br-mono" style={{ fontSize: 10, color: sub }}>{t.catalog.from}</span>
               <BRPrice amount={s.price} size={20} />
