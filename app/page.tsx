@@ -17,7 +17,7 @@ import ScooterCard from '@/components/ScooterCard';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import { mediaUrl } from '@/lib/api';
-import { useCurrency } from '@/lib/i18n/CurrencyProvider';
+import { formatGroupedAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { endpoints } from '@/lib/endpoints';
 import {
@@ -95,7 +95,7 @@ const SUPPORT_CHAT_COPY = {
 export default function LandingPage() {
   const { t, locale } = useLocale();
   const { marker } = useSiteContentPreview();
-  const { convertPrice, symbol } = useCurrency();
+  const { convertPrice } = useCurrency();
   const { socialLinks } = useSiteSettings();
   const [featured, setFeatured] = useState<DisplayScooter[]>(fallbackScooters().slice(0, 3));
   const [zones, setZones] = useState<Array<{ id: number; name: string; freeDelivery?: boolean }>>([]);
@@ -142,7 +142,7 @@ export default function LandingPage() {
   const faqs = apiFaqs.length ? apiFaqs : t.home.faqs;
   const homeReviews = t.home.reviews;
   const minPrice = featured[0]?.price || 8;
-  const minPriceLabel = `${symbol}${(Math.round(convertPrice(minPrice) * 100) / 100).toFixed(2)}`;
+  const minPriceLabel = `Rp ${formatGroupedAmount(convertPrice(minPrice, 'IDR'), 0)}`;
   const supportChatLabel = SUPPORT_CHAT_COPY[locale as keyof typeof SUPPORT_CHAT_COPY] || SUPPORT_CHAT_COPY.en;
 
   return (

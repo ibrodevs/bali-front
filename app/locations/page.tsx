@@ -6,7 +6,7 @@ import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import { ArrowRightIcon, CheckIcon, DeliveryIcon, ScooterIcon, WhatsAppIcon } from '@/components/Icons';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
-import { useCurrency } from '@/lib/i18n/CurrencyProvider';
+import { formatGroupedAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { endpoints } from '@/lib/endpoints';
 import { BR_LOCATIONS } from '@/lib/data';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
@@ -38,7 +38,7 @@ type LocationOverrides = {
 export default function LocationsPage() {
   const { t, locale } = useLocale();
   const { marker } = useSiteContentPreview();
-  const { convertPrice, symbol } = useCurrency();
+  const { convertPrice } = useCurrency();
   const { socialLinks } = useSiteSettings();
   const [zones, setZones] = useState<Zone[]>([]);
   const [locOver, setLocOver] = useState<LocationOverrides>({});
@@ -257,7 +257,7 @@ export default function LocationsPage() {
                         <DeliveryIcon size={12} color="rgba(0,0,0,0.45)" />
                         <span className="br-mono" style={{ fontSize: 11, color: 'rgba(0,0,0,0.45)', letterSpacing: '0.1em' }}>
                           {zone.deliveryFeeUSD
-                            ? deliveryCopy.paidFrom.replace('{price}', `${symbol}${Math.round(convertPrice(zone.deliveryFeeUSD))}`)
+                            ? deliveryCopy.paidFrom.replace('{price}', `Rp ${formatGroupedAmount(convertPrice(zone.deliveryFeeUSD, 'IDR'), 0)}`)
                             : deliveryCopy.smallFee
                           }
                         </span>

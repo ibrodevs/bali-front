@@ -50,10 +50,11 @@ export default function PricesPage() {
   const { t, locale } = useLocale();
   const { convertPrice, currency, symbol } = useCurrency();
   const { socialLinks } = useSiteSettings();
-  const formatPrice = (amountUsd: number) => {
-    const decimals = currency === 'IDR' ? 0 : 2;
-    return `${symbol}${formatGroupedAmount(convertPrice(amountUsd), decimals)}`;
-  };
+  // Prices are always shown in IDR — the real price the admin set, fixed regardless of
+  // the currency switcher. formatApprox gives the equivalent in the selected currency.
+  const formatPrice = (amountUsd: number) => `Rp ${formatGroupedAmount(convertPrice(amountUsd, 'IDR'), 0)}`;
+  const formatApprox = (amountUsd: number) =>
+    currency === 'IDR' ? null : `≈ ${symbol}${formatGroupedAmount(convertPrice(amountUsd), 2)}`;
   const [rates, setRates] = useState<ApiScooterRentalRate[]>([]);
   const [fleet, setFleet] = useState<DisplayScooter[]>([]);
   const [loading, setLoading] = useState(true);
@@ -583,6 +584,7 @@ export default function PricesPage() {
                 const cc = group.scooter?.cc ? `${group.scooter.cc}CC` : null;
                 const typeLabel = group.scooter?.type || copy.scooter;
                 const minDaily = formatPrice(group.minDailyUsd);
+                const minDailyApprox = formatApprox(group.minDailyUsd);
 
                 return (
                   <div
@@ -713,6 +715,11 @@ export default function PricesPage() {
                           <div className="br-mono" style={{ marginTop: 4, fontSize: 10, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.58)' }}>
                             {copy.perDay}
                           </div>
+                          {minDailyApprox ? (
+                            <div className="br-mono" style={{ marginTop: 2, fontSize: 10, letterSpacing: '0.06em', color: 'rgba(255,255,255,0.46)' }}>
+                              {minDailyApprox}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
 

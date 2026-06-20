@@ -259,6 +259,20 @@ button, a { -webkit-tap-highlight-color: transparent; }
   -webkit-backdrop-filter: blur(10px);
 }
 
+.br-scooter-card-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 1101px) {
+  .br-scooter-card-title {
+    overflow: visible;
+    text-overflow: unset;
+    white-space: normal;
+  }
+}
+
 /* Image zoom on scooter card hover */
 .br-scooter-card:hover .br-scooter-card-img {
   transform: scale(1.06);

@@ -148,20 +148,13 @@ export default function ScooterDetailPage() {
   );
   const total = Number((scooter?.price || 0) + addonTotal);
   const baseDailyPrice = Number(scooter?.price || 0);
-  const displayDailyPrice = convertPrice(baseDailyPrice);
-  const displayDailyPriceLabel = currency === 'IDR'
-    ? `Rp ${formatGroupedAmount(displayDailyPrice, 0)}`
-    : `${symbol} ${new Intl.NumberFormat(locale, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(displayDailyPrice)}`;
+  // Headline price is always IDR — the real price the admin set. The hint next to it
+  // shows the equivalent in whatever currency the switcher is set to.
+  const displayDailyPriceLabel = `Rp ${formatGroupedAmount(convertPrice(baseDailyPrice, 'IDR'), 0)}`;
   const dailyBillingLabel = formatBillingLabel(1, locale);
-  const approxUsdLabel = currency === 'USD'
+  const approxUsdLabel = currency === 'IDR'
     ? null
-    : `~USD ${new Intl.NumberFormat('en-US', {
-        minimumFractionDigits: 1,
-        maximumFractionDigits: 1,
-      }).format(baseDailyPrice)}`;
+    : `≈ ${symbol} ${formatGroupedAmount(convertPrice(baseDailyPrice), 2)}`;
 
   const goBook = () => {
     if (!scooter) return;
@@ -469,7 +462,7 @@ export default function ScooterDetailPage() {
                 <span {...marker('detail.total')} className="br-display" style={{ fontSize: 16 }}>{t.detail.total}</span>
                 <span style={{ background: '#FFD700', color: '#000', padding: '6px 14px', borderRadius: 999, fontFamily: 'var(--br-mono)', fontSize: 22, fontWeight: 600 }}>
                   {symbol}
-                  {(Math.round(convertPrice(total) * 100) / 100).toFixed(2)}
+                  {formatGroupedAmount(convertPrice(total), currency === 'IDR' ? 0 : 2)}
                 </span>
               </div>
               <BRPrimary onClick={goBook} full style={{ marginTop: 20, padding: '18px', fontSize: 15 }}><span {...marker('detail.reserve')}>{t.detail.reserve}</span></BRPrimary>
@@ -484,7 +477,7 @@ export default function ScooterDetailPage() {
           <span className="br-mono" style={{ fontSize: 10, color: sub, letterSpacing: '0.12em' }}><span {...marker('detail.total')}>{t.detail.total.toUpperCase()}</span> · <span {...marker('detail.withAddons')}>{t.detail.withAddons}</span></span>
           <span className="br-display" style={{ fontSize: 22, letterSpacing: '-0.02em' }}>
             {symbol}
-            {(Math.round(convertPrice(total) * 100) / 100).toFixed(2)}
+            {formatGroupedAmount(convertPrice(total), currency === 'IDR' ? 0 : 2)}
           </span>
         </div>
         <BRPrimary onClick={goBook} style={{ flexShrink: 0, padding: '14px 22px' }}><span {...marker('detail.reserve')}>{t.detail.reserve}</span> →</BRPrimary>
