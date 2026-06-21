@@ -15,7 +15,7 @@ import {
 } from '@/lib/endpoints';
 import { useAuth } from '@/lib/i18n/AuthProvider';
 import { DEFAULT_CURRENCY_RATES, formatCurrencyAmount } from '@/lib/i18n/CurrencyProvider';
-import { createDefaultRentalRateDrafts, draftsFromApiRates, RentalRateDraft, validateRentalRateDrafts } from '@/lib/rentalRates';
+import { createDefaultRentalRateDrafts, draftsFromApiRates, normalizeRentalRateDrafts, RentalRateDraft, validateRentalRateDrafts } from '@/lib/rentalRates';
 import { useParams } from 'next/navigation';
 
 const A = {
@@ -522,7 +522,9 @@ export default function AdminEditScooterPage() {
       }));
 
       const sku = draft.sku.trim();
-      const validatedRates = validateRentalRateDrafts(rentalRatesFromIdrToUsd(rentalRates));
+      const convertedRateDrafts = rentalRatesFromIdrToUsd(rentalRates);
+      validateRentalRateDrafts(convertedRateDrafts);
+      const normalizedRates = normalizeRentalRateDrafts(convertedRateDrafts);
       await endpoints.adminUpdateScooter(scooterId, {
         model: Number(draft.model),
         title: draft.title.trim(),
@@ -565,7 +567,7 @@ export default function AdminEditScooterPage() {
         }
       }
 
-      const currentPersistedIds = validatedRates
+      const currentPersistedIds = rentalRates
         .map((rate) => rate.id)
         .filter((value): value is number => typeof value === 'number');
       for (const rateId of persistedRentalRateIds) {
@@ -574,36 +576,36 @@ export default function AdminEditScooterPage() {
         }
       }
 
-      for (const rate of validatedRates) {
-        if (rate.id) {
-          await endpoints.adminUpdateRentalRate(rate.id, {
-            scooter: Number(scooterId),
-            min_days: rate.min_days,
-            max_days: rate.max_days,
-            price_usd: rate.price_usd,
-            billing_period_days: rate.billing_period_days,
-          } satisfies Partial<AdminScooterRentalRatePayload>);
-          continue;
-        }
-
-        await endpoints.adminCreateRentalRate({
+      const nextRentalRates: RentalRateDraft[] = [];
+      for (let index = 0; index < rentalRates.length; index += 1) {
+        const original = rentalRates[index];
+        const normalized = normalizedRates[index];
+        const payload = {
           scooter: Number(scooterId),
-          min_days: rate.min_days,
-          max_days: rate.max_days,
-          price_usd: rate.price_usd,
-          billing_period_days: rate.billing_period_days,
-        } satisfies AdminScooterRentalRatePayload);
+          min_days: normalized.min_days,
+          max_days: normalized.max_days,
+          price_usd: normalized.price_usd,
+          billing_period_days: normalized.billing_period_days,
+        };
+
+        if (original.id) {
+          await endpoints.adminUpdateRentalRate(original.id, payload satisfies Partial<AdminScooterRentalRatePayload>);
+          nextRentalRates.push(original);
+        } else {
+          const created = await endpoints.adminCreateRentalRate(payload satisfies AdminScooterRentalRatePayload);
+          nextRentalRates.push({ ...original, id: created.id, isNew: false });
+        }
       }
 
       setSuccess('Changes saved successfully.');
       setNewPhotos([]);
       const refreshed = await endpoints.adminScooter(scooterId);
       setExistingImages(validExistingImages(refreshed.gallery || []));
-      const refreshedRates = refreshed.pricing_tiers?.length
-        ? rentalRatesFromUsdToIdr(draftsFromApiRates(refreshed.pricing_tiers))
-        : createDefaultRentalRateDraftsInIdr(refreshed.base_price_usd ?? refreshed.price_per_day ?? '');
-      setRentalRates(refreshedRates);
-      setPersistedRentalRateIds(refreshedRates.map((item) => item.id).filter((value): value is number => typeof value === 'number'));
+      // Keep the admin's typed IDR values as the source of truth instead of re-deriving them
+      // from the backend's rounded USD price — that round-trip loses precision and can make
+      // a freshly saved price display as the old value.
+      setRentalRates(nextRentalRates);
+      setPersistedRentalRateIds(nextRentalRates.map((item) => item.id).filter((value): value is number => typeof value === 'number'));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Unable to save changes');
     } finally {
