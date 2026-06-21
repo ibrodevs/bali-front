@@ -1893,7 +1893,8 @@ function usdToIdrInput(value?: string | number | null) {
 function idrToUsdNumber(value?: string | number | null) {
   const amountIdr = Number(value ?? 0);
   const normalizedIdr = Number.isFinite(amountIdr) ? amountIdr : 0;
-  return Number((normalizedIdr / ADMIN_IDR_RATE).toFixed(2));
+  // 4 decimal places matches the backend's storage precision (max_digits=12, decimal_places=4).
+  return Number((normalizedIdr / ADMIN_IDR_RATE).toFixed(4));
 }
 
 function formatShortDate(value?: string | Date | null) {
