@@ -153,6 +153,14 @@ export default function ScooterDetailPage() {
   // admin-entered IDR figure over re-deriving it from USD through the currency rate.
   const baseDailyPriceIdr = scooter?.priceIdr;
   const displayDailyPriceLabel = `Rp ${formatGroupedAmount(baseDailyPriceIdr != null ? Math.round(baseDailyPriceIdr) : convertPrice(baseDailyPrice, 'IDR'), 0)}`;
+  // Addons have no admin-entered IDR figure, so they're converted at the fixed rate. The base
+  // daily price uses the exact priceIdr above instead of re-deriving it from USD, so this total
+  // matches what's shown in the tariffs list above.
+  const totalIdr = Math.round(baseDailyPriceIdr != null ? baseDailyPriceIdr : convertPrice(baseDailyPrice, 'IDR'))
+    + selectedAddOnIds.reduce((sum, id) => {
+        const addon = addons.find((item) => Number(item.id) === id);
+        return sum + (addon ? Math.round(convertPrice(addon.price, 'IDR')) : 0);
+      }, 0);
   const dailyBillingLabel = formatBillingLabel(1, locale);
   const approxUsdLabel = currency === 'IDR'
     ? null
@@ -442,7 +450,7 @@ export default function ScooterDetailPage() {
                         <div style={{ fontSize: 14, fontWeight: 500 }}>{a.name}</div>
                         <div className="br-mono" style={{ fontSize: 11, color: sub }}>
                           {symbol}
-                          {(Math.round(convertPrice(a.price) * 100) / 100).toFixed(2)}/{t.common.day}
+                          {formatGroupedAmount(convertPrice(a.price), currency === 'IDR' ? 0 : 2)}/{t.common.day}
                         </div>
                       </div>
                       <div
@@ -470,7 +478,7 @@ export default function ScooterDetailPage() {
                 <span {...marker('detail.total')} className="br-display" style={{ fontSize: 16 }}>{t.detail.total}</span>
                 <span style={{ background: '#FFD700', color: '#000', padding: '6px 14px', borderRadius: 999, fontFamily: 'var(--br-mono)', fontSize: 22, fontWeight: 600 }}>
                   {symbol}
-                  {formatGroupedAmount(convertPrice(total), currency === 'IDR' ? 0 : 2)}
+                  {currency === 'IDR' ? formatGroupedAmount(totalIdr, 0) : formatGroupedAmount(convertPrice(total), 2)}
                 </span>
               </div>
               <BRPrimary onClick={goBook} full style={{ marginTop: 20, padding: '18px', fontSize: 15 }}><span {...marker('detail.reserve')}>{t.detail.reserve}</span></BRPrimary>
@@ -485,7 +493,7 @@ export default function ScooterDetailPage() {
           <span className="br-mono" style={{ fontSize: 10, color: sub, letterSpacing: '0.12em' }}><span {...marker('detail.total')}>{t.detail.total.toUpperCase()}</span> · <span {...marker('detail.withAddons')}>{t.detail.withAddons}</span></span>
           <span className="br-display" style={{ fontSize: 22, letterSpacing: '-0.02em' }}>
             {symbol}
-            {formatGroupedAmount(convertPrice(total), currency === 'IDR' ? 0 : 2)}
+            {currency === 'IDR' ? formatGroupedAmount(totalIdr, 0) : formatGroupedAmount(convertPrice(total), 2)}
           </span>
         </div>
         <BRPrimary onClick={goBook} style={{ flexShrink: 0, padding: '14px 22px' }}><span {...marker('detail.reserve')}>{t.detail.reserve}</span> →</BRPrimary>
