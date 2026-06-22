@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { BREyebrow, BRPhoto, BRPrimary, BROutline } from '@/components/BR';
 import {
   ArrowRightIcon,
-  CalendarIcon,
   CheckIcon,
   DeliveryIcon,
   HelmetIcon,
@@ -29,6 +28,7 @@ type RateGroup = {
   scooter?: DisplayScooter;
   routeId: string;
   minDailyUsd: number;
+  minDailyIdr: number | null;
   featuredRateId?: number;
   imageUrl?: string;
   imageObjectPosition?: string;
@@ -130,6 +130,7 @@ export default function PricesPage() {
         rates: [rate],
         routeId: rate.scooter_slug || String(scooterId),
         minDailyUsd: 0,
+        minDailyIdr: null,
       });
     }
 
@@ -139,12 +140,13 @@ export default function PricesPage() {
           (a, b) => a.min_days - b.min_days || (a.max_days ?? Number.MAX_SAFE_INTEGER) - (b.max_days ?? Number.MAX_SAFE_INTEGER),
         );
         const scooter = fleetById.get(group.scooterId);
-        const minDailyUsd = sortedRates.reduce((min, rate) => {
-          const effective = effectiveDailyPrice(rate);
-          return min === 0 ? effective : Math.min(min, effective);
-        }, 0);
+        // Pick the cheapest rate by its USD-equivalent daily price (fine for comparison/ordering),
+        // but read its displayed price straight from price_idr — never re-derive the IDR figure
+        // from the rounded USD value, which can disagree with what's shown in the tariff rows.
         const featuredRate =
           [...sortedRates].sort((a, b) => effectiveDailyPrice(a) - effectiveDailyPrice(b) || b.billing_period_days - a.billing_period_days)[0];
+        const minDailyUsd = featuredRate ? effectiveDailyPrice(featuredRate) : 0;
+        const minDailyIdr = featuredRate ? effectiveDailyPriceIdr(featuredRate) : null;
         const routeId = String(
           scooter?.apiId ??
             resolveScooterRouteId(scooter?.id || group.slug, scooter?.name || group.title) ??
@@ -158,6 +160,7 @@ export default function PricesPage() {
           scooter,
           routeId,
           minDailyUsd,
+          minDailyIdr,
           featuredRateId: featuredRate?.id,
           imageUrl,
           imageObjectPosition: scooter?.imageObjectPosition || resolveScooterImageObjectPosition(group.slug, group.title),
@@ -167,7 +170,8 @@ export default function PricesPage() {
   }, [fleetById, rates]);
 
   const lowestDailyUsd = groups[0]?.minDailyUsd || 0;
-  const minDailyLabel = formatPrice(lowestDailyUsd);
+  const lowestDailyIdr = groups[0]?.minDailyIdr ?? null;
+  const minDailyLabel = lowestDailyIdr != null ? formatPriceIdr(lowestDailyIdr) : formatPrice(lowestDailyUsd);
   const headlinePrice = loading ? '...' : lowestDailyUsd ? minDailyLabel : '—';
 
   const copy = {
@@ -181,7 +185,6 @@ export default function PricesPage() {
       cardsIntro: 'Live tariff cards',
       cardsTitle: 'Transparent prices, without the spreadsheet feel.',
       cardsBody: 'Every card updates automatically from the backend, so the page always reflects the latest tariff setup from admin.',
-      liveNote: 'Live backend sync',
       loading: 'Loading live prices…',
       error: 'Unable to load prices right now.',
       empty: 'No tariffs have been configured yet.',
@@ -207,7 +210,6 @@ export default function PricesPage() {
       cardsIntro: 'Живые тарифы',
       cardsTitle: 'Прозрачные цены без ощущения таблицы.',
       cardsBody: 'Карточки обновляются автоматически из backend, поэтому страница всегда показывает актуальную тарифную сетку из админки.',
-      liveNote: 'Синхронизация с backend',
       loading: 'Загружаем актуальные цены…',
       error: 'Сейчас не удалось загрузить цены.',
       empty: 'Тарифы пока не настроены.',
@@ -233,7 +235,6 @@ export default function PricesPage() {
       cardsIntro: 'Kartu tarif live',
       cardsTitle: 'Harga transparan, tanpa rasa spreadsheet.',
       cardsBody: 'Setiap kartu diperbarui otomatis dari backend, jadi halaman ini selalu mengikuti setup tarif terbaru dari admin.',
-      liveNote: 'Sinkron live dari backend',
       loading: 'Memuat harga live…',
       error: 'Harga tidak bisa dimuat sekarang.',
       empty: 'Belum ada tarif yang diatur.',
@@ -259,7 +260,6 @@ export default function PricesPage() {
       cardsIntro: '实时价格卡片',
       cardsTitle: '透明报价，不再像表格一样生硬。',
       cardsBody: '每张卡片都会从后台自动更新，所以这里始终显示管理员最新配置的价格档位。',
-      liveNote: '后台实时同步',
       loading: '正在加载实时价格…',
       error: '暂时无法加载价格。',
       empty: '暂未配置价格档位。',
@@ -285,7 +285,6 @@ export default function PricesPage() {
       cardsIntro: 'Live-Tarifkarten',
       cardsTitle: 'Transparente Preise ohne Tabellen-Gefuehl.',
       cardsBody: 'Jede Karte aktualisiert sich automatisch aus dem Backend und zeigt dadurch immer die aktuelle Tariflogik aus dem Admin.',
-      liveNote: 'Live-Sync aus dem Backend',
       loading: 'Live-Preise werden geladen…',
       error: 'Preise konnten gerade nicht geladen werden.',
       empty: 'Es wurden noch keine Tarife eingerichtet.',
@@ -311,7 +310,6 @@ export default function PricesPage() {
       cardsIntro: 'Cartes tarifaires live',
       cardsTitle: 'Des prix clairs, sans effet tableur.',
       cardsBody: 'Chaque carte se met a jour automatiquement depuis le backend pour refléter a tout moment la grille tarifaire active dans l’admin.',
-      liveNote: 'Sync live depuis le backend',
       loading: 'Chargement des tarifs live…',
       error: 'Impossible de charger les tarifs pour le moment.',
       empty: 'Aucun tarif n’a encore ete configure.',
@@ -337,7 +335,6 @@ export default function PricesPage() {
     cardsIntro: 'Live tariff cards',
     cardsTitle: 'Transparent prices, without the spreadsheet feel.',
     cardsBody: 'Every card updates automatically from the backend, so the page always reflects the latest tariff setup from admin.',
-    liveNote: 'Live backend sync',
     loading: 'Loading live prices…',
     error: 'Unable to load prices right now.',
     empty: 'No tariffs have been configured yet.',
@@ -592,7 +589,7 @@ export default function PricesPage() {
               {groups.map((group) => {
                 const cc = group.scooter?.cc ? `${group.scooter.cc}CC` : null;
                 const typeLabel = group.scooter?.type || copy.scooter;
-                const minDaily = formatPrice(group.minDailyUsd);
+                const minDaily = group.minDailyIdr != null ? formatPriceIdr(group.minDailyIdr) : formatPrice(group.minDailyUsd);
                 const minDailyApprox = formatApprox(group.minDailyUsd);
 
                 return (
@@ -735,20 +732,6 @@ export default function PricesPage() {
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                         <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.46)' }}>
                           {copy.rateBands} · {group.rates.length}
-                        </div>
-                        <div
-                          className="br-mono"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            fontSize: 11,
-                            letterSpacing: '0.08em',
-                            color: 'rgba(0,0,0,0.56)',
-                          }}
-                        >
-                          <CalendarIcon size={14} color="currentColor" />
-                          {copy.liveNote}
                         </div>
                       </div>
 
