@@ -98,7 +98,7 @@ export default function ScooterCard({ s, dark = false, large = false }: { s: Dis
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-end', flexDirection: 'column', gap: 2 }}>
             <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
               <span {...marker('catalog.from')} className="br-mono" style={{ fontSize: 10, color: sub }}>{t.catalog.from}</span>
-              <BRPrice amount={s.price} size={20} />
+              <BRPrice amount={s.price} amountIdr={s.priceIdr} size={20} />
             </div>
             {approxLabel ? (
               <span className="br-mono" style={{ fontSize: 11, color: sub }}>

@@ -63,6 +63,9 @@ export type DisplayScooter = Scooter & {
   imageObjectPosition?: string;
   reviewsCount?: number;
   rating?: number;
+  // Exact admin-entered IDR price, when available — avoids re-deriving the headline price
+  // from `price` (USD) through the currency switcher's exchange rate.
+  priceIdr?: number;
 };
 
 export function pickTone(seed: string | number): string {
@@ -142,6 +145,7 @@ export function mapApiScooter(s: ApiScooter): DisplayScooter {
     type: (s.type || 'Touring').toString(),
     typeCode: s.type_code || undefined,
     price: Number(s.price_per_day) || 0,
+    priceIdr: s.price_per_day_idr != null ? Number(s.price_per_day_idr) : undefined,
     photo: pickTone(id),
     tag: s.is_featured ? 'FEATURED' : (s.type || 'BIKE').toString().toUpperCase(),
     status: statusFromApi(s),

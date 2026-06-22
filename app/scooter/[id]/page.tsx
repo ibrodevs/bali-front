@@ -149,8 +149,10 @@ export default function ScooterDetailPage() {
   const total = Number((scooter?.price || 0) + addonTotal);
   const baseDailyPrice = Number(scooter?.price || 0);
   // Headline price is always IDR — the real price the admin set. The hint next to it
-  // shows the equivalent in whatever currency the switcher is set to.
-  const displayDailyPriceLabel = `Rp ${formatGroupedAmount(convertPrice(baseDailyPrice, 'IDR'), 0)}`;
+  // shows the equivalent in whatever currency the switcher is set to. Prefer the exact
+  // admin-entered IDR figure over re-deriving it from USD through the currency rate.
+  const baseDailyPriceIdr = scooter?.priceIdr;
+  const displayDailyPriceLabel = `Rp ${formatGroupedAmount(baseDailyPriceIdr != null ? Math.round(baseDailyPriceIdr) : convertPrice(baseDailyPrice, 'IDR'), 0)}`;
   const dailyBillingLabel = formatBillingLabel(1, locale);
   const approxUsdLabel = currency === 'IDR'
     ? null

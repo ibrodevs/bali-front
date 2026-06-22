@@ -117,13 +117,15 @@ export function BREyebrow({ children, style }: { children: React.ReactNode; styl
   return <div className="br-eyebrow" style={style}>{children}</div>;
 }
 
-export function BRPrice({ amount, per = 'day', size = 22 }: { amount: number; currency?: string; per?: string; size?: number }) {
+export function BRPrice({ amount, amountIdr, per = 'day', size = 22 }: { amount: number; amountIdr?: number; currency?: string; per?: string; size?: number }) {
   const { t } = useLocale();
   const { marker } = useSiteContentPreview();
   const { convertPrice } = useCurrency();
   // The headline price is always shown in IDR — it's the real price the admin set.
   // Only the small "≈ <currency>" hint elsewhere on the page changes with the currency switcher.
-  const convertedAmount = Math.round(convertPrice(amount, 'IDR'));
+  // Prefer the exact admin-entered IDR figure over re-deriving it from the USD amount through
+  // the currency switcher's exchange rate, which can disagree with what was actually typed.
+  const convertedAmount = amountIdr != null ? Math.round(amountIdr) : Math.round(convertPrice(amount, 'IDR'));
   const displayAmount = formatGroupedAmount(convertedAmount, 0);
   const period = per === 'day' ? t.common.day : per;
 

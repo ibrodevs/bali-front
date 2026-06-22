@@ -12,6 +12,7 @@ export type ApiScooter = {
   type_code?: string;
   engine_capacity?: number;
   price_per_day: string | number;
+  price_per_day_idr?: number | null;
   pricing_tiers?: ApiScooterRentalRate[];
   main_image?: string | null;
   status?: string;
@@ -350,6 +351,7 @@ export type ApiAppliedTariff = {
   min_days: number;
   max_days?: number | null;
   price_usd: string | number;
+  price_idr?: number | null;
   billing_period_days: number;
   billed_periods: number;
   effective_daily_price_usd: string | number;
@@ -366,6 +368,12 @@ export type ApiBookingQuote = {
   discount_amount: string | number;
   markup_amount: string | number;
   total_price: string | number;
+  base_price_idr?: number | null;
+  add_ons_price_idr?: number | null;
+  delivery_price_idr?: number | null;
+  discount_amount_idr?: number | null;
+  markup_amount_idr?: number | null;
+  total_price_idr?: number | null;
   applied_tariff?: ApiAppliedTariff | null;
   promo_code?: string | null;
   currency: string;

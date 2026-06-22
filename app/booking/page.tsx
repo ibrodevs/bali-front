@@ -279,7 +279,9 @@ function BookingPageInner() {
   const rentalDays = Number(quote?.rental_days || 0);
   const appliedTariffLabel = formatAppliedTariffLabel(quote?.applied_tariff, locale);
   const effectiveRatePerDay = quote?.applied_tariff
-    ? convertAmountValue(Number(quote.applied_tariff.effective_daily_price_usd || 0), quoteCurrency, selectedCurrency)
+    ? selectedCurrency === 'IDR' && quote.applied_tariff.price_idr != null
+      ? Math.round(Number(quote.applied_tariff.price_idr) / (quote.applied_tariff.billing_period_days || 1))
+      : convertAmountValue(Number(quote.applied_tariff.effective_daily_price_usd || 0), quoteCurrency, selectedCurrency)
     : 0;
 
   const addonsSubtotal = useMemo(() => {
@@ -289,21 +291,36 @@ function BookingPageInner() {
     }, 0);
   }, [addons, selectedAddOnIds]);
 
+  // When the selected currency is IDR, prefer the exact admin-entered figures the backend
+  // computes from price_idr/billed_periods over re-deriving them from the USD total through
+  // the currency switcher's exchange rate — that round-trip could disagree with what's shown
+  // in the tariffs table.
+  const isIdrCurrency = selectedCurrency === 'IDR';
   const baseTotal = quote
-    ? convertAmountValue(Number(quote.base_price || 0), quoteCurrency, selectedCurrency)
+    ? isIdrCurrency && quote.base_price_idr != null
+      ? quote.base_price_idr
+      : convertAmountValue(Number(quote.base_price || 0), quoteCurrency, selectedCurrency)
     : convertPrice(initialPrice || 0);
   const addonsTotal = quote
-    ? convertAmountValue(Number(quote.add_ons_price || 0), quoteCurrency, selectedCurrency)
+    ? isIdrCurrency && quote.add_ons_price_idr != null
+      ? quote.add_ons_price_idr
+      : convertAmountValue(Number(quote.add_ons_price || 0), quoteCurrency, selectedCurrency)
     : convertPrice(addonsSubtotal);
   const deliveryTotal = quote
-    ? convertAmountValue(Number(quote.delivery_price || 0), quoteCurrency, selectedCurrency)
+    ? isIdrCurrency && quote.delivery_price_idr != null
+      ? quote.delivery_price_idr
+      : convertAmountValue(Number(quote.delivery_price || 0), quoteCurrency, selectedCurrency)
     : 0;
   const rawGrandTotal = quote ? Number(quote.total_price || 0) : 0;
   const grandTotal = quote && rawGrandTotal > 0
-    ? convertAmountValue(rawGrandTotal, quoteCurrency, selectedCurrency)
+    ? isIdrCurrency && quote.total_price_idr != null
+      ? quote.total_price_idr
+      : convertAmountValue(rawGrandTotal, quoteCurrency, selectedCurrency)
     : baseTotal + addonsTotal + deliveryTotal;
   const discountTotal = quote && Number(quote.discount_amount || 0) > 0
-    ? convertAmountValue(Number(quote.discount_amount), quoteCurrency, selectedCurrency)
+    ? isIdrCurrency && quote.discount_amount_idr != null
+      ? quote.discount_amount_idr
+      : convertAmountValue(Number(quote.discount_amount), quoteCurrency, selectedCurrency)
     : 0;
   const promoApplied = Boolean(promoCode.trim() && discountTotal > 0);
   const selectedAddonsLabel = copy.selectedAddons
