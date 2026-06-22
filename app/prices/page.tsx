@@ -46,6 +46,12 @@ function effectiveDailyPrice(rate: ApiScooterRentalRate) {
   return toNumber(rate.price_usd) / billingDays;
 }
 
+function effectiveDailyPriceIdr(rate: ApiScooterRentalRate) {
+  if (rate.price_idr == null) return null;
+  const billingDays = Math.max(1, Number(rate.billing_period_days) || 1);
+  return Math.round(Number(rate.price_idr) / billingDays);
+}
+
 export default function PricesPage() {
   const { t, locale } = useLocale();
   const { convertPrice, currency, symbol } = useCurrency();
@@ -53,6 +59,9 @@ export default function PricesPage() {
   // Prices are always shown in IDR — the real price the admin set, fixed regardless of
   // the currency switcher. formatApprox gives the equivalent in the selected currency.
   const formatPrice = (amountUsd: number) => `Rp ${formatGroupedAmount(convertPrice(amountUsd, 'IDR'), 0)}`;
+  // When the exact admin-entered IDR figure is known, show it as-is instead of re-deriving
+  // it from price_usd via the live exchange rate, which can disagree with what was typed.
+  const formatPriceIdr = (amountIdr: number) => `Rp ${formatGroupedAmount(amountIdr, 0)}`;
   const formatApprox = (amountUsd: number) =>
     currency === 'IDR' ? null : `≈ ${symbol}${formatGroupedAmount(convertPrice(amountUsd), 2)}`;
   const [rates, setRates] = useState<ApiScooterRentalRate[]>([]);
@@ -745,8 +754,9 @@ export default function PricesPage() {
 
                       <div style={{ display: 'grid', gap: 10 }}>
                         {group.rates.map((rate) => {
-                          const convertedTotal = formatPrice(toNumber(rate.price_usd));
-                          const convertedDaily = formatPrice(effectiveDailyPrice(rate));
+                          const dailyIdr = effectiveDailyPriceIdr(rate);
+                          const convertedTotal = rate.price_idr != null ? formatPriceIdr(rate.price_idr) : formatPrice(toNumber(rate.price_usd));
+                          const convertedDaily = dailyIdr != null ? formatPriceIdr(dailyIdr) : formatPrice(effectiveDailyPrice(rate));
                           const convertedTotalApprox = formatApprox(toNumber(rate.price_usd));
                           const isFeatured = group.featuredRateId === rate.id;
 

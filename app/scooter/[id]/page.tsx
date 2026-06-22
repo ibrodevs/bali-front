@@ -397,7 +397,9 @@ export default function ScooterDetailPage() {
                       {formatRateRange(tier.min_days, tier.max_days, locale)} · {formatBillingLabel(tier.billing_period_days, locale)}
                     </span>
                     <span className="br-mono" style={{ fontSize: 12, color: fg, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-                      <span>Rp {formatGroupedAmount(convertPrice(Number(tier.price_usd || 0), 'IDR'), 0)}</span>
+                      <span>
+                        Rp {formatGroupedAmount(tier.price_idr != null ? Number(tier.price_idr) : convertPrice(Number(tier.price_usd || 0), 'IDR'), 0)}
+                      </span>
                       {currency !== 'IDR' ? (
                         <span style={{ fontSize: 10, opacity: 0.65 }}>
                           ≈ {symbol}{formatGroupedAmount(convertPrice(Number(tier.price_usd || 0)), 2)}
