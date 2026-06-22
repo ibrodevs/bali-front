@@ -6317,7 +6317,7 @@ function FleetView({
       slug: '',
       sku: '',
       color: '',
-      base_price_usd: '',
+      base_price_idr: '',
       status: 'available',
       mileage: '0',
       is_featured: false,
@@ -6335,7 +6335,7 @@ function FleetView({
   }
 
   async function submitFleetForm() {
-    if (!draft.model || !draft.title.trim() || !draft.slug.trim() || !draft.sku.trim() || !draft.base_price_usd) {
+    if (!draft.model || !draft.title.trim() || !draft.slug.trim() || !draft.sku.trim() || !draft.base_price_idr) {
       window.alert('Fill in required fields: model, title, slug, SKU and price.');
       return;
     }
@@ -6346,7 +6346,7 @@ function FleetView({
       slug: draft.slug.trim(),
       sku: draft.sku.trim(),
       color: draft.color.trim(),
-      base_price_usd: String(idrToUsdNumber(draft.base_price_usd)),
+      base_price_idr: Number(draft.base_price_idr),
       status: draft.status,
       mileage: Number(draft.mileage || 0),
       is_featured: draft.is_featured,
@@ -6561,8 +6561,8 @@ function FleetView({
                 type="number"
                 min="0"
                 step="1"
-                value={draft.base_price_usd}
-                onChange={(event) => updateDraft('base_price_usd', event.target.value)}
+                value={draft.base_price_idr}
+                onChange={(event) => updateDraft('base_price_idr', event.target.value)}
                 style={inputStyle}
               />
             </Field>

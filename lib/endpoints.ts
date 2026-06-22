@@ -70,6 +70,7 @@ export type ApiScooterDetail = ApiScooter & {
   sku?: string;
   color?: string;
   base_price_usd?: string | number;
+  base_price_idr?: number | null;
   mileage?: number;
   full_description?: string;
   characteristics?: {
@@ -337,6 +338,7 @@ export type ApiScooterRentalRate = {
   min_days: number;
   max_days?: number | null;
   price_usd: string | number;
+  price_idr?: number | null;
   billing_period_days: number;
   effective_daily_price_usd?: string | number;
   created_at?: string;
@@ -520,7 +522,7 @@ export type AdminScooterPayload = {
   slug: string;
   sku?: string;
   color: string;
-  base_price_usd: string | number;
+  base_price_idr: number;
   status: string;
   mileage: number;
   is_featured: boolean;
@@ -530,7 +532,7 @@ export type AdminScooterRentalRatePayload = {
   scooter: number;
   min_days: number;
   max_days?: number | null;
-  price_usd: string | number;
+  price_idr: number;
   billing_period_days: number;
 };
 

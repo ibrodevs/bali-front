@@ -5,7 +5,7 @@ export type RentalRateDraft = {
   id?: number;
   min_days: string;
   max_days: string;
-  price_usd: string;
+  price_idr: string;
   billing_period_days: string;
   isNew?: boolean;
 };
@@ -14,20 +14,20 @@ export type NormalizedRentalRate = {
   id?: number;
   min_days: number;
   max_days: number | null;
-  price_usd: number;
+  price_idr: number;
   billing_period_days: number;
 };
 
 type RentalRateLocale = Locale | string | null | undefined;
 
-export function createDefaultRentalRateDrafts(basePrice: string | number): RentalRateDraft[] {
-  const price = String(basePrice || '');
+export function createDefaultRentalRateDrafts(basePriceIdr: string | number): RentalRateDraft[] {
+  const price = String(basePriceIdr || '');
   return [
-    { min_days: '1', max_days: '1', price_usd: price, billing_period_days: '1', isNew: true },
-    { min_days: '2', max_days: '6', price_usd: price, billing_period_days: '1', isNew: true },
-    { min_days: '7', max_days: '15', price_usd: price, billing_period_days: '1', isNew: true },
-    { min_days: '16', max_days: '29', price_usd: price, billing_period_days: '1', isNew: true },
-    { min_days: '30', max_days: '', price_usd: price, billing_period_days: '1', isNew: true },
+    { min_days: '1', max_days: '1', price_idr: price, billing_period_days: '1', isNew: true },
+    { min_days: '2', max_days: '6', price_idr: price, billing_period_days: '1', isNew: true },
+    { min_days: '7', max_days: '15', price_idr: price, billing_period_days: '1', isNew: true },
+    { min_days: '16', max_days: '29', price_idr: price, billing_period_days: '1', isNew: true },
+    { min_days: '30', max_days: '', price_idr: price, billing_period_days: '1', isNew: true },
   ];
 }
 
@@ -38,7 +38,7 @@ export function draftsFromApiRates(rates: ApiScooterRentalRate[]): RentalRateDra
       id: rate.id,
       min_days: String(rate.min_days),
       max_days: rate.max_days == null ? '' : String(rate.max_days),
-      price_usd: String(rate.price_usd),
+      price_idr: String(rate.price_idr ?? rate.price_usd),
       billing_period_days: String(rate.billing_period_days || 1),
     }));
 }
@@ -48,7 +48,7 @@ export function normalizeRentalRateDrafts(drafts: RentalRateDraft[]): Normalized
     const minDays = Number(draft.min_days);
     const rawMaxDays = draft.max_days.trim();
     const maxDays = rawMaxDays ? Number(rawMaxDays) : null;
-    const priceUSD = Number(draft.price_usd);
+    const priceIdr = Number(draft.price_idr);
     const billingPeriodDays = Number(draft.billing_period_days || '1');
 
     if (!Number.isInteger(minDays) || minDays < 1) {
@@ -57,7 +57,7 @@ export function normalizeRentalRateDrafts(drafts: RentalRateDraft[]): Normalized
     if (maxDays !== null && (!Number.isInteger(maxDays) || maxDays < minDays)) {
       throw new Error(`Tariff row ${index + 1}: "To" must be empty or greater than or equal to "From".`);
     }
-    if (!Number.isFinite(priceUSD) || priceUSD < 0) {
+    if (!Number.isInteger(priceIdr) || priceIdr < 0) {
       throw new Error(`Tariff row ${index + 1}: enter a valid price.`);
     }
     if (!Number.isInteger(billingPeriodDays) || billingPeriodDays < 1) {
@@ -68,7 +68,7 @@ export function normalizeRentalRateDrafts(drafts: RentalRateDraft[]): Normalized
       id: draft.id,
       min_days: minDays,
       max_days: maxDays,
-      price_usd: priceUSD,
+      price_idr: priceIdr,
       billing_period_days: billingPeriodDays,
     };
   });

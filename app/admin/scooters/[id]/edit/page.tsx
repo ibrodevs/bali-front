@@ -14,7 +14,7 @@ import {
   unwrapList,
 } from '@/lib/endpoints';
 import { useAuth } from '@/lib/i18n/AuthProvider';
-import { DEFAULT_CURRENCY_RATES, formatCurrencyAmount } from '@/lib/i18n/CurrencyProvider';
+import { formatCurrencyAmount } from '@/lib/i18n/CurrencyProvider';
 import { createDefaultRentalRateDrafts, draftsFromApiRates, normalizeRentalRateDrafts, RentalRateDraft, validateRentalRateDrafts } from '@/lib/rentalRates';
 import { useParams } from 'next/navigation';
 
@@ -32,8 +32,6 @@ const A = {
   green: '#16a34a',
   greenBg: '#f0fdf4',
 };
-
-const IDR_RATE = DEFAULT_CURRENCY_RATES.IDR || 15650;
 
 function useWindowWidth() {
   const [width, setWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1280));
@@ -78,49 +76,6 @@ function groupDigits(value?: string | number | null) {
 
 function ungroupDigits(value: string) {
   return value.replace(/[^\d]/g, '');
-}
-
-function formatIdrPreview(value?: string | number | null) {
-  const amountIdr = Number(value ?? 0);
-  const normalizedIdr = Number.isFinite(amountIdr) ? amountIdr : 0;
-  const hasFraction = Math.abs(normalizedIdr % 1) > 0.000001;
-  return formatCurrencyAmount(normalizedIdr, 'IDR', 'id-ID', {
-    minimumFractionDigits: hasFraction ? 2 : 0,
-    maximumFractionDigits: hasFraction ? 2 : 0,
-  });
-}
-
-function usdToIdrInput(value?: string | number | null) {
-  const amountUsd = Number(value ?? 0);
-  const normalizedUsd = Number.isFinite(amountUsd) ? amountUsd : 0;
-  return String(Math.round(normalizedUsd * IDR_RATE));
-}
-
-function idrToUsdNumber(value?: string | number | null) {
-  const amountIdr = Number(value ?? 0);
-  const normalizedIdr = Number.isFinite(amountIdr) ? amountIdr : 0;
-  // 4 decimal places matches the backend's storage precision (max_digits=12, decimal_places=4).
-  // Rounding to 2 here would throw away IDR precision below ~Rp 156, which made small
-  // tariff edits silently collapse back to the previous saved price.
-  return Number((normalizedIdr / IDR_RATE).toFixed(4));
-}
-
-function rentalRatesFromUsdToIdr(rates: RentalRateDraft[]) {
-  return rates.map((rate) => ({
-    ...rate,
-    price_usd: usdToIdrInput(rate.price_usd),
-  }));
-}
-
-function rentalRatesFromIdrToUsd(rates: RentalRateDraft[]) {
-  return rates.map((rate) => ({
-    ...rate,
-    price_usd: String(idrToUsdNumber(rate.price_usd)),
-  }));
-}
-
-function createDefaultRentalRateDraftsInIdr(value?: string | number | null) {
-  return createDefaultRentalRateDrafts(usdToIdrInput(value));
 }
 
 function formatIdrPreviewText(value?: string | number | null) {
@@ -232,7 +187,7 @@ type DraftScooter = {
   slug: string;
   sku: string;
   color: string;
-  base_price_usd: string;
+  base_price_idr: string;
   status: string;
   mileage: string;
   is_featured: boolean;
@@ -301,7 +256,7 @@ export default function AdminEditScooterPage() {
     slug: '',
     sku: '',
     color: '',
-    base_price_usd: '',
+    base_price_idr: '',
     status: 'available',
     mileage: '0',
     is_featured: false,
@@ -317,7 +272,7 @@ export default function AdminEditScooterPage() {
 
   const [translations, setTranslations] = useState<Record<string, TranslationDraft>>(emptyTranslations());
   const [activeLang, setActiveLang] = useState('en');
-  const [rentalRates, setRentalRates] = useState<RentalRateDraft[]>(createDefaultRentalRateDraftsInIdr(''));
+  const [rentalRates, setRentalRates] = useState<RentalRateDraft[]>(createDefaultRentalRateDrafts(''));
   const [persistedRentalRateIds, setPersistedRentalRateIds] = useState<number[]>([]);
   const [modelDraft, setModelDraft] = useState<ModelDraft>({
     type: '',
@@ -360,10 +315,10 @@ export default function AdminEditScooterPage() {
         setVehicleTypes(unwrapList(typesRes));
         setScooter(scooterRes);
         setExistingImages(validExistingImages(scooterRes.gallery || []));
-        const priceRaw = scooterRes.base_price_usd ?? scooterRes.price_per_day;
+        const priceIdrRaw = scooterRes.base_price_idr;
         const nextRates = scooterRes.pricing_tiers?.length
-          ? rentalRatesFromUsdToIdr(draftsFromApiRates(scooterRes.pricing_tiers))
-          : createDefaultRentalRateDraftsInIdr(priceRaw != null ? String(priceRaw) : '');
+          ? draftsFromApiRates(scooterRes.pricing_tiers)
+          : createDefaultRentalRateDrafts(priceIdrRaw != null ? String(priceIdrRaw) : '');
         setRentalRates(nextRates);
         setPersistedRentalRateIds(nextRates.map((item) => item.id).filter((value): value is number => typeof value === 'number'));
         setDraft({
@@ -372,7 +327,7 @@ export default function AdminEditScooterPage() {
           slug: scooterRes.slug || '',
           sku: scooterRes.sku || '',
           color: scooterRes.color || scooterRes.characteristics?.color || '',
-          base_price_usd: priceRaw != null ? usdToIdrInput(priceRaw) : '',
+          base_price_idr: priceIdrRaw != null ? String(priceIdrRaw) : '',
           status: scooterRes.status || 'available',
           mileage: scooterRes.mileage != null ? String(scooterRes.mileage) : '0',
           is_featured: scooterRes.is_featured || false,
@@ -427,7 +382,7 @@ export default function AdminEditScooterPage() {
   }
 
   function addRentalRateRow() {
-    setRentalRates((current) => [...current, { min_days: '', max_days: '', price_usd: '', billing_period_days: '1', isNew: true }]);
+    setRentalRates((current) => [...current, { min_days: '', max_days: '', price_idr: '', billing_period_days: '1', isNew: true }]);
   }
 
   function removeRentalRateRow(index: number) {
@@ -435,7 +390,7 @@ export default function AdminEditScooterPage() {
   }
 
   function resetRentalRatesFromBasePrice() {
-    setRentalRates(createDefaultRentalRateDrafts(draft.base_price_usd));
+    setRentalRates(createDefaultRentalRateDrafts(draft.base_price_idr));
   }
 
   useEffect(() => {
@@ -510,7 +465,7 @@ export default function AdminEditScooterPage() {
 
     try {
       if (!draft.model) throw new Error('Choose a model for this scooter.');
-      if (!draft.title.trim() || !draft.slug.trim() || !draft.base_price_usd) {
+      if (!draft.title.trim() || !draft.slug.trim() || !draft.base_price_idr) {
         throw new Error('Fill in title, slug and price.');
       }
 
@@ -525,16 +480,15 @@ export default function AdminEditScooterPage() {
       }));
 
       const sku = draft.sku.trim();
-      const convertedRateDrafts = rentalRatesFromIdrToUsd(rentalRates);
-      validateRentalRateDrafts(convertedRateDrafts);
-      const normalizedRates = normalizeRentalRateDrafts(convertedRateDrafts);
+      validateRentalRateDrafts(rentalRates);
+      const normalizedRates = normalizeRentalRateDrafts(rentalRates);
       await endpoints.adminUpdateScooter(scooterId, {
         model: Number(draft.model),
         title: draft.title.trim(),
         slug: draft.slug.trim(),
         ...(sku ? { sku } : {}),
         color: draft.color.trim(),
-        base_price_usd: String(idrToUsdNumber(draft.base_price_usd)),
+        base_price_idr: Number(draft.base_price_idr),
         status: draft.status,
         mileage: Number(draft.mileage || 0),
         is_featured: draft.is_featured,
@@ -587,7 +541,7 @@ export default function AdminEditScooterPage() {
           scooter: Number(scooterId),
           min_days: normalized.min_days,
           max_days: normalized.max_days,
-          price_usd: normalized.price_usd,
+          price_idr: normalized.price_idr,
           billing_period_days: normalized.billing_period_days,
         };
 
@@ -816,8 +770,8 @@ export default function AdminEditScooterPage() {
                     <input
                       type="text"
                       inputMode="numeric"
-                      value={groupDigits(draft.base_price_usd)}
-                      onChange={(e) => updateDraft('base_price_usd', ungroupDigits(e.target.value))}
+                      value={groupDigits(draft.base_price_idr)}
+                      onChange={(e) => updateDraft('base_price_idr', ungroupDigits(e.target.value))}
                       style={inputStyle}
                     />
                   </Field>
@@ -882,7 +836,7 @@ export default function AdminEditScooterPage() {
                     <input type="number" min="1" value={rate.min_days} onChange={(event) => updateRentalRate(index, 'min_days', event.target.value)} style={inputStyle} />
                     <input type="number" min="1" value={rate.max_days} onChange={(event) => updateRentalRate(index, 'max_days', event.target.value)} style={inputStyle} placeholder="∞" />
                     {isMobile ? null : (
-                      <input type="text" inputMode="numeric" value={groupDigits(rate.price_usd)} onChange={(event) => updateRentalRate(index, 'price_usd', ungroupDigits(event.target.value))} style={inputStyle} />
+                      <input type="text" inputMode="numeric" value={groupDigits(rate.price_idr)} onChange={(event) => updateRentalRate(index, 'price_idr', ungroupDigits(event.target.value))} style={inputStyle} />
                     )}
                     {isMobile ? null : (
                       <input type="number" min="1" value={rate.billing_period_days} onChange={(event) => updateRentalRate(index, 'billing_period_days', event.target.value)} style={inputStyle} />
@@ -892,7 +846,7 @@ export default function AdminEditScooterPage() {
                     )}
                     {isMobile ? (
                       <>
-                        <input type="text" inputMode="numeric" value={groupDigits(rate.price_usd)} onChange={(event) => updateRentalRate(index, 'price_usd', ungroupDigits(event.target.value))} style={inputStyle} placeholder="Price IDR" />
+                        <input type="text" inputMode="numeric" value={groupDigits(rate.price_idr)} onChange={(event) => updateRentalRate(index, 'price_idr', ungroupDigits(event.target.value))} style={inputStyle} placeholder="Price IDR" />
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10 }}>
                           <input type="number" min="1" value={rate.billing_period_days} onChange={(event) => updateRentalRate(index, 'billing_period_days', event.target.value)} style={inputStyle} placeholder="Billing days" />
                           <Button variant="outline" onClick={() => removeRentalRateRow(index)} disabled={rentalRates.length === 1}>Remove</Button>
@@ -1286,7 +1240,7 @@ export default function AdminEditScooterPage() {
                     </div>
                   </div>
                   <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 800, fontSize: 20 }}>
-                    {formatIdrPreviewText(draft.base_price_usd)}
+                    {formatIdrPreviewText(draft.base_price_idr)}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
