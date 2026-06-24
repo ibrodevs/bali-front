@@ -1271,14 +1271,24 @@ input[type="time"]:hover::-webkit-calendar-picker-indicator {
   }
 
   .br-home-delivery,
-  .br-detail-shell,
   .br-payment-shell,
   .br-admin-shell {
     grid-template-columns: 1fr !important;
   }
 
+  /* Detail page stacks into one column on mobile. Reorder so the blocks read:
+     photo → tariffs & add-ons → characteristics → description → rental terms. */
+  .br-detail-shell {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .br-detail-media-column { order: 1; }
+  .br-detail-side-column { order: 2; }
+  .br-detail-info-column { order: 3; }
+
   .br-detail-media-column,
   .br-detail-side-column,
+  .br-detail-info-column,
   .br-payment-main,
   .br-payment-side {
     padding: 32px 24px !important;
@@ -1686,6 +1696,7 @@ input[type="time"]:hover::-webkit-calendar-picker-indicator {
 
   .br-detail-media-column,
   .br-detail-side-column,
+  .br-detail-info-column,
   .br-payment-main,
   .br-payment-side {
     padding: 24px 16px !important;

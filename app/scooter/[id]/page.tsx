@@ -250,8 +250,8 @@ export default function ScooterDetailPage() {
         </nav>
       </div>
 
-      <div className="br-detail-shell" style={{ display: 'grid', gridTemplateColumns: '55fr 45fr', gap: 0 }}>
-        <div className="br-detail-media-column" style={{ padding: '40px 0 40px 40px' }}>
+      <div className="br-detail-shell" style={{ display: 'grid', gridTemplateColumns: '55fr 45fr', gridTemplateAreas: '"media side" "info side"', gap: 0 }}>
+        <div className="br-detail-media-column" style={{ gridArea: 'media', padding: '40px 0 0 40px' }}>
           {photoSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
             <div
@@ -327,8 +327,9 @@ export default function ScooterDetailPage() {
               </button>
             ))}
           </div>
+        </div>
 
-          <div style={{ marginTop: 48 }}>
+        <div className="br-detail-info-column" style={{ gridArea: 'info', padding: '48px 0 40px 40px' }}>
             <BREyebrow><span {...marker('detail.specs')}>{t.detail.specs}</span></BREyebrow>
             <div className="br-detail-specs" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, marginTop: 16, background: border }}>
               {specItems.map(([Icon, l, v], i) => (
@@ -357,9 +358,8 @@ export default function ScooterDetailPage() {
               </div>
             )}
           </div>
-        </div>
 
-        <div className="br-detail-side-column" style={{ padding: 40 }}>
+        <div className="br-detail-side-column" style={{ gridArea: 'side', padding: 40 }}>
           <div className="br-detail-side" style={{ background: surf, borderRadius: 16, padding: 28, position: 'sticky', top: 96 }}>
             <BREyebrow>{scooter.type.toUpperCase()}{scooter.cc ? ` · ${scooter.cc}CC` : ''} · {scooter.tag}</BREyebrow>
             <h1 className="br-display" style={{ fontSize: 48, lineHeight: 0.98, margin: '12px 0 4px', letterSpacing: '-0.03em' }}>{scooter.name}</h1>
