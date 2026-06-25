@@ -449,8 +449,10 @@ export default function ScooterDetailPage() {
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 14, fontWeight: 500 }}>{a.name}</div>
                         <div className="br-mono" style={{ fontSize: 11, color: sub }}>
-                          {symbol}
-                          {formatGroupedAmount(convertPrice(a.price), currency === 'IDR' ? 0 : 2)}/{t.common.day}
+                          Rp {formatGroupedAmount(convertPrice(a.price, 'IDR'), 0)}/{t.common.day}
+                          {currency !== 'IDR' ? (
+                            <span style={{ opacity: 0.65 }}> · ≈ {symbol}{formatGroupedAmount(convertPrice(a.price), 2)}</span>
+                          ) : null}
                         </div>
                       </div>
                       <div

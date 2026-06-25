@@ -323,10 +323,48 @@ function BookingPageInner() {
       : convertAmountValue(Number(quote.discount_amount), quoteCurrency, selectedCurrency)
     : 0;
   const promoApplied = Boolean(promoCode.trim() && discountTotal > 0);
+
+  // IDR is the primary display currency everywhere — show it first and put the
+  // user-selected currency next to it as an approximate equivalent. These mirror the
+  // selected-currency totals above but always resolve to IDR.
+  const fmtIdr = (amount: number) =>
+    formatCurrencyAmount(amount, 'IDR', 'en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  const showSecondaryCurrency = selectedCurrency !== 'IDR';
+  const effectiveRatePerDayIdr = quote?.applied_tariff
+    ? quote.applied_tariff.price_idr != null
+      ? Math.round(Number(quote.applied_tariff.price_idr) / (quote.applied_tariff.billing_period_days || 1))
+      : convertAmountValue(Number(quote.applied_tariff.effective_daily_price_usd || 0), quoteCurrency, 'IDR')
+    : 0;
+  const baseTotalIdr = quote
+    ? quote.base_price_idr != null
+      ? quote.base_price_idr
+      : convertAmountValue(Number(quote.base_price || 0), quoteCurrency, 'IDR')
+    : convertPrice(initialPrice || 0, 'IDR');
+  const addonsTotalIdr = quote
+    ? quote.add_ons_price_idr != null
+      ? quote.add_ons_price_idr
+      : convertAmountValue(Number(quote.add_ons_price || 0), quoteCurrency, 'IDR')
+    : convertPrice(addonsSubtotal, 'IDR');
+  const deliveryTotalIdr = quote
+    ? quote.delivery_price_idr != null
+      ? quote.delivery_price_idr
+      : convertAmountValue(Number(quote.delivery_price || 0), quoteCurrency, 'IDR')
+    : 0;
+  const grandTotalIdr = quote && rawGrandTotal > 0
+    ? quote.total_price_idr != null
+      ? quote.total_price_idr
+      : convertAmountValue(rawGrandTotal, quoteCurrency, 'IDR')
+    : baseTotalIdr + addonsTotalIdr + deliveryTotalIdr;
+  const discountTotalIdr = quote && Number(quote.discount_amount || 0) > 0
+    ? quote.discount_amount_idr != null
+      ? quote.discount_amount_idr
+      : convertAmountValue(Number(quote.discount_amount), quoteCurrency, 'IDR')
+    : 0;
+
   const selectedAddonsLabel = copy.selectedAddons
     .replace('{n}', String(selectedAddOnIds.length))
-    .replace('${amount}', formatCurrencyAmount(convertPrice(addonsSubtotal), selectedCurrency))
-    .replace('{amount}', formatCurrencyAmount(convertPrice(addonsSubtotal), selectedCurrency));
+    .replace('${amount}', fmtIdr(addonsTotalIdr))
+    .replace('{amount}', fmtIdr(addonsTotalIdr));
 
   const canConfirmDates = Boolean(quote && !quoteLoading && !quoteError && isDateRangeValid && hasDeliveryAddress);
 
@@ -491,7 +529,12 @@ function BookingPageInner() {
                         }}
                       >
                         <span>{getAddonName(addon, locale)}</span>
-                        <span className="br-mono">{formatCurrencyAmount(convertPrice(addonPriceValue(addon)), selectedCurrency)}</span>
+                        <span className="br-mono" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                          <span>{fmtIdr(convertPrice(addonPriceValue(addon), 'IDR'))}</span>
+                          {showSecondaryCurrency ? (
+                            <span style={{ fontSize: 11, opacity: 0.6 }}>≈ {formatCurrencyAmount(convertPrice(addonPriceValue(addon)), selectedCurrency)}</span>
+                          ) : null}
+                        </span>
                       </button>
                     );
                   })}
@@ -536,23 +579,45 @@ function BookingPageInner() {
                   <PriceRow
                     contentKey="booking.dailyRate"
                     label={`Rate / ${t.common.day}`}
-                    value={formatCurrencyAmount(effectiveRatePerDay, currency)}
+                    value={fmtIdr(effectiveRatePerDayIdr)}
+                    secondary={showSecondaryCurrency ? `≈ ${formatCurrencyAmount(effectiveRatePerDay, currency)}` : undefined}
                   />
                 ) : null}
-                <PriceRow contentKey="booking.base" label={copy.base} value={formatCurrencyAmount(baseTotal, currency)} />
-                <PriceRow contentKey="booking.addons" label={copy.addons} value={formatCurrencyAmount(addonsTotal, currency)} />
-                <PriceRow contentKey="booking.delivery" label={copy.delivery} value={formatCurrencyAmount(deliveryTotal, currency)} />
+                <PriceRow
+                  contentKey="booking.base"
+                  label={copy.base}
+                  value={fmtIdr(baseTotalIdr)}
+                  secondary={showSecondaryCurrency ? `≈ ${formatCurrencyAmount(baseTotal, currency)}` : undefined}
+                />
+                <PriceRow
+                  contentKey="booking.addons"
+                  label={copy.addons}
+                  value={fmtIdr(addonsTotalIdr)}
+                  secondary={showSecondaryCurrency ? `≈ ${formatCurrencyAmount(addonsTotal, currency)}` : undefined}
+                />
+                <PriceRow
+                  contentKey="booking.delivery"
+                  label={copy.delivery}
+                  value={fmtIdr(deliveryTotalIdr)}
+                  secondary={showSecondaryCurrency ? `≈ ${formatCurrencyAmount(deliveryTotal, currency)}` : undefined}
+                />
                 {discountTotal > 0 ? (
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
                     <span {...marker('booking.discountLabel')} style={{ color: '#16A34A', fontSize: 13 }}>{copy.discountLabel} ({promoCode})</span>
-                    <span className="br-mono" style={{ color: '#16A34A', fontWeight: 700 }}>−{formatCurrencyAmount(discountTotal, currency)}</span>
+                    <span className="br-mono" style={{ color: '#16A34A', fontWeight: 700, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                      <span>−{fmtIdr(discountTotalIdr)}</span>
+                      {showSecondaryCurrency ? <span style={{ fontSize: 11, opacity: 0.7 }}>≈ −{formatCurrencyAmount(discountTotal, currency)}</span> : null}
+                    </span>
                   </div>
                 ) : null}
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
                 <span className="br-display" {...marker('booking.estimatedTotal')} style={{ fontSize: 20 }}>{copy.estimatedTotal}</span>
-                <span className="br-mono" style={{ fontSize: 28, fontWeight: 700 }}>{formatCurrencyAmount(grandTotal, currency)}</span>
+                <span className="br-mono" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                  <span style={{ fontSize: 28, fontWeight: 700 }}>{fmtIdr(grandTotalIdr)}</span>
+                  {showSecondaryCurrency ? <span style={{ fontSize: 13, opacity: 0.6 }}>≈ {formatCurrencyAmount(grandTotal, currency)}</span> : null}
+                </span>
               </div>
 
               {quoteLoading ? <div className="br-mono" style={{ marginTop: 16, color: 'rgba(0,0,0,0.55)' }}>{t.common.loading}</div> : null}
@@ -861,12 +926,15 @@ function Field({ label, children, contentKey }: { label: string; children: React
   );
 }
 
-function PriceRow({ label, value, contentKey }: { label: string; value: string; contentKey?: string }) {
+function PriceRow({ label, value, secondary, contentKey }: { label: string; value: string; secondary?: string; contentKey?: string }) {
   const { marker } = useSiteContentPreview();
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
       <span {...(contentKey ? marker(contentKey) : {})} style={{ color: 'rgba(0,0,0,0.58)' }}>{label}</span>
-      <span className="br-mono">{value}</span>
+      <span className="br-mono" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+        <span>{value}</span>
+        {secondary ? <span style={{ fontSize: 11, opacity: 0.6 }}>{secondary}</span> : null}
+      </span>
     </div>
   );
 }
