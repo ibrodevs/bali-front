@@ -194,6 +194,7 @@ type DraftScooter = {
   color: string;
   base_price_idr: string;
   status: string;
+  quantity: string;
   mileage: string;
   is_featured: boolean;
 };
@@ -244,6 +245,7 @@ const EMPTY_SCOOTER: DraftScooter = {
   color: '',
   base_price_idr: '',
   status: 'available',
+  quantity: '1',
   mileage: '0',
   is_featured: false,
 };
@@ -477,6 +479,7 @@ export default function AdminNewScooterPage() {
         color: scooterDraft.color.trim(),
         base_price_idr: Number(scooterDraft.base_price_idr),
         status: scooterDraft.status,
+        quantity: Math.max(1, Number(scooterDraft.quantity || 1)),
         mileage: Number(scooterDraft.mileage || 0),
         is_featured: scooterDraft.is_featured,
       } satisfies AdminScooterPayload);
@@ -670,6 +673,9 @@ export default function AdminNewScooterPage() {
                     </select>
                   </Field>
                 </div>
+                <Field label="Quantity available for booking" hint="How many identical scooters this card represents. The card stays bookable until all units are taken for the selected dates — no need to create duplicate cards.">
+                  <input type="number" min="1" step="1" value={scooterDraft.quantity} onChange={(event) => updateScooterDraft('quantity', event.target.value)} style={inputStyle} placeholder="1" />
+                </Field>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14 }}>
                   <input type="checkbox" checked={scooterDraft.is_featured} onChange={(event) => updateScooterDraft('is_featured', event.target.checked)} />
                   <span>Feature on website homepage</span>

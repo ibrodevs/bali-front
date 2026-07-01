@@ -189,6 +189,7 @@ type DraftScooter = {
   color: string;
   base_price_idr: string;
   status: string;
+  quantity: string;
   mileage: string;
   is_featured: boolean;
 };
@@ -258,6 +259,7 @@ export default function AdminEditScooterPage() {
     color: '',
     base_price_idr: '',
     status: 'available',
+    quantity: '1',
     mileage: '0',
     is_featured: false,
   });
@@ -329,6 +331,7 @@ export default function AdminEditScooterPage() {
           color: scooterRes.color || scooterRes.characteristics?.color || '',
           base_price_idr: priceIdrRaw != null ? String(priceIdrRaw) : '',
           status: scooterRes.status || 'available',
+          quantity: scooterRes.quantity != null ? String(scooterRes.quantity) : '1',
           mileage: scooterRes.mileage != null ? String(scooterRes.mileage) : '0',
           is_featured: scooterRes.is_featured || false,
         });
@@ -490,6 +493,7 @@ export default function AdminEditScooterPage() {
         color: draft.color.trim(),
         base_price_idr: Number(draft.base_price_idr),
         status: draft.status,
+        quantity: Math.max(1, Number(draft.quantity || 1)),
         mileage: Number(draft.mileage || 0),
         is_featured: draft.is_featured,
       } satisfies AdminScooterPayload);
@@ -797,6 +801,21 @@ export default function AdminEditScooterPage() {
                     </select>
                   </Field>
                 </div>
+
+                <Field
+                  label="Quantity available for booking"
+                  hint="How many identical scooters this card represents. The card stays bookable until all units are taken for the selected dates — no need to create duplicate cards."
+                >
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={draft.quantity}
+                    onChange={(e) => updateDraft('quantity', e.target.value)}
+                    style={inputStyle}
+                    placeholder="1"
+                  />
+                </Field>
 
                 <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14 }}>
                   <input

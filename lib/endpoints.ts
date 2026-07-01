@@ -16,6 +16,7 @@ export type ApiScooter = {
   pricing_tiers?: ApiScooterRentalRate[];
   main_image?: string | null;
   status?: string;
+  quantity?: number;
   rating_avg?: number;
   reviews_count?: number;
   short_description?: string;
@@ -532,6 +533,7 @@ export type AdminScooterPayload = {
   color: string;
   base_price_idr: number;
   status: string;
+  quantity: number;
   mileage: number;
   is_featured: boolean;
 };
