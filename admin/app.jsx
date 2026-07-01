@@ -456,6 +456,7 @@ function emptyFleetDraft() {
     color: '',
     base_price_usd: '',
     status: 'available',
+    quantity: '1',
     mileage: '0',
     is_featured: false,
   };
@@ -471,6 +472,7 @@ function fleetDraftFromScooter(item) {
     color: item.color || '',
     base_price_usd: String(item.base_price_usd ?? item.price_per_day ?? ''),
     status: item.status || 'available',
+    quantity: String(item.quantity ?? 1),
     mileage: String(item.mileage ?? 0),
     is_featured: Boolean(item.is_featured),
   };
@@ -724,6 +726,7 @@ function FleetView({
       color: draft.color.trim(),
       base_price_usd: draft.base_price_usd,
       status: draft.status,
+      quantity: Math.max(1, Number(draft.quantity || 1)),
       mileage: Number(draft.mileage || 0),
       is_featured: draft.is_featured,
     };
@@ -870,6 +873,20 @@ function FleetView({
                 <Input type="number" min="0" value={draft.mileage} onChange={(event) => updateDraft('mileage', event.target.value)} />
               </Field>
             </div>
+            <Field label="Quantity available for booking">
+              <Input
+                type="number"
+                min="1"
+                step="1"
+                value={draft.quantity}
+                onChange={(event) => updateDraft('quantity', event.target.value)}
+                placeholder="1"
+              />
+              <div style={{ fontFamily: 'Inter', fontSize: 12, color: A.g500, marginTop: 6 }}>
+                How many identical scooters this card represents. The card stays bookable until all
+                units are taken for the selected dates — no need to duplicate cards.
+              </div>
+            </Field>
             <Field label="Title">
               <Input value={draft.title} onChange={(event) => updateDraft('title', event.target.value)} placeholder="Honda PCX 160" />
             </Field>
