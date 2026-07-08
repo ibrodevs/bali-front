@@ -16,6 +16,7 @@ import { formatCurrencyAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { type PaymentExtraContent, PAYMENT_COPY } from '@/lib/siteContentExtras';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
+import { PageTitleSync, usePagePath } from '@/lib/usePageSettings';
 
 type PaymentMethod = 'card' | 'cash' | 'crypto';
 
@@ -30,6 +31,9 @@ export default function PaymentPage() {
 function PaymentInner() {
   const { t, tr, locale } = useLocale();
   const { marker } = useSiteContentPreview();
+  const profilePath = usePagePath('profile');
+  const homePath = usePagePath('home');
+  const loginPath = usePagePath('login');
   const copy = {
     ...PAYMENT_COPY.en,
     ...(PAYMENT_COPY[locale as keyof typeof PAYMENT_COPY] || PAYMENT_COPY.en),
@@ -281,6 +285,7 @@ function PaymentInner() {
 
   return (
     <div style={{ background: bg, color: fg, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <PageTitleSync pageKey="payment" />
       <SiteHeader />
       <div className="br-payment-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', borderBottom: `1px solid ${border}` }}>
         <span className="br-mono" {...marker('payment.topbar')} style={{ fontSize: 11, color: sub, letterSpacing: '0.12em' }}>{copy.topbar}</span>
@@ -310,8 +315,8 @@ function PaymentInner() {
                 {reserveOnly ? copy.reservedDesc : t.payment.confirmedDesc}
               </p>
               <div className="br-payment-success-actions" style={{ marginTop: 20, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <BRPrimary href="/profile" style={{ background: '#000', color: '#FFD700' }}><span {...marker('payment.openProfile')}>{copy.openProfile}</span></BRPrimary>
-                <BRPrimary href="/" style={{ background: '#fff', color: '#000' }}><span {...marker('payment.home')}>{t.payment.home}</span></BRPrimary>
+                <BRPrimary href={profilePath} style={{ background: '#000', color: '#FFD700' }}><span {...marker('payment.openProfile')}>{copy.openProfile}</span></BRPrimary>
+                <BRPrimary href={homePath} style={{ background: '#fff', color: '#000' }}><span {...marker('payment.home')}>{t.payment.home}</span></BRPrimary>
               </div>
             </div>
           ) : (
@@ -389,7 +394,7 @@ function PaymentInner() {
                         <div {...marker('payment.messengerHint')} style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: sub, marginTop: 8 }}>{copy.messengerHint}</div>
                       </div>
                       <div style={{ display: 'grid', alignContent: 'end' }}>
-                        <Link href="/login" className="br-mono" style={{ color: '#000', fontSize: 12 }}>
+                        <Link href={loginPath} className="br-mono" style={{ color: '#000', fontSize: 12 }}>
                           <span {...marker('payment.alreadyHave')}>{copy.alreadyHave}</span>
                         </Link>
                       </div>

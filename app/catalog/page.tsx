@@ -9,6 +9,7 @@ import { ApiVehicleType, endpoints, unwrapList } from '@/lib/endpoints';
 import { DisplayScooter, fallbackScooters, mapApiScooter } from '@/lib/displayScooter';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
+import { PageTitleSync } from '@/lib/usePageSettings';
 
 function deriveFallbackCategories(scooters: DisplayScooter[]): ApiVehicleType[] {
   const seen = new Set<string>();
@@ -105,6 +106,7 @@ export default function CatalogPage() {
 
   return (
     <div style={{ background: bg, color: fg, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <PageTitleSync pageKey="catalog" />
       <SiteHeader />
 
       <div className="br-catalog-hero" style={{ padding: '64px 40px 32px' }}>

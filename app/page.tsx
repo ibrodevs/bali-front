@@ -28,6 +28,7 @@ import {
 } from '@/lib/displayScooter';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
 import { useSiteSettings } from '@/lib/siteSettings';
+import { PageTitleSync, usePagePath } from '@/lib/usePageSettings';
 
 function FAQItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
@@ -82,7 +83,6 @@ const stagger = {
   visible: { transition: { staggerChildren: 0.09 } },
 };
 
-const SUPPORT_CHAT_LINK = '/profile?tab=support';
 const SUPPORT_CHAT_COPY = {
   en: 'Support chat',
   ru: 'Чат поддержки',
@@ -97,6 +97,8 @@ export default function LandingPage() {
   const { marker } = useSiteContentPreview();
   const { convertPrice } = useCurrency();
   const { socialLinks } = useSiteSettings();
+  const catalogPath = usePagePath('catalog');
+  const profilePath = usePagePath('profile');
   const [featured, setFeatured] = useState<DisplayScooter[]>(fallbackScooters().slice(0, 3));
   const [zones, setZones] = useState<Array<{ id: number; name: string; freeDelivery?: boolean }>>([]);
   const [apiFaqs, setApiFaqs] = useState<Array<{ q: string; a: string }>>([]);
@@ -144,9 +146,11 @@ export default function LandingPage() {
   const minPrice = featured[0]?.price || 8;
   const minPriceLabel = `Rp ${formatGroupedAmount(convertPrice(minPrice, 'IDR'), 0)}`;
   const supportChatLabel = SUPPORT_CHAT_COPY[locale as keyof typeof SUPPORT_CHAT_COPY] || SUPPORT_CHAT_COPY.en;
+  const supportChatLink = `${profilePath}?tab=support`;
 
   return (
     <div style={{ width: '100%', minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#FAFAF5', color: '#0A0A0F', fontFamily: 'var(--br-body)', WebkitFontSmoothing: 'antialiased' }}>
+      <PageTitleSync pageKey="home" />
       <SiteHeader transparent />
 
       {/* ── 01 HERO ─────────────────────────────────────────────────── */}
@@ -194,7 +198,7 @@ export default function LandingPage() {
             transition={{ duration: 0.6, delay: 0.22, ease: [0.16, 1, 0.3, 1] }}
             style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}
           >
-            <a href="/catalog" style={{
+            <a href={catalogPath} style={{
               display: 'inline-flex', alignItems: 'center', gap: 12,
               background: '#FFD700', color: '#0A0A0F',
               fontFamily: 'var(--br-display)', fontSize: 'clamp(16px, 1.6vw, 20px)', fontWeight: 800,
@@ -219,7 +223,7 @@ export default function LandingPage() {
               WhatsApp
             </a>
 
-            <Link href={SUPPORT_CHAT_LINK} style={{
+            <Link href={supportChatLink} style={{
               display: 'inline-flex', alignItems: 'center', gap: 9,
               background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)',
               border: '1px solid rgba(255,255,255,0.2)',
@@ -383,7 +387,7 @@ export default function LandingPage() {
             </p>
           </motion.div>
           <motion.div variants={fadeUp}>
-            <a href="/catalog" style={{
+            <a href={catalogPath} style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               fontFamily: 'var(--br-body)', fontSize: 14, fontWeight: 600,
               color: '#0A0A0F', textDecoration: 'none',
@@ -414,7 +418,7 @@ export default function LandingPage() {
           viewport={{ once: true }} transition={{ delay: 0.3 }}
           style={{ textAlign: 'center', marginTop: 40 }}
         >
-          <a href="/catalog" style={{
+          <a href={catalogPath} style={{
             display: 'inline-flex', alignItems: 'center', gap: 12,
             background: '#FFD700', color: '#0A0A0F',
             fontFamily: 'var(--br-display)', fontSize: 'clamp(14px, 1.4vw, 17px)', fontWeight: 800,
@@ -557,7 +561,7 @@ export default function LandingPage() {
             {t.cta.desc}
           </p>
           <div className="br-cta-btns" style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <a href="/catalog" style={{
+            <a href={catalogPath} style={{
               display: 'inline-flex', alignItems: 'center', gap: 12,
               background: '#0A0A0F', color: '#FFD700',
               fontFamily: 'var(--br-display)', fontSize: 'clamp(15px, 1.5vw, 18px)', fontWeight: 800,
@@ -604,7 +608,7 @@ export default function LandingPage() {
         }}>
           <WhatsAppIcon size={22} color="#fff" />
         </a>
-        <a href="/catalog" style={{
+        <a href={catalogPath} style={{
           flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           background: '#FFD700', color: '#0A0A0F',
           fontFamily: 'var(--br-display)', fontSize: 16, fontWeight: 800,

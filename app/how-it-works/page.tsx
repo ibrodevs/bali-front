@@ -15,10 +15,13 @@ import {
 } from '@/components/Icons';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
+import { PageTitleSync, usePagePath } from '@/lib/usePageSettings';
 
 export default function HowItWorksPage() {
   const { t } = useLocale();
   const { marker } = useSiteContentPreview();
+  const bookingPath = usePagePath('booking');
+  const catalogPath = usePagePath('catalog');
   const bg = '#fff';
   const fg = '#000';
   const sub = 'rgba(0,0,0,0.6)';
@@ -51,6 +54,7 @@ export default function HowItWorksPage() {
 
   return (
     <div style={{ width: '100%', minHeight: '100vh', display: 'flex', flexDirection: 'column', background: bg, color: fg, fontFamily: 'var(--br-body)' }}>
+      <PageTitleSync pageKey="how" />
       <SiteHeader />
 
       {/* HERO */}
@@ -710,11 +714,11 @@ export default function HowItWorksPage() {
           {t.cta.desc}
         </p>
         <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <BRSecondary href="/booking" style={{ height: 72, padding: '0 44px', fontSize: 18 }}>
+          <BRSecondary href={bookingPath} style={{ height: 72, padding: '0 44px', fontSize: 18 }}>
             <span {...marker('cta.primary')}>{t.cta.primary}</span>
           </BRSecondary>
           <BROutline
-            href="/catalog"
+            href={catalogPath}
             style={{ height: 72, padding: '0 32px', fontSize: 16, borderColor: '#000' }}
           >
             <span {...marker('cta.secondary')}>{t.cta.secondary}</span>

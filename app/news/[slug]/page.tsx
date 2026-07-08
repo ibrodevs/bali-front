@@ -11,6 +11,7 @@ import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { mediaUrl } from '@/lib/api';
 import { ArrowRightIcon } from '@/components/Icons';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
+import { PageTitleSync, usePagePath } from '@/lib/usePageSettings';
 
 function formatDate(dateStr: string, locale: string): string {
   try {
@@ -39,11 +40,13 @@ function SkeletonArticle() {
   );
 }
 
-export default function NewsArticlePage() {
+export function NewsArticlePageContent({ slugOverride }: { slugOverride?: string }) {
   const { locale, t } = useLocale();
   const { marker } = useSiteContentPreview();
   const params = useParams<{ slug: string }>();
-  const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug;
+  const newsPath = usePagePath('news');
+  const catalogPath = usePagePath('catalog');
+  const slug = slugOverride || (Array.isArray(params?.slug) ? params.slug[0] : params?.slug);
 
   const [article, setArticle] = useState<ApiNewsArticle | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,8 +62,16 @@ export default function NewsArticlePage() {
       .finally(() => setLoading(false));
   }, [locale, slug]);
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (article?.title) {
+      document.title = `${article.title} · BALI-RENT`;
+    }
+  }, [article?.title]);
+
   return (
     <>
+      <PageTitleSync pageKey="news" />
       <SiteHeader />
       <main style={{ minHeight: '100vh', background: '#FAFAF5', WebkitFontSmoothing: 'antialiased' }}>
 
@@ -68,7 +79,7 @@ export default function NewsArticlePage() {
         <div style={{ borderBottom: '1px solid rgba(0,0,0,0.07)', background: '#fff' }}>
           <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 clamp(16px, 5vw, 56px)' }}>
             <Link
-              href="/news"
+              href={newsPath}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
                 height: 56, color: 'rgba(0,0,0,0.52)',
@@ -113,7 +124,7 @@ export default function NewsArticlePage() {
               <p style={{ fontFamily: 'var(--br-body)', fontSize: 15, color: 'rgba(0,0,0,0.48)', lineHeight: 1.65, margin: '0 0 28px' }}>
                 Article not found or unavailable right now.
               </p>
-              <Link href="/news" style={{
+              <Link href={newsPath} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
                 background: '#0A0A0F', color: '#fff',
                 fontFamily: 'var(--br-body)', fontSize: 14, fontWeight: 600,
@@ -191,7 +202,7 @@ export default function NewsArticlePage() {
 
                 {/* Bottom nav */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                  <Link href="/news" style={{
+                  <Link href={newsPath} style={{
                     display: 'inline-flex', alignItems: 'center', gap: 8,
                     fontFamily: 'var(--br-body)', fontSize: 13, fontWeight: 600,
                     color: 'rgba(0,0,0,0.52)', textDecoration: 'none',
@@ -206,7 +217,7 @@ export default function NewsArticlePage() {
                     <span {...marker('news.backToNews')}>{t.news.backToNews}</span>
                   </Link>
 
-                  <Link href="/catalog" style={{
+                  <Link href={catalogPath} style={{
                     display: 'inline-flex', alignItems: 'center', gap: 9,
                     background: '#FFD700', color: '#0A0A0F',
                     fontFamily: 'var(--br-display)', fontSize: 14, fontWeight: 800,
@@ -245,4 +256,8 @@ export default function NewsArticlePage() {
       <SiteFooter />
     </>
   );
+}
+
+export default function NewsArticlePage() {
+  return <NewsArticlePageContent />;
 }

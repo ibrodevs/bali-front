@@ -407,6 +407,7 @@ export type ApiBootstrap = {
   languages?: { code: string; name: string }[];
   content?: Record<string, unknown>;
   dictionaryOverrides?: Record<string, unknown>;
+  pageSettings?: Record<string, { path?: string; title?: string }>;
   fleet?: {
     featured?: Array<{
       id: number;
@@ -433,6 +434,10 @@ export type ApiBootstrap = {
   };
   addons?: Array<{ id: number; name: string; description?: string; icon?: string; priceUSD?: number; priceIDR?: number }>;
   deliveryZones?: Array<{ id: number; name: string; deliveryFeeUSD?: number; deliveryFeeIDR?: number; freeDelivery?: boolean; timeMinutes?: number; latitude?: number; longitude?: number }>;
+};
+
+export type ApiPublicPageSettings = {
+  aliases?: Record<string, string>;
 };
 
 export type ApiChatMessage = {
@@ -638,6 +643,7 @@ export type PromoCodePayload = {
 
 export const endpoints = {
   bootstrap: (lang?: string) => api<ApiBootstrap>('/public/bootstrap/', { lang }),
+  publicPageSettings: () => api<ApiPublicPageSettings>('/public/page-settings/'),
 
   scooters: (params?: { search?: string; start_date?: string; end_date?: string; page?: number }, lang?: string) =>
     api<Paginated<ApiScooter> | ApiScooter[]>('/scooters/', { query: params, lang }),

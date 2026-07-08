@@ -10,6 +10,7 @@ import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { useAuth } from '@/lib/i18n/AuthProvider';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
 import { useSiteSettings } from '@/lib/siteSettings';
+import { usePagePath } from '@/lib/usePageSettings';
 
 export default function SiteHeader({
   dark = false,
@@ -23,6 +24,14 @@ export default function SiteHeader({
   const { user, signOut } = useAuth();
   const { socialLinks } = useSiteSettings();
   const pathname = usePathname();
+  const homePath = usePagePath('home');
+  const catalogPath = usePagePath('catalog');
+  const pricesPath = usePagePath('prices');
+  const howPath = usePagePath('how');
+  const locationsPath = usePagePath('locations');
+  const newsPath = usePagePath('news');
+  const loginPath = usePagePath('login');
+  const profilePath = usePagePath('profile');
   const pricingLabels: Record<string, string> = {
     en: 'Prices',
     ru: 'Цены',
@@ -116,17 +125,17 @@ export default function SiteHeader({
 
   const isActive = (href: string) => {
     if (href.startsWith('/#')) return false;
-    if (href === '/') return pathname === '/';
+    if (href === '/' || href === homePath) return pathname === href;
     return pathname === href || pathname.startsWith(href + '/');
   };
 
   const navLinks = (
     <>
-      <Link {...marker('nav.catalog')} href="/catalog" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.catalog}</Link>
-      <Link href="/prices" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{pricingLabel}</Link>
-      <Link {...marker('nav.how')} href="/how-it-works" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.how}</Link>
-      <Link {...marker('nav.locations')} href="/locations" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.locations}</Link>
-      <Link {...marker('nav.news')} href="/news" onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.news}</Link>
+      <Link {...marker('nav.catalog')} href={catalogPath} onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.catalog}</Link>
+      <Link href={pricesPath} onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{pricingLabel}</Link>
+      <Link {...marker('nav.how')} href={howPath} onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.how}</Link>
+      <Link {...marker('nav.locations')} href={locationsPath} onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.locations}</Link>
+      <Link {...marker('nav.news')} href={newsPath} onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.news}</Link>
       {isAdmin && (
         <Link
           href="/admin" onClick={closeAll}
@@ -170,7 +179,7 @@ export default function SiteHeader({
               borderRadius: 14, padding: 6, minWidth: 200,
               boxShadow: 'var(--br-shadow-lg)', zIndex: 50,
             }}>
-              <Link href="/profile" onClick={closeAll} style={{ display: 'block', padding: '10px 12px', borderRadius: 8, color: dark ? '#fff' : '#0A0A0F', textDecoration: 'none', fontSize: 13 }}>
+              <Link href={profilePath} onClick={closeAll} style={{ display: 'block', padding: '10px 12px', borderRadius: 8, color: dark ? '#fff' : '#0A0A0F', textDecoration: 'none', fontSize: 13 }}>
                 <span {...marker('nav.profile')}>{t.nav.profile}</span>
               </Link>
               <button {...marker('nav.logout')} onClick={() => { closeAll(); signOut(); }} style={{ display: 'block', width: '100%', padding: '10px 12px', borderRadius: 8, border: 0, background: 'transparent', color: dark ? '#fff' : '#0A0A0F', textAlign: 'left', cursor: 'pointer', fontSize: 13 }}>
@@ -181,7 +190,7 @@ export default function SiteHeader({
         </div>
       ) : (
         <Link
-          href="/login" onClick={closeAll}
+          href={loginPath} onClick={closeAll}
           className="br-mono"
           style={{
             padding: '8px 14px', borderRadius: 999,
@@ -195,7 +204,7 @@ export default function SiteHeader({
       )}
 
       <a
-        href="/catalog"
+        href={catalogPath}
         onClick={closeAll}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -299,7 +308,7 @@ export default function SiteHeader({
           <a href={socialLinks.whatsapp} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: '#25D366', color: '#fff', fontFamily: 'var(--br-body)', fontSize: 16, fontWeight: 600, borderRadius: 14, padding: '15px', textDecoration: 'none', width: '100%' }}>
             💬 Chat on WhatsApp
           </a>
-          <a href="/catalog" onClick={closeAll} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: '#FFD700', color: '#0A0A0F', fontFamily: 'var(--br-body)', fontSize: 16, fontWeight: 700, borderRadius: 14, padding: '15px', textDecoration: 'none', width: '100%', letterSpacing: '-0.01em' }}>
+          <a href={catalogPath} onClick={closeAll} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: '#FFD700', color: '#0A0A0F', fontFamily: 'var(--br-body)', fontSize: 16, fontWeight: 700, borderRadius: 14, padding: '15px', textDecoration: 'none', width: '100%', letterSpacing: '-0.01em' }}>
             {t.nav.book} →
           </a>
         </div>

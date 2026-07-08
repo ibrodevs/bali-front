@@ -5,28 +5,34 @@ import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
 import { useSiteSettings } from '@/lib/siteSettings';
+import { usePagePath } from '@/lib/usePageSettings';
 
 export default function SiteFooter() {
   const { t } = useLocale();
   const { availableCurrencies } = useCurrency();
   const { marker } = useSiteContentPreview();
   const { socialLinks, addresses } = useSiteSettings();
+  const catalogPath = usePagePath('catalog');
+  const pricesPath = usePagePath('prices');
+  const howPath = usePagePath('how');
+  const locationsPath = usePagePath('locations');
+  const newsPath = usePagePath('news');
   const footer = t.footer as typeof t.footer & {
     whatsappButton?: string;
     metaLine?: string;
     localesLine?: string;
   };
   const footerRouteMap = new Map<string, string>([
-    [t.nav.catalog, '/catalog'],
-    ['Pricing', '/prices'],
-    ['Цены', '/prices'],
-    ['价格', '/prices'],
-    ['Harga', '/prices'],
-    ['Preise', '/prices'],
-    ['Tarifs', '/prices'],
-    [t.nav.how, '/how-it-works'],
-    [t.nav.locations, '/locations'],
-    [t.nav.news, '/news'],
+    [t.nav.catalog, catalogPath],
+    ['Pricing', pricesPath],
+    ['Цены', pricesPath],
+    ['价格', pricesPath],
+    ['Harga', pricesPath],
+    ['Preise', pricesPath],
+    ['Tarifs', pricesPath],
+    [t.nav.how, howPath],
+    [t.nav.locations, locationsPath],
+    [t.nav.news, newsPath],
   ]);
   const cols = Object.entries(t.footer.cols)
     .map(([heading, items]) => ({

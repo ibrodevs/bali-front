@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { formatGroupedAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
+import { usePagePath } from '@/lib/usePageSettings';
 
 export function BRLogo({
   size = 22,
@@ -15,10 +16,11 @@ export function BRLogo({
   withBackdrop?: boolean;
 }) {
   const logoHeight = size * 1.7;
+  const homePath = usePagePath('home');
 
   return (
     <Link
-      href="/"
+      href={homePath}
       style={{
         display: 'inline-flex',
         alignItems: 'center',

@@ -3,12 +3,14 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { dictionaries, Dict, Locale, LOCALES } from './dictionaries';
 import { endpoints } from '@/lib/endpoints';
 import { SITE_CONTENT_EXTRAS } from '@/lib/siteContentExtras';
+import { buildPageSettings, type ManagedPageKey, type PageSettingsMap } from '@/lib/pageSettings';
 
 type Ctx = {
   locale: Locale;
   setLocale: (l: Locale) => void;
   t: Dict;
   tr: (template: string, vars?: Record<string, string | number>) => string;
+  pageSettings: PageSettingsMap;
 };
 
 const LocaleCtx = createContext<Ctx | null>(null);
@@ -60,6 +62,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [dictionaryOverrides, setDictionaryOverrides] = useState<Record<string, unknown>>({});
   const [previewOverrides, setPreviewOverrides] = useState<Record<string, unknown>>({});
+  const [pageSettingsOverrides, setPageSettingsOverrides] = useState<Partial<Record<ManagedPageKey, { path?: string; title?: string }>>>({});
 
   const previewMode = useMemo(() => {
     if (typeof window === 'undefined') return false;
@@ -87,14 +90,19 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     setDictionaryOverrides({});
     setPreviewOverrides({});
+    setPageSettingsOverrides({});
     endpoints.bootstrap(locale)
       .then((bootstrap) => {
         if (!cancelled) {
           setDictionaryOverrides((bootstrap.dictionaryOverrides as Record<string, unknown>) || {});
+          setPageSettingsOverrides((bootstrap.pageSettings as Partial<Record<ManagedPageKey, { path?: string; title?: string }>>) || {});
         }
       })
       .catch(() => {
-        if (!cancelled) setDictionaryOverrides({});
+        if (!cancelled) {
+          setDictionaryOverrides({});
+          setPageSettingsOverrides({});
+        }
       });
 
     return () => {
@@ -120,12 +128,13 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     () => deepMerge(deepMerge(deepMerge(dictionaries[locale], SITE_CONTENT_EXTRAS[locale]), dictionaryOverrides), previewOverrides),
     [locale, dictionaryOverrides, previewOverrides],
   );
+  const pageSettings = useMemo(() => buildPageSettings(locale, pageSettingsOverrides), [locale, pageSettingsOverrides]);
   const tr = useCallback((template: string, vars?: Record<string, string | number>) => {
     if (!vars) return template;
     return template.replace(/\{(\w+)\}/g, (_, k) => (vars[k] !== undefined ? String(vars[k]) : `{${k}}`));
   }, []);
 
-  const value = useMemo(() => ({ locale, setLocale, t, tr }), [locale, setLocale, t, tr]);
+  const value = useMemo(() => ({ locale, setLocale, t, tr, pageSettings }), [locale, setLocale, t, tr, pageSettings]);
   return <LocaleCtx.Provider value={value}>{children}</LocaleCtx.Provider>;
 }
 

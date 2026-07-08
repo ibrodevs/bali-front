@@ -11,6 +11,7 @@ import { ApiChatMessage, ApiChatThread, endpoints, unwrapList } from '@/lib/endp
 import { useAuth } from '@/lib/i18n/AuthProvider';
 import { formatCurrencyAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
+import { PageTitleSync, usePagePath } from '@/lib/usePageSettings';
 
 const PROFILE_LANGUAGES = [
   { value: 'en', label: 'English' },
@@ -58,6 +59,10 @@ export default function ProfilePage() {
   const { user, loading: authLoading, signOut, refresh } = useAuth();
   const { currency: activeCurrency, setCurrency, availableCurrencies, convertAmountValue } = useCurrency();
   const searchParams = useSearchParams();
+  const loginPath = usePagePath('login');
+  const registerPath = usePagePath('register');
+  const bookingPath = usePagePath('booking');
+  const catalogPath = usePagePath('catalog');
   const bookings = user?.bookings ?? [];
   const profileCurrencies = useMemo(
     () => availableCurrencies.map((value) => ({ value, label: value === 'USD' ? 'USD (base)' : value })),
@@ -299,6 +304,7 @@ export default function ProfilePage() {
 
   return (
     <div style={{ width: '100%', minHeight: '100vh', display: 'flex', flexDirection: 'column', fontFamily: 'var(--br-body)', background: '#0A0A0A' }}>
+      <PageTitleSync pageKey="profile" />
       <SiteHeader />
 
       {!authLoading && !user ? (
@@ -315,8 +321,8 @@ export default function ProfilePage() {
               {copy.signInHint}
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <BRPrimary href="/login">{t.auth.loginCta}</BRPrimary>
-              <BROutline href="/register" dark>{t.auth.register}</BROutline>
+              <BRPrimary href={loginPath}>{t.auth.loginCta}</BRPrimary>
+              <BROutline href={registerPath} dark>{t.auth.register}</BROutline>
             </div>
           </div>
         </div>
@@ -459,8 +465,8 @@ export default function ProfilePage() {
                     {copy.quickActionsHint}
                   </p>
                   <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }} className="br-profile-actions">
-                    <BRPrimary href="/booking">{t.nav.book}</BRPrimary>
-                    <Link href="/catalog" className="br-btn br-btn-outline dark" style={{ textDecoration: 'none' }}>{t.nav.catalog}</Link>
+                    <BRPrimary href={bookingPath}>{t.nav.book}</BRPrimary>
+                    <Link href={catalogPath} className="br-btn br-btn-outline dark" style={{ textDecoration: 'none' }}>{t.nav.catalog}</Link>
                   </div>
                 </div>
               </div>
@@ -478,7 +484,7 @@ export default function ProfilePage() {
                     <div className="br-mono" style={{ fontSize: 10, letterSpacing: '0.22em', color: 'rgba(0,0,0,0.4)', marginBottom: 8 }}>{copy.myBookings}</div>
                     <h2 className="br-display" style={{ margin: 0, fontSize: 'clamp(28px, 3vw, 40px)', letterSpacing: '-0.03em', lineHeight: 1 }}>{copy.bookingHistory}</h2>
                   </div>
-                  <BROutline href="/catalog">{t.nav.book}</BROutline>
+                  <BROutline href={catalogPath}>{t.nav.book}</BROutline>
                 </div>
 
                 {/* Filter chips */}
@@ -510,7 +516,7 @@ export default function ProfilePage() {
                     <p style={{ color: 'rgba(0,0,0,0.45)', fontSize: 14, lineHeight: 1.6, maxWidth: 400, margin: '0 auto 24px' }}>
                       {bookingFilter === 'all' ? copy.noBookings.split('.').slice(1).join('.').trim() : ''}
                     </p>
-                    <BRPrimary href="/catalog">{t.nav.catalog}</BRPrimary>
+                    <BRPrimary href={catalogPath}>{t.nav.catalog}</BRPrimary>
                   </div>
                 ) : (
                   <div style={{ display: 'grid', gap: 14 }}>

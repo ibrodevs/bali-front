@@ -9,7 +9,9 @@ import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { endpoints, ApiNewsArticle, unwrapList } from '@/lib/endpoints';
 import { mediaUrl } from '@/lib/api';
 import { ArrowRightIcon } from '@/components/Icons';
+import { joinPagePath } from '@/lib/pageSettings';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
+import { PageTitleSync, usePagePath } from '@/lib/usePageSettings';
 
 function formatDate(dateStr: string, locale: string): string {
   try {
@@ -28,11 +30,11 @@ const stagger = {
   visible: { transition: { staggerChildren: 0.08 } },
 };
 
-function NewsCard({ article, locale, readMoreLabel }: { article: ApiNewsArticle; locale: string; readMoreLabel: string }) {
+function NewsCard({ article, locale, readMoreLabel, href }: { article: ApiNewsArticle; locale: string; readMoreLabel: string; href: string }) {
   const imgSrc = article.image ? mediaUrl(article.image) : null;
 
   return (
-    <Link href={`/news/${article.slug}`} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
+    <Link href={href} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
       <article
         className="br-news-card"
         style={{
@@ -136,6 +138,8 @@ function SkeletonCard() {
 export default function NewsPage() {
   const { t, locale } = useLocale();
   const { marker } = useSiteContentPreview();
+  const newsPath = usePagePath('news');
+  const catalogPath = usePagePath('catalog');
   const d = t.news;
 
   const [articles, setArticles] = useState<ApiNewsArticle[]>([]);
@@ -153,6 +157,7 @@ export default function NewsPage() {
 
   return (
     <>
+      <PageTitleSync pageKey="news" />
       <SiteHeader />
       <main style={{ minHeight: '100vh', background: '#FAFAF5', WebkitFontSmoothing: 'antialiased' }}>
 
@@ -227,7 +232,7 @@ export default function NewsPage() {
             >
               {articles.map((article) => (
                 <motion.div key={article.id} variants={fadeUp} style={{ display: 'flex', flexDirection: 'column' }}>
-                  <NewsCard article={article} locale={locale} readMoreLabel={d.readMore} />
+                  <NewsCard article={article} locale={locale} readMoreLabel={d.readMore} href={joinPagePath(newsPath, article.slug)} />
                 </motion.div>
               ))}
             </motion.div>
@@ -259,7 +264,7 @@ export default function NewsPage() {
               }}>
                 Rent a scooter and discover the island on your own terms.
               </p>
-              <a href="/catalog" style={{
+              <a href={catalogPath} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 10,
                 background: '#0A0A0F', color: '#FFD700',
                 fontFamily: 'var(--br-display)', fontSize: 'clamp(14px, 1.4vw, 17px)', fontWeight: 800,

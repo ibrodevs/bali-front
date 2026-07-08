@@ -9,6 +9,7 @@ import { ApiError } from '@/lib/api';
 import { CheckIcon, ScooterIcon, StarIcon } from '@/components/Icons';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
 import { endpoints } from '@/lib/endpoints';
+import { PageTitleSync, usePagePath } from '@/lib/usePageSettings';
 
 const RESET_COPY = {
   en: {
@@ -60,6 +61,8 @@ export default function LoginPage() {
   const { marker } = useSiteContentPreview();
   const { signIn } = useAuth();
   const router = useRouter();
+  const homePath = usePagePath('home');
+  const registerPath = usePagePath('register');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -82,7 +85,7 @@ export default function LoginPage() {
       }
 
       await signIn(email, password);
-      router.push('/');
+      router.push(homePath);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t.auth.error);
     } finally {
@@ -106,6 +109,7 @@ export default function LoginPage() {
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: '100vh', fontFamily: 'var(--br-body)' }} className="br-auth-layout">
+      <PageTitleSync pageKey="login" />
 
       {/* ── ЛЕВАЯ ПАНЕЛЬ ─────────────────────────────────────────── */}
       <div className="br-auth-left" style={{
@@ -172,7 +176,7 @@ export default function LoginPage() {
       }}>
         <div style={{ width: '100%', maxWidth: 400 }}>
 
-          <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'rgba(0,0,0,0.38)', fontSize: 13, textDecoration: 'none', marginBottom: 40, fontFamily: 'var(--br-mono)', letterSpacing: '0.06em' }}>
+          <Link href={homePath} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'rgba(0,0,0,0.38)', fontSize: 13, textDecoration: 'none', marginBottom: 40, fontFamily: 'var(--br-mono)', letterSpacing: '0.06em' }}>
             ← Bali-Rent
           </Link>
 
@@ -189,7 +193,7 @@ export default function LoginPage() {
             ) : (
               <>
                 <span {...marker('auth.noAccount')}>{t.auth.noAccount}</span>{' '}
-                <Link href="/register" style={{ color: '#0A0A0F', fontWeight: 600, textDecoration: 'none', borderBottom: '1.5px solid #FFD700' }}>
+                <Link href={registerPath} style={{ color: '#0A0A0F', fontWeight: 600, textDecoration: 'none', borderBottom: '1.5px solid #FFD700' }}>
                   <span {...marker('auth.register')}>{t.auth.register}</span>
                 </Link>
               </>

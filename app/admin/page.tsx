@@ -53,6 +53,7 @@ import { CURRENCY_SYMBOLS, DEFAULT_CURRENCY_RATES, formatCurrencyAmount, useCurr
 import { SITE_CONTENT_FIELDS, SITE_CONTENT_LANGUAGES, SITE_CONTENT_PAGES, getDefaultSiteContentValue, pageMatchesField } from '@/lib/siteContentSchema';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DEFAULT_ADDRESS_SETTINGS, DEFAULT_SOCIAL_LINKS, type AddressSettingKey, type AddressSettings, type SocialLinkKey, type SocialLinks } from '@/lib/siteSettings';
+import { PAGE_SETTINGS_DEFINITIONS, normalizePagePath, type ManagedPageKey } from '@/lib/pageSettings';
 
 function useWindowWidth() {
   const [width, setWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1280));
@@ -86,8 +87,8 @@ const A = {
   orangeBg: '#fff7ed',
 };
 
-type AdminView = 'overview' | 'bookings' | 'fleet' | 'calendar' | 'crm' | 'analytics' | 'support' | 'news' | 'addons' | 'categories' | 'locations' | 'site' | 'appContent' | 'currencies' | 'socials' | 'addresses' | 'users' | 'promocodes';
-type AdminPermission = AdminView | 'team';
+type AdminView = 'overview' | 'bookings' | 'fleet' | 'calendar' | 'crm' | 'analytics' | 'support' | 'news' | 'addons' | 'categories' | 'locations' | 'site' | 'pages' | 'appContent' | 'currencies' | 'socials' | 'addresses' | 'users' | 'promocodes';
+type AdminPermission = Exclude<AdminView, 'appContent' | 'pages'> | 'team';
 
 const NAV: { id: AdminView; icon: ReactNode; label: string }[] = [
   { id: 'overview', icon: <OverviewIcon size={18} />, label: 'Overview' },
@@ -102,6 +103,7 @@ const NAV: { id: AdminView; icon: ReactNode; label: string }[] = [
   { id: 'categories', icon: <TagIcon size={18} />, label: 'Categories' },
   { id: 'locations', icon: <EyeIcon size={18} />, label: 'Locations' },
   { id: 'site', icon: <EyeIcon size={18} />, label: 'Site Content' },
+  { id: 'pages', icon: <TagIcon size={18} />, label: 'Page Settings' },
   { id: 'appContent', icon: <EyeIcon size={18} />, label: 'App Content' },
   { id: 'currencies', icon: <DollarIcon size={18} />, label: 'Currencies' },
   { id: 'socials', icon: <MessageIcon size={18} />, label: 'Socials' },
@@ -123,7 +125,6 @@ const ADMIN_PERMISSION_LABELS: Record<AdminPermission, string> = {
   categories: 'Categories',
   locations: 'Locations',
   site: 'Site Content',
-  appContent: 'App Content',
   currencies: 'Currencies',
   socials: 'Socials',
   addresses: 'Addresses',
@@ -153,14 +154,7 @@ const ADMIN_PERMISSION_OPTIONS: AdminPermission[] = [
 ];
 
 function serializeAdminPermissions(permissions: AdminPermission[]) {
-  return Array.from(
-    new Set(
-      permissions.map((permission) => {
-        if (permission === 'appContent') return 'site';
-        return permission;
-      }),
-    ),
-  );
+  return Array.from(new Set(permissions));
 }
 
 function defaultAdminPermissionsForRole(role?: string | null): AdminPermission[] {
@@ -200,6 +194,9 @@ function normalizeAdminPermissions(raw: unknown, role?: string | null, isSuperus
 
 function permissionForView(view: AdminView): AdminPermission {
   if (view === 'appContent') {
+    return 'site';
+  }
+  if (view === 'pages') {
     return 'site';
   }
   if (view === 'users') {
@@ -4057,6 +4054,7 @@ export default function AdminPage() {
     categories: <CategoriesView isMobile={isMobile} />,
     locations: <LocationsView isMobile={isMobile} />,
     site: <SiteContentView isMobile={isMobile} />,
+    pages: <PageSettingsView isMobile={isMobile} />,
     appContent: <SiteContentView isMobile={isMobile} initialPage="app" lockedPage="app" />,
     currencies: <CurrencySettingsView isMobile={isMobile} />,
     socials: <SocialSettingsView isMobile={isMobile} />,
@@ -4302,6 +4300,318 @@ function FullScreenMessage({ title, subtitle, action }: { title: string; subtitl
         </p>
         {action ? <div style={{ display: 'flex', justifyContent: 'center' }}>{action}</div> : null}
       </Panel>
+    </div>
+  );
+}
+
+function PageSettingsView({ isMobile }: { isMobile: boolean }) {
+  type PageSettingsFieldName = 'title' | 'path';
+
+  const [entries, setEntries] = useState<ApiAdminSiteContentEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [activePage, setActivePage] = useState<ManagedPageKey>(PAGE_SETTINGS_DEFINITIONS[0]?.key || 'home');
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+
+  const entryMap = useMemo(() => {
+    const map = new Map<string, ApiAdminSiteContentEntry>();
+    for (const entry of entries) {
+      map.set(`${entry.language}:${entry.key}`, entry);
+    }
+    return map;
+  }, [entries]);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    endpoints.adminSiteContent()
+      .then((response) => {
+        const nextEntries = unwrapList(response).filter((entry) => entry.key.startsWith('pageSettings.'));
+        setEntries(nextEntries);
+      })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Unable to load page settings'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const activePageMeta = useMemo(
+    () => PAGE_SETTINGS_DEFINITIONS.find((item) => item.key === activePage) || PAGE_SETTINGS_DEFINITIONS[0],
+    [activePage],
+  );
+
+  function contentKey(pageKey: ManagedPageKey, field: PageSettingsFieldName) {
+    return `pageSettings.${pageKey}.${field}`;
+  }
+
+  function stateKey(pageKey: ManagedPageKey, languageCode: string, field: PageSettingsFieldName) {
+    return `${pageKey}:${languageCode}:${field}`;
+  }
+
+  function fieldEntry(pageKey: ManagedPageKey, languageCode: string, field: PageSettingsFieldName) {
+    return entryMap.get(`${languageCode}:${contentKey(pageKey, field)}`) || null;
+  }
+
+  function defaultFieldValue(pageKey: ManagedPageKey, languageCode: string, field: PageSettingsFieldName) {
+    const pageMeta = PAGE_SETTINGS_DEFINITIONS.find((item) => item.key === pageKey);
+    if (!pageMeta) return '';
+    if (field === 'path') return pageMeta.defaultPath;
+    return pageMeta.defaultTitles[languageCode as keyof typeof pageMeta.defaultTitles] || pageMeta.defaultTitles.en;
+  }
+
+  function resolveDraftValue(pageKey: ManagedPageKey, languageCode: string, field: PageSettingsFieldName) {
+    const currentStateKey = stateKey(pageKey, languageCode, field);
+    if (drafts[currentStateKey] !== undefined) return drafts[currentStateKey];
+    const existing = fieldEntry(pageKey, languageCode, field);
+    return existing?.value || defaultFieldValue(pageKey, languageCode, field);
+  }
+
+  function setDraftValue(pageKey: ManagedPageKey, languageCode: string, field: PageSettingsFieldName, value: string) {
+    setDrafts((current) => ({ ...current, [stateKey(pageKey, languageCode, field)]: value }));
+  }
+
+  async function saveField(pageKey: ManagedPageKey, languageCode: string, field: PageSettingsFieldName) {
+    const existing = fieldEntry(pageKey, languageCode, field);
+    const rawValue = resolveDraftValue(pageKey, languageCode, field);
+    const value = field === 'path'
+      ? normalizePagePath(rawValue, defaultFieldValue(pageKey, languageCode, 'path'))
+      : rawValue.trim();
+
+    const body = {
+      key: contentKey(pageKey, field),
+      language: languageCode,
+      value_type: 'text' as const,
+      value,
+      is_active: true,
+    };
+
+    const saved = existing
+      ? await endpoints.adminUpdateSiteContent(existing.id, body)
+      : await endpoints.adminCreateSiteContent(body);
+
+    setEntries((current) => {
+      const next = current.filter((item) => item.id !== saved.id);
+      next.push(saved);
+      return next.sort((a, b) => `${a.key}:${a.language}`.localeCompare(`${b.key}:${b.language}`));
+    });
+  }
+
+  async function saveLanguage(pageKey: ManagedPageKey, languageCode: string) {
+    const currentSavingKey = `${pageKey}:${languageCode}`;
+    setSavingKey(currentSavingKey);
+    setError(null);
+    try {
+      await saveField(pageKey, languageCode, 'title');
+      await saveField(pageKey, languageCode, 'path');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to save page settings');
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  async function resetLanguage(pageKey: ManagedPageKey, languageCode: string) {
+    const currentSavingKey = `reset:${pageKey}:${languageCode}`;
+    setSavingKey(currentSavingKey);
+    setError(null);
+    try {
+      for (const field of ['title', 'path'] as PageSettingsFieldName[]) {
+        const existing = fieldEntry(pageKey, languageCode, field);
+        if (existing) {
+          await endpoints.adminDeleteSiteContent(existing.id);
+          setEntries((current) => current.filter((item) => item.id !== existing.id));
+        }
+        const currentStateKey = stateKey(pageKey, languageCode, field);
+        setDrafts((current) => {
+          const next = { ...current };
+          delete next[currentStateKey];
+          return next;
+        });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to reset page settings');
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  const pageSummaries = useMemo(() => {
+    return PAGE_SETTINGS_DEFINITIONS.map((page) => {
+      const customizedLanguages = SITE_CONTENT_LANGUAGES.reduce((count, language) => {
+        const hasTitle = Boolean(fieldEntry(page.key, language.code, 'title'));
+        const hasPath = Boolean(fieldEntry(page.key, language.code, 'path'));
+        return count + (hasTitle || hasPath ? 1 : 0);
+      }, 0);
+      return { page, customizedLanguages };
+    });
+  }, [entryMap]);
+
+  return (
+    <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? 16 : '28px 32px' }}>
+      <SectionHeader
+        title="Page Settings"
+        subtitle="Manage browser tab titles and public paths for the main site pages in every language."
+        action={<Button variant="outline" size="md" onClick={load}>Reload</Button>}
+      />
+
+      <ErrorBanner error={error} onClose={() => setError(null)} />
+
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '280px minmax(0, 1fr)', gap: 16, alignItems: 'start' }}>
+        <Panel style={{ padding: isMobile ? 16 : 20, position: isMobile ? 'static' : 'sticky', top: 20 }}>
+          <div style={{ display: 'grid', gap: 14 }}>
+            <div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                Pages
+              </div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
+                Save a localized title for the browser tab and a public path like <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>/news</span>.
+              </div>
+            </div>
+
+            {pageSummaries.map(({ page, customizedLanguages }) => {
+              const selected = activePage === page.key;
+              return (
+                <button
+                  key={page.key}
+                  type="button"
+                  onClick={() => setActivePage(page.key)}
+                  style={{
+                    textAlign: 'left',
+                    borderRadius: 12,
+                    border: `1px solid ${selected ? A.gold : A.g200}`,
+                    background: selected ? 'rgba(255,215,0,0.12)' : A.white,
+                    padding: '12px 14px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 16, color: A.black, marginBottom: 4 }}>
+                        {page.label}
+                      </div>
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, lineHeight: 1.45 }}>
+                        {page.defaultPath}
+                      </div>
+                    </div>
+                    <Badge color={customizedLanguages ? 'green' : 'default'}>
+                      {customizedLanguages}/6
+                    </Badge>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </Panel>
+
+        <Panel style={{ padding: isMobile ? 16 : 20 }}>
+          {!activePageMeta ? (
+            <EmptyState label="Choose a page to edit." />
+          ) : (
+            <div style={{ display: 'grid', gap: 18 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                    Selected page
+                  </div>
+                  <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 26, color: A.black, marginBottom: 6 }}>
+                    {activePageMeta.label}
+                  </div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6, maxWidth: 620 }}>
+                    {activePageMeta.description}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <Badge color="default">{activePageMeta.defaultPath}</Badge>
+                  {activePageMeta.supportsChildren ? <Badge color="blue">Nested items use this base path</Badge> : null}
+                </div>
+              </div>
+
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, lineHeight: 1.6 }}>
+                Canonical built-in routes still exist as a safe fallback. The saved custom path is used in the live navigation and alias routing layer.
+              </div>
+
+              {loading ? (
+                <EmptyState label="Loading page settings…" />
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: 14 }}>
+                  {SITE_CONTENT_LANGUAGES.map((language) => {
+                    const titleValue = resolveDraftValue(activePageMeta.key, language.code, 'title');
+                    const pathValue = resolveDraftValue(activePageMeta.key, language.code, 'path');
+                    const currentPath = normalizePagePath(pathValue, activePageMeta.defaultPath);
+                    const customized = Boolean(
+                      fieldEntry(activePageMeta.key, language.code, 'title') ||
+                      fieldEntry(activePageMeta.key, language.code, 'path'),
+                    );
+                    const busy = savingKey === `${activePageMeta.key}:${language.code}` || savingKey === `reset:${activePageMeta.key}:${language.code}`;
+
+                    return (
+                      <div key={language.code} style={{ border: `1px solid ${A.g200}`, borderRadius: 16, padding: 14, background: A.white }}>
+                        <div style={{ display: 'grid', gap: 12 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                                <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 17, color: A.black }}>
+                                  {language.name}
+                                </div>
+                                <Badge color={customized ? 'green' : 'default'}>
+                                  {customized ? 'custom' : 'default'}
+                                </Badge>
+                              </div>
+                              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
+                                {activePageMeta.supportsChildren ? `Articles will open under ${currentPath}/[slug].` : `Current public path: ${currentPath}`}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                              <Button variant="ghost" onClick={() => window.open(currentPath, '_blank', 'noopener,noreferrer')} disabled={busy}>
+                                Open
+                              </Button>
+                              <Button variant="outline" onClick={() => resetLanguage(activePageMeta.key, language.code)} disabled={busy}>
+                                Reset
+                              </Button>
+                              <Button variant="dark" onClick={() => saveLanguage(activePageMeta.key, language.code)} disabled={busy}>
+                                {busy ? 'Saving…' : 'Save'}
+                              </Button>
+                            </div>
+                          </div>
+
+                          <Field label="Browser tab title">
+                            <input
+                              value={titleValue}
+                              onChange={(event) => setDraftValue(activePageMeta.key, language.code, 'title', event.target.value)}
+                              style={inputStyle}
+                              placeholder={activePageMeta.defaultTitles[language.code as keyof typeof activePageMeta.defaultTitles] || activePageMeta.defaultTitles.en}
+                            />
+                          </Field>
+
+                          <Field label="Public path">
+                            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 8 }}>
+                              <input
+                                value={pathValue}
+                                onChange={(event) => setDraftValue(activePageMeta.key, language.code, 'path', event.target.value)}
+                                style={inputStyle}
+                                placeholder={activePageMeta.defaultPath}
+                              />
+                              <Button
+                                variant="outline"
+                                onClick={() => setDraftValue(activePageMeta.key, language.code, 'path', normalizePagePath(slugify(titleValue) || activePageMeta.defaultPath, activePageMeta.defaultPath))}
+                              >
+                                Auto
+                              </Button>
+                            </div>
+                          </Field>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </Panel>
+      </div>
     </div>
   );
 }

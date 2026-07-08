@@ -24,6 +24,7 @@ import { BR_SCOOTERS } from '@/lib/data';
 import { mapApiScooterDetail, DisplayScooter, pickTone, resolveScooterImage, resolveScooterRouteId } from '@/lib/displayScooter';
 import { formatBillingLabel, formatRateRange } from '@/lib/rentalRates';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
+import { usePagePath } from '@/lib/usePageSettings';
 
 type AddonView = { id: string | number; apiId?: number; name: string; icon: string; price: number };
 
@@ -54,6 +55,7 @@ export default function ScooterDetailPage() {
   const { t, locale } = useLocale();
   const { marker } = useSiteContentPreview();
   const { convertPrice, symbol, currency } = useCurrency();
+  const catalogPath = usePagePath('catalog');
   const [scooter, setScooter] = useState<DisplayScooter | null>(null);
   const [addons, setAddons] = useState<AddonView[]>([]);
   const [gallery, setGallery] = useState<string[]>([]);
@@ -200,7 +202,7 @@ export default function ScooterDetailPage() {
         <SiteHeader />
         <div style={{ padding: 80, textAlign: 'center' }}>
           <h1 className="br-display" style={{ fontSize: 48 }}><span {...marker('detail.notFound')}>{t.detail.notFound}</span></h1>
-          <Link href="/catalog" className="br-mono" style={{ color: '#000', marginTop: 24, display: 'inline-block' }}><span {...marker('detail.back')}>{t.detail.back}</span></Link>
+          <Link href={catalogPath} className="br-mono" style={{ color: '#000', marginTop: 24, display: 'inline-block' }}><span {...marker('detail.back')}>{t.detail.back}</span></Link>
         </div>
         <SiteFooter />
       </div>
@@ -236,11 +238,11 @@ export default function ScooterDetailPage() {
           className="br-mono"
           style={{ fontSize: 11, color: sub, letterSpacing: '0.12em', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, rowGap: 4 }}
         >
-          <Link href="/catalog" style={breadcrumbLinkStyle}>
+          <Link href={catalogPath} style={breadcrumbLinkStyle}>
             {t.nav.catalog}
           </Link>
           <span aria-hidden="true">/</span>
-          <Link href={`/catalog?type=${encodeURIComponent(breadcrumbTypeCode)}`} style={breadcrumbLinkStyle}>
+          <Link href={`${catalogPath}?type=${encodeURIComponent(breadcrumbTypeCode)}`} style={breadcrumbLinkStyle}>
             {scooter.type.toUpperCase()}
           </Link>
           <span aria-hidden="true">/</span>

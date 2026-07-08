@@ -24,6 +24,7 @@ import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { formatAppliedTariffLabel } from '@/lib/rentalRates';
 import { type BookingExtraContent, BOOKING_COPY } from '@/lib/siteContentExtras';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
+import { PageTitleSync } from '@/lib/usePageSettings';
 
 const quoteCache = new Map<string, ApiBookingQuote>();
 
@@ -77,6 +78,7 @@ function compareKey(a: string, b: string) {
 export default function BookingPage() {
   return (
     <Suspense fallback={null}>
+      <PageTitleSync pageKey="booking" />
       <BookingPageInner />
     </Suspense>
   );

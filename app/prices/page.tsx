@@ -19,6 +19,7 @@ import { formatGroupedAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { formatBillingLabel, formatRateRange } from '@/lib/rentalRates';
 import { useSiteSettings } from '@/lib/siteSettings';
+import { PageTitleSync, usePagePath } from '@/lib/usePageSettings';
 
 type RateGroup = {
   scooterId: number;
@@ -56,6 +57,8 @@ export default function PricesPage() {
   const { t, locale } = useLocale();
   const { convertPrice, currency, symbol } = useCurrency();
   const { socialLinks } = useSiteSettings();
+  const catalogPath = usePagePath('catalog');
+  const bookingPath = usePagePath('booking');
   // Prices are always shown in IDR — the real price the admin set, fixed regardless of
   // the currency switcher. formatApprox gives the equivalent in the selected currency.
   const formatPrice = (amountUsd: number) => `Rp ${formatGroupedAmount(convertPrice(amountUsd, 'IDR'), 0)}`;
@@ -360,6 +363,7 @@ export default function PricesPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#FAFAF5', color: '#0A0A0F', display: 'flex', flexDirection: 'column' }}>
+      <PageTitleSync pageKey="prices" />
       <SiteHeader />
 
       <section
@@ -540,8 +544,8 @@ export default function PricesPage() {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-              <BROutline href="/catalog">{t.nav.catalog}</BROutline>
-              <BRPrimary href="/booking">{t.nav.book}</BRPrimary>
+              <BROutline href={catalogPath}>{t.nav.catalog}</BROutline>
+              <BRPrimary href={bookingPath}>{t.nav.book}</BRPrimary>
             </div>
           </div>
 
@@ -867,7 +871,7 @@ export default function PricesPage() {
             >
               {copy.ctaPrimary}
             </a>
-            <a href="/catalog" className="br-btn br-btn-outline dark" style={{ textDecoration: 'none', minHeight: 48 }}>
+            <a href={catalogPath} className="br-btn br-btn-outline dark" style={{ textDecoration: 'none', minHeight: 48 }}>
               {t.cta.secondary}
             </a>
           </div>

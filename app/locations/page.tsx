@@ -11,6 +11,7 @@ import { endpoints } from '@/lib/endpoints';
 import { BR_LOCATIONS } from '@/lib/data';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
 import { useSiteSettings } from '@/lib/siteSettings';
+import { PageTitleSync, usePagePath } from '@/lib/usePageSettings';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 28 },
@@ -40,6 +41,7 @@ export default function LocationsPage() {
   const { marker } = useSiteContentPreview();
   const { convertPrice } = useCurrency();
   const { socialLinks } = useSiteSettings();
+  const catalogPath = usePagePath('catalog');
   const [zones, setZones] = useState<Zone[]>([]);
   const [locOver, setLocOver] = useState<LocationOverrides>({});
 
@@ -78,6 +80,7 @@ export default function LocationsPage() {
       background: '#FAFAF5', color: '#0A0A0F',
       fontFamily: 'var(--br-body)', WebkitFontSmoothing: 'antialiased',
     }}>
+      <PageTitleSync pageKey="locations" />
       <SiteHeader />
 
       {/* ── HERO ────────────────────────────────────────────────────── */}
@@ -429,7 +432,7 @@ export default function LocationsPage() {
             <span {...marker('cta.desc')}>{t.cta.desc}</span>
           </p>
           <div className="br-cta-btns" style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <a href="/catalog" style={{
+            <a href={catalogPath} style={{
               display: 'inline-flex', alignItems: 'center', gap: 12,
               background: '#0A0A0F', color: '#FFD700',
               fontFamily: 'var(--br-display)', fontSize: 'clamp(15px, 1.5vw, 18px)', fontWeight: 800,
