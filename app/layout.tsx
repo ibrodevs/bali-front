@@ -1,11 +1,32 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import Providers from '@/components/Providers';
+import { buildManagedPageMetadata, getSiteUrl } from '@/lib/seo';
 
-export const metadata: Metadata = {
-  title: 'BALI-RENT · Premium scooter rental in Bali',
-  description: 'Explore Bali on your terms. Premium scooter rental with free island-wide delivery, 24/7 support, no hidden fees.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const metadata = await buildManagedPageMetadata('home');
+  return {
+    metadataBase: new URL(getSiteUrl()),
+    applicationName: 'BALI-RENT',
+    title: metadata.title,
+    description: metadata.description,
+    alternates: metadata.alternates,
+    openGraph: metadata.openGraph,
+    twitter: metadata.twitter,
+    robots: metadata.robots,
+    icons: {
+      icon: '/logo.svg',
+      shortcut: '/logo.svg',
+      apple: '/logo.svg',
+    },
+    manifest: '/manifest.webmanifest',
+    formatDetection: {
+      email: false,
+      address: false,
+      telephone: true,
+    },
+  };
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

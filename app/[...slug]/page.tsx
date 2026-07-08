@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import HomePage from '@/app/page';
@@ -12,9 +13,36 @@ import PaymentPage from '@/app/payment/page';
 import PricesPage from '@/app/prices/page';
 import ProfilePage from '@/app/profile/page';
 import RegisterPage from '@/app/register/page';
+import { buildManagedPageMetadata, buildNewsArticleMetadata } from '@/lib/seo';
 import { resolveAliasPath } from '@/lib/serverPageAliases';
 
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { slug?: string[] };
+}): Promise<Metadata> {
+  const pathname = `/${(params.slug || []).join('/')}`;
+  const resolution = await resolveAliasPath(pathname);
+
+  if (!resolution) {
+    return {
+      robots: {
+        index: false,
+        follow: false,
+      },
+    };
+  }
+
+  if (resolution.pageKey === 'news' && resolution.childSegments?.length) {
+    return buildNewsArticleMetadata(resolution.childSegments[0], pathname);
+  }
+
+  return buildManagedPageMetadata(resolution.pageKey, {
+    canonicalPath: pathname,
+  });
+}
 
 export default async function AliasPage({
   params,
