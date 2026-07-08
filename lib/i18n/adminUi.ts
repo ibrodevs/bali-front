@@ -25,6 +25,7 @@ const EXACT_TRANSLATIONS: Record<string, TranslationPair> = {
   'Categories': { ru: 'Категории', id: 'Kategori' },
   'Locations': { ru: 'Локации', id: 'Lokasi' },
   'Site Content': { ru: 'Контент сайта', id: 'Konten situs' },
+  'Page Settings': { ru: 'Настройки страниц', id: 'Pengaturan halaman' },
   'App Content': { ru: 'Контент приложения', id: 'Konten aplikasi' },
   'Currencies': { ru: 'Валюты', id: 'Mata uang' },
   'Socials': { ru: 'Соцсети', id: 'Sosial' },
@@ -78,6 +79,7 @@ const EXACT_TRANSLATIONS: Record<string, TranslationPair> = {
   'Reload preview': { ru: 'Обновить превью', id: 'Muat ulang preview' },
   'Refresh': { ru: 'Обновить', id: 'Segarkan' },
   'Close': { ru: 'Закрыть', id: 'Tutup' },
+  'Open': { ru: 'Открыть', id: 'Buka' },
   'Edit': { ru: 'Редактировать', id: 'Edit' },
   'Delete': { ru: 'Удалить', id: 'Hapus' },
   'Cancel': { ru: 'Отмена', id: 'Batal' },
@@ -150,6 +152,19 @@ const EXACT_TRANSLATIONS: Record<string, TranslationPair> = {
   'shared across all languages': { ru: 'общее для всех языков', id: 'dipakai untuk semua bahasa' },
   'Click To Edit': { ru: 'Нажмите, чтобы редактировать', id: 'Klik untuk edit' },
   'Pages': { ru: 'Страницы', id: 'Halaman' },
+  'Selected page': { ru: 'Выбранная страница', id: 'Halaman terpilih' },
+  'Shared path': { ru: 'Общий путь', id: 'Path bersama' },
+  'Public path': { ru: 'Публичный путь', id: 'Path publik' },
+  'Browser tab title': { ru: 'Заголовок вкладки браузера', id: 'Judul tab browser' },
+  'shared path': { ru: 'общий путь', id: 'path bersama' },
+  'default path': { ru: 'путь по умолчанию', id: 'path default' },
+  'Nested items use this base path': { ru: 'Вложенные элементы используют этот базовый путь', id: 'Item turunan memakai path dasar ini' },
+  'Choose a page to edit.': { ru: 'Выберите страницу для редактирования.', id: 'Pilih halaman untuk diedit.' },
+  'Loading page settings…': { ru: 'Загрузка настроек страниц…', id: 'Memuat pengaturan halaman…' },
+  'Manage one shared public path and localized browser tab titles for the main site pages.': { ru: 'Управляйте одним общим публичным путем и локализованными заголовками вкладки браузера для основных страниц сайта.', id: 'Kelola satu path publik bersama dan judul tab browser terlokalisasi untuk halaman utama situs.' },
+  'Save one shared public path like': { ru: 'Сохраните один общий публичный путь, например', id: 'Simpan satu path publik bersama seperti' },
+  'and localized browser tab titles for each language.': { ru: 'и локализованные заголовки вкладки браузера для каждого языка.', id: 'dan judul tab browser terlokalisasi untuk setiap bahasa.' },
+  'Canonical built-in routes still exist as a safe fallback. The saved custom path is used in the live navigation and alias routing layer.': { ru: 'Канонические встроенные маршруты остаются как безопасный запасной вариант. Сохраненный кастомный путь используется в живой навигации и слое alias-маршрутизации.', id: 'Rute bawaan kanonis tetap ada sebagai fallback aman. Path kustom yang disimpan dipakai di navigasi live dan lapisan alias routing.' },
   'Preview language': { ru: 'Язык превью', id: 'Bahasa pratinjau' },
   'Preview screen': { ru: 'Экран превью', id: 'Layar pratinjau' },
   'Selected Page': { ru: 'Выбранная страница', id: 'Halaman terpilih' },
@@ -800,6 +815,30 @@ const DYNAMIC_TRANSLATIONS: DynamicRule[] = [
     translate: (match, locale) => locale === 'ru'
       ? `${match[1]} всего`
       : `${match[1]} total`,
+  },
+  {
+    pattern: /^Articles will open under (.+)\/\[slug\]\.$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `Статьи будут открываться по пути ${match[1]}/[slug].`
+      : `Artikel akan dibuka di ${match[1]}/[slug].`,
+  },
+  {
+    pattern: /^Current public path: (.+)\.?$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `Текущий публичный путь: ${match[1]}.`
+      : `Path publik saat ini: ${match[1]}.`,
+  },
+  {
+    pattern: /^This language uses the shared route (.+)\/\[slug\]\.$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `Этот язык использует общий маршрут ${match[1]}/[slug].`
+      : `Bahasa ini memakai rute bersama ${match[1]}/[slug].`,
+  },
+  {
+    pattern: /^This language uses the shared route (.+)\.$/,
+    translate: (match, locale) => locale === 'ru'
+      ? `Этот язык использует общий маршрут ${match[1]}.`
+      : `Bahasa ini memakai rute bersama ${match[1]}.`,
   },
   {
     pattern: /^Tariff row (\d+): "From" must be a whole number greater than 0\.$/,

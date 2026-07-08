@@ -47,6 +47,7 @@ import {
   endpoints,
   unwrapList,
 } from '@/lib/endpoints';
+import { translateAdminUiText } from '@/lib/i18n/adminUi';
 import { useAdminLocale } from '@/lib/i18n/AdminLocaleProvider';
 import { useAuth } from '@/lib/i18n/AuthProvider';
 import { CURRENCY_SYMBOLS, DEFAULT_CURRENCY_RATES, formatCurrencyAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
@@ -4306,6 +4307,8 @@ function FullScreenMessage({ title, subtitle, action }: { title: string; subtitl
 
 function PageSettingsView({ isMobile }: { isMobile: boolean }) {
   type PageSettingsFieldName = 'title' | 'path';
+  const { locale } = useAdminLocale();
+  const ta = useCallback((source: string) => translateAdminUiText(source, locale), [locale]);
 
   const [entries, setEntries] = useState<ApiAdminSiteContentEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -4347,12 +4350,16 @@ function PageSettingsView({ isMobile }: { isMobile: boolean }) {
     return `pageSettings.${pageKey}.${field}`;
   }
 
+  function storageLanguage(field: PageSettingsFieldName, languageCode: string) {
+    return field === 'path' ? 'all' : languageCode;
+  }
+
   function stateKey(pageKey: ManagedPageKey, languageCode: string, field: PageSettingsFieldName) {
-    return `${pageKey}:${languageCode}:${field}`;
+    return `${pageKey}:${storageLanguage(field, languageCode)}:${field}`;
   }
 
   function fieldEntry(pageKey: ManagedPageKey, languageCode: string, field: PageSettingsFieldName) {
-    return entryMap.get(`${languageCode}:${contentKey(pageKey, field)}`) || null;
+    return entryMap.get(`${storageLanguage(field, languageCode)}:${contentKey(pageKey, field)}`) || null;
   }
 
   function defaultFieldValue(pageKey: ManagedPageKey, languageCode: string, field: PageSettingsFieldName) {
@@ -4382,7 +4389,7 @@ function PageSettingsView({ isMobile }: { isMobile: boolean }) {
 
     const body = {
       key: contentKey(pageKey, field),
-      language: languageCode,
+      language: storageLanguage(field, languageCode),
       value_type: 'text' as const,
       value,
       is_active: true,
@@ -4405,7 +4412,19 @@ function PageSettingsView({ isMobile }: { isMobile: boolean }) {
     setError(null);
     try {
       await saveField(pageKey, languageCode, 'title');
-      await saveField(pageKey, languageCode, 'path');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to save page settings');
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  async function saveSharedPath(pageKey: ManagedPageKey) {
+    const currentSavingKey = `path:${pageKey}`;
+    setSavingKey(currentSavingKey);
+    setError(null);
+    try {
+      await saveField(pageKey, 'all', 'path');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to save page settings');
     } finally {
@@ -4418,19 +4437,40 @@ function PageSettingsView({ isMobile }: { isMobile: boolean }) {
     setSavingKey(currentSavingKey);
     setError(null);
     try {
-      for (const field of ['title', 'path'] as PageSettingsFieldName[]) {
-        const existing = fieldEntry(pageKey, languageCode, field);
-        if (existing) {
-          await endpoints.adminDeleteSiteContent(existing.id);
-          setEntries((current) => current.filter((item) => item.id !== existing.id));
-        }
-        const currentStateKey = stateKey(pageKey, languageCode, field);
-        setDrafts((current) => {
-          const next = { ...current };
-          delete next[currentStateKey];
-          return next;
-        });
+      const existing = fieldEntry(pageKey, languageCode, 'title');
+      if (existing) {
+        await endpoints.adminDeleteSiteContent(existing.id);
+        setEntries((current) => current.filter((item) => item.id !== existing.id));
       }
+      const currentStateKey = stateKey(pageKey, languageCode, 'title');
+      setDrafts((current) => {
+        const next = { ...current };
+        delete next[currentStateKey];
+        return next;
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to reset page settings');
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  async function resetSharedPath(pageKey: ManagedPageKey) {
+    const currentSavingKey = `reset:path:${pageKey}`;
+    setSavingKey(currentSavingKey);
+    setError(null);
+    try {
+      const existing = fieldEntry(pageKey, 'all', 'path');
+      if (existing) {
+        await endpoints.adminDeleteSiteContent(existing.id);
+        setEntries((current) => current.filter((item) => item.id !== existing.id));
+      }
+      const currentStateKey = stateKey(pageKey, 'all', 'path');
+      setDrafts((current) => {
+        const next = { ...current };
+        delete next[currentStateKey];
+        return next;
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to reset page settings');
     } finally {
@@ -4442,19 +4482,25 @@ function PageSettingsView({ isMobile }: { isMobile: boolean }) {
     return PAGE_SETTINGS_DEFINITIONS.map((page) => {
       const customizedLanguages = SITE_CONTENT_LANGUAGES.reduce((count, language) => {
         const hasTitle = Boolean(fieldEntry(page.key, language.code, 'title'));
-        const hasPath = Boolean(fieldEntry(page.key, language.code, 'path'));
-        return count + (hasTitle || hasPath ? 1 : 0);
+        return count + (hasTitle ? 1 : 0);
       }, 0);
-      return { page, customizedLanguages };
+      const pathCustomized = Boolean(fieldEntry(page.key, 'all', 'path'));
+      return { page, customizedLanguages, pathCustomized };
     });
   }, [entryMap]);
+
+  const sharedPathValue = activePageMeta ? resolveDraftValue(activePageMeta.key, 'all', 'path') : '';
+  const currentPath = activePageMeta ? normalizePagePath(sharedPathValue, activePageMeta.defaultPath) : '/';
+  const pathBusy = activePageMeta
+    ? savingKey === `path:${activePageMeta.key}` || savingKey === `reset:path:${activePageMeta.key}`
+    : false;
 
   return (
     <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? 16 : '28px 32px' }}>
       <SectionHeader
-        title="Page Settings"
-        subtitle="Manage browser tab titles and public paths for the main site pages in every language."
-        action={<Button variant="outline" size="md" onClick={load}>Reload</Button>}
+        title={ta('Page Settings')}
+        subtitle={ta('Manage one shared public path and localized browser tab titles for the main site pages.')}
+        action={<Button variant="outline" size="md" onClick={load}>{ta('Reload')}</Button>}
       />
 
       <ErrorBanner error={error} onClose={() => setError(null)} />
@@ -4463,15 +4509,15 @@ function PageSettingsView({ isMobile }: { isMobile: boolean }) {
         <Panel style={{ padding: isMobile ? 16 : 20, position: isMobile ? 'static' : 'sticky', top: 20 }}>
           <div style={{ display: 'grid', gap: 14 }}>
             <div>
-              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
-                Pages
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                {ta('Pages')}
               </div>
               <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
-                Save a localized title for the browser tab and a public path like <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>/news</span>.
+                {ta('Save one shared public path like')} <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>/news</span> {ta('and localized browser tab titles for each language.')}
               </div>
             </div>
 
-            {pageSummaries.map(({ page, customizedLanguages }) => {
+            {pageSummaries.map(({ page, customizedLanguages, pathCustomized }) => {
               const selected = activePage === page.key;
               return (
                 <button
@@ -4496,9 +4542,14 @@ function PageSettingsView({ isMobile }: { isMobile: boolean }) {
                         {page.defaultPath}
                       </div>
                     </div>
-                    <Badge color={customizedLanguages ? 'green' : 'default'}>
-                      {customizedLanguages}/6
-                    </Badge>
+                    <div style={{ display: 'grid', gap: 6, justifyItems: 'end' }}>
+                      <Badge color={pathCustomized ? 'blue' : 'default'}>
+                        {pathCustomized ? ta('shared path') : ta('default path')}
+                      </Badge>
+                      <Badge color={customizedLanguages ? 'green' : 'default'}>
+                        {customizedLanguages}/6
+                      </Badge>
+                    </div>
                   </div>
                 </button>
               );
@@ -4508,13 +4559,13 @@ function PageSettingsView({ isMobile }: { isMobile: boolean }) {
 
         <Panel style={{ padding: isMobile ? 16 : 20 }}>
           {!activePageMeta ? (
-            <EmptyState label="Choose a page to edit." />
+            <EmptyState label={ta('Choose a page to edit.')} />
           ) : (
             <div style={{ display: 'grid', gap: 18 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                 <div>
                   <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
-                    Selected page
+                    {ta('Selected page')}
                   </div>
                   <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 26, color: A.black, marginBottom: 6 }}>
                     {activePageMeta.label}
@@ -4525,26 +4576,69 @@ function PageSettingsView({ isMobile }: { isMobile: boolean }) {
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <Badge color="default">{activePageMeta.defaultPath}</Badge>
-                  {activePageMeta.supportsChildren ? <Badge color="blue">Nested items use this base path</Badge> : null}
+                  {activePageMeta.supportsChildren ? <Badge color="blue">{ta('Nested items use this base path')}</Badge> : null}
                 </div>
               </div>
 
               <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, lineHeight: 1.6 }}>
-                Canonical built-in routes still exist as a safe fallback. The saved custom path is used in the live navigation and alias routing layer.
+                {ta('Canonical built-in routes still exist as a safe fallback. The saved custom path is used in the live navigation and alias routing layer.')}
+              </div>
+
+              <div style={{ border: `1px solid ${A.g200}`, borderRadius: 16, padding: 14, background: A.white }}>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                          <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 17, color: A.black }}>
+                          {ta('Shared path')}
+                          </div>
+                          <Badge color={fieldEntry(activePageMeta.key, 'all', 'path') ? 'blue' : 'default'}>
+                          {fieldEntry(activePageMeta.key, 'all', 'path') ? ta('custom') : ta('default')}
+                          </Badge>
+                        </div>
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
+                        {activePageMeta.supportsChildren ? `Articles will open under ${currentPath}/[slug].` : `Current public path: ${currentPath}`}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <Button variant="ghost" onClick={() => window.open(currentPath, '_blank', 'noopener,noreferrer')} disabled={pathBusy}>
+                        {ta('Open')}
+                      </Button>
+                      <Button variant="outline" onClick={() => resetSharedPath(activePageMeta.key)} disabled={pathBusy}>
+                        {ta('Reset')}
+                      </Button>
+                      <Button variant="dark" onClick={() => saveSharedPath(activePageMeta.key)} disabled={pathBusy}>
+                        {pathBusy ? ta('Saving…') : ta('Save')}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Field label={ta('Public path')}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 8 }}>
+                      <input
+                        value={sharedPathValue}
+                        onChange={(event) => setDraftValue(activePageMeta.key, 'all', 'path', event.target.value)}
+                        style={inputStyle}
+                        placeholder={activePageMeta.defaultPath}
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={() => setDraftValue(activePageMeta.key, 'all', 'path', normalizePagePath(slugify(activePageMeta.label) || activePageMeta.defaultPath, activePageMeta.defaultPath))}
+                      >
+                        {ta('Auto')}
+                      </Button>
+                    </div>
+                  </Field>
+                </div>
               </div>
 
               {loading ? (
-                <EmptyState label="Loading page settings…" />
+                <EmptyState label={ta('Loading page settings…')} />
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: 14 }}>
                   {SITE_CONTENT_LANGUAGES.map((language) => {
                     const titleValue = resolveDraftValue(activePageMeta.key, language.code, 'title');
-                    const pathValue = resolveDraftValue(activePageMeta.key, language.code, 'path');
-                    const currentPath = normalizePagePath(pathValue, activePageMeta.defaultPath);
-                    const customized = Boolean(
-                      fieldEntry(activePageMeta.key, language.code, 'title') ||
-                      fieldEntry(activePageMeta.key, language.code, 'path'),
-                    );
+                    const customized = Boolean(fieldEntry(activePageMeta.key, language.code, 'title'));
                     const busy = savingKey === `${activePageMeta.key}:${language.code}` || savingKey === `reset:${activePageMeta.key}:${language.code}`;
 
                     return (
@@ -4557,50 +4651,30 @@ function PageSettingsView({ isMobile }: { isMobile: boolean }) {
                                   {language.name}
                                 </div>
                                 <Badge color={customized ? 'green' : 'default'}>
-                                  {customized ? 'custom' : 'default'}
+                                  {customized ? ta('custom') : ta('default')}
                                 </Badge>
                               </div>
                               <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
-                                {activePageMeta.supportsChildren ? `Articles will open under ${currentPath}/[slug].` : `Current public path: ${currentPath}`}
+                                {activePageMeta.supportsChildren ? `This language uses the shared route ${currentPath}/[slug].` : `This language uses the shared route ${currentPath}.`}
                               </div>
                             </div>
                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                              <Button variant="ghost" onClick={() => window.open(currentPath, '_blank', 'noopener,noreferrer')} disabled={busy}>
-                                Open
-                              </Button>
                               <Button variant="outline" onClick={() => resetLanguage(activePageMeta.key, language.code)} disabled={busy}>
-                                Reset
+                                {ta('Reset')}
                               </Button>
                               <Button variant="dark" onClick={() => saveLanguage(activePageMeta.key, language.code)} disabled={busy}>
-                                {busy ? 'Saving…' : 'Save'}
+                                {busy ? ta('Saving…') : ta('Save')}
                               </Button>
                             </div>
                           </div>
 
-                          <Field label="Browser tab title">
+                          <Field label={ta('Browser tab title')}>
                             <input
                               value={titleValue}
                               onChange={(event) => setDraftValue(activePageMeta.key, language.code, 'title', event.target.value)}
                               style={inputStyle}
                               placeholder={activePageMeta.defaultTitles[language.code as keyof typeof activePageMeta.defaultTitles] || activePageMeta.defaultTitles.en}
                             />
-                          </Field>
-
-                          <Field label="Public path">
-                            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 8 }}>
-                              <input
-                                value={pathValue}
-                                onChange={(event) => setDraftValue(activePageMeta.key, language.code, 'path', event.target.value)}
-                                style={inputStyle}
-                                placeholder={activePageMeta.defaultPath}
-                              />
-                              <Button
-                                variant="outline"
-                                onClick={() => setDraftValue(activePageMeta.key, language.code, 'path', normalizePagePath(slugify(titleValue) || activePageMeta.defaultPath, activePageMeta.defaultPath))}
-                              >
-                                Auto
-                              </Button>
-                            </div>
                           </Field>
                         </div>
                       </div>
