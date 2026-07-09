@@ -1946,6 +1946,19 @@ function slugify(value?: string | null) {
     .replace(/^-+|-+$/g, '');
 }
 
+function normalizeScooterPathSegment(value?: string | null, fallback = 'scooter') {
+  const raw = String(value || '').trim();
+  if (!raw) return fallback;
+
+  const withoutOrigin = raw.replace(/^https?:\/\/[^/]+/i, '');
+  const normalized = normalizePagePath(withoutOrigin.startsWith('/') ? withoutOrigin : `/${withoutOrigin}`, `/${fallback}`);
+  const cleaned = normalized.replace(/^\/+|\/+$/g, '');
+  const withoutBase = cleaned.replace(/^scooter\/+/i, '');
+  const lastSegment = withoutBase.split('/').filter(Boolean).pop() || fallback;
+
+  return slugify(lastSegment) || fallback;
+}
+
 function initials(value?: string | null) {
   const source = (value || '').trim();
   if (!source) return 'AD';
@@ -4307,15 +4320,23 @@ function FullScreenMessage({ title, subtitle, action }: { title: string; subtitl
 
 function PageSettingsView({ isMobile }: { isMobile: boolean }) {
   type PageSettingsFieldName = 'title' | 'path';
+  type SettingsMode = 'pages' | 'scooters';
   const { locale } = useAdminLocale();
   const ta = useCallback((source: string) => translateAdminUiText(source, locale), [locale]);
 
   const [entries, setEntries] = useState<ApiAdminSiteContentEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [settingsMode, setSettingsMode] = useState<SettingsMode>('pages');
   const [error, setError] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [activePage, setActivePage] = useState<ManagedPageKey>(PAGE_SETTINGS_DEFINITIONS[0]?.key || 'home');
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [scooters, setScooters] = useState<ApiScooterDetail[]>([]);
+  const [scootersLoading, setScootersLoading] = useState(true);
+  const [scooterSavingKey, setScooterSavingKey] = useState<string | null>(null);
+  const [activeScooterId, setActiveScooterId] = useState<number | null>(null);
+  const [scooterSearch, setScooterSearch] = useState('');
+  const [scooterDrafts, setScooterDrafts] = useState<Record<string, string>>({});
 
   const entryMap = useMemo(() => {
     const map = new Map<string, ApiAdminSiteContentEntry>();
@@ -4340,6 +4361,26 @@ function PageSettingsView({ isMobile }: { isMobile: boolean }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  const loadScooters = useCallback(() => {
+    setScootersLoading(true);
+    setError(null);
+    endpoints.adminScooters({ page: 1, page_size: 200 })
+      .then((response) => {
+        const nextScooters = unwrapList(response);
+        setScooters(nextScooters);
+        setActiveScooterId((current) => {
+          if (current && nextScooters.some((item) => item.id === current)) return current;
+          return nextScooters[0]?.id || null;
+        });
+      })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Unable to load scooter settings'))
+      .finally(() => setScootersLoading(false));
+  }, []);
+
+  useEffect(() => {
+    loadScooters();
+  }, [loadScooters]);
 
   const activePageMeta = useMemo(
     () => PAGE_SETTINGS_DEFINITIONS.find((item) => item.key === activePage) || PAGE_SETTINGS_DEFINITIONS[0],
@@ -4495,70 +4536,341 @@ function PageSettingsView({ isMobile }: { isMobile: boolean }) {
     ? savingKey === `path:${activePageMeta.key}` || savingKey === `reset:path:${activePageMeta.key}`
     : false;
 
+  function scooterDraftKey(scooterId: number, languageCode: string, field: 'path' | 'title') {
+    return `scooter:${scooterId}:${languageCode}:${field}`;
+  }
+
+  function scooterTranslation(scooter: ApiScooterDetail, languageCode: string) {
+    return (scooter.translations || []).find((item) => item.language === languageCode) || null;
+  }
+
+  function storedScooterTitle(scooter: ApiScooterDetail, languageCode: string) {
+    if (languageCode === 'en') {
+      return scooterTranslation(scooter, 'en')?.title || scooter.title || '';
+    }
+    return scooterTranslation(scooter, languageCode)?.title || '';
+  }
+
+  function resolveScooterPathValue(scooter: ApiScooterDetail) {
+    const key = scooterDraftKey(scooter.id, 'all', 'path');
+    return scooterDrafts[key] ?? `/scooter/${scooter.slug || ''}`;
+  }
+
+  function resolveScooterTitleValue(scooter: ApiScooterDetail, languageCode: string) {
+    const key = scooterDraftKey(scooter.id, languageCode, 'title');
+    return scooterDrafts[key] ?? storedScooterTitle(scooter, languageCode);
+  }
+
+  function setScooterDraftValue(scooterId: number, languageCode: string, field: 'path' | 'title', value: string) {
+    const key = scooterDraftKey(scooterId, languageCode, field);
+    setScooterDrafts((current) => ({ ...current, [key]: value }));
+  }
+
+  function patchScooterState(scooterId: number, updater: (scooter: ApiScooterDetail) => ApiScooterDetail) {
+    setScooters((current) => current.map((item) => (item.id === scooterId ? updater(item) : item)));
+  }
+
+  function buildScooterTranslationPayload(scooter: ApiScooterDetail, languageCode: string, nextTitle: string) {
+    const existing = scooterTranslation(scooter, languageCode);
+    return {
+      language: languageCode,
+      title: nextTitle.trim() || scooter.title || '',
+      description: existing?.description || '',
+      rental_terms: existing?.rental_terms || '',
+      transmission: existing?.transmission || '',
+      trunk: existing?.trunk || '',
+      color: existing?.color || '',
+    };
+  }
+
+  async function saveScooterPath(scooter: ApiScooterDetail) {
+    const currentSavingKey = `scooter:path:${scooter.id}`;
+    setScooterSavingKey(currentSavingKey);
+    setError(null);
+
+    try {
+      const fallbackSlug = slugify(scooter.title || scooter.slug || String(scooter.id)) || String(scooter.id);
+      const nextSlug = normalizeScooterPathSegment(resolveScooterPathValue(scooter), fallbackSlug);
+      const saved = await endpoints.adminUpdateScooter(scooter.id, { slug: nextSlug });
+
+      patchScooterState(scooter.id, (current) => ({
+        ...current,
+        ...saved,
+        translations: saved.translations || current.translations,
+        slug: saved.slug || nextSlug,
+      }));
+
+      setScooterDraftValue(scooter.id, 'all', 'path', `/scooter/${saved.slug || nextSlug}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to save scooter settings');
+    } finally {
+      setScooterSavingKey(null);
+    }
+  }
+
+  async function saveScooterTitle(scooter: ApiScooterDetail, languageCode: string) {
+    const currentSavingKey = `scooter:title:${scooter.id}:${languageCode}`;
+    setScooterSavingKey(currentSavingKey);
+    setError(null);
+
+    try {
+      const rawTitle = resolveScooterTitleValue(scooter, languageCode).trim();
+      let nextBaseTitle = scooter.title || '';
+
+      if (languageCode === 'en') {
+        if (!rawTitle) {
+          throw new Error('Title cannot be empty.');
+        }
+
+        const saved = await endpoints.adminUpdateScooter(scooter.id, { title: rawTitle });
+        nextBaseTitle = saved.title || rawTitle;
+        patchScooterState(scooter.id, (current) => ({
+          ...current,
+          ...saved,
+          translations: current.translations,
+          title: saved.title || rawTitle,
+        }));
+      }
+
+      const latestScooter =
+        scooters.find((item) => item.id === scooter.id) || scooter;
+      const translationPayload = buildScooterTranslationPayload(
+        { ...latestScooter, title: languageCode === 'en' ? nextBaseTitle : latestScooter.title || nextBaseTitle },
+        languageCode,
+        languageCode === 'en' ? nextBaseTitle : rawTitle,
+      );
+
+      await endpoints.adminSaveScooterTranslations(scooter.id, [translationPayload]);
+
+      patchScooterState(scooter.id, (current) => {
+        const nextTranslations = [...(current.translations || [])];
+        const translationIndex = nextTranslations.findIndex((item) => item.language === languageCode);
+        if (translationIndex >= 0) {
+          nextTranslations[translationIndex] = { ...nextTranslations[translationIndex], ...translationPayload };
+        } else {
+          nextTranslations.push(translationPayload);
+        }
+        return {
+          ...current,
+          ...(languageCode === 'en' ? { title: nextBaseTitle } : null),
+          translations: nextTranslations,
+        };
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to save scooter settings');
+    } finally {
+      setScooterSavingKey(null);
+    }
+  }
+
+  const filteredScooters = useMemo(() => {
+    const query = scooterSearch.trim().toLowerCase();
+    if (!query) return scooters;
+    return scooters.filter((scooter) =>
+      [scooter.title, scooter.slug, scooter.sku]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(query),
+    );
+  }, [scooters, scooterSearch]);
+
+  useEffect(() => {
+    if (!filteredScooters.length) {
+      setActiveScooterId(null);
+      return;
+    }
+    if (!activeScooterId || !filteredScooters.some((item) => item.id === activeScooterId)) {
+      setActiveScooterId(filteredScooters[0].id);
+    }
+  }, [activeScooterId, filteredScooters]);
+
+  const activeScooter = useMemo(
+    () => scooters.find((item) => item.id === activeScooterId) || null,
+    [activeScooterId, scooters],
+  );
+
+  const scooterSummaries = useMemo(() => {
+    return filteredScooters.map((scooter) => {
+      const readyTitles = SITE_CONTENT_LANGUAGES.reduce((count, language) => {
+        return count + (storedScooterTitle(scooter, language.code) ? 1 : 0);
+      }, 0);
+      return {
+        scooter,
+        readyTitles,
+      };
+    });
+  }, [filteredScooters]);
+
+  const scooterPathBusy = activeScooter ? scooterSavingKey === `scooter:path:${activeScooter.id}` : false;
+  const scooterCurrentPath = activeScooter
+    ? `/scooter/${normalizeScooterPathSegment(resolveScooterPathValue(activeScooter), activeScooter.slug || String(activeScooter.id))}`
+    : '/scooter';
+  const sectionSubtitle = settingsMode === 'pages'
+    ? ta('Shared public path and localized browser tab titles for main site routes.')
+    : ta('Shared route segment and localized public scooter titles for each language.');
+  const sidebarWidth = settingsMode === 'scooters' ? 420 : 280;
+
   return (
     <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? 16 : '28px 32px' }}>
       <SectionHeader
         title={ta('Page Settings')}
-        subtitle={ta('Manage one shared public path and localized browser tab titles for the main site pages.')}
-        action={<Button variant="outline" size="md" onClick={load}>{ta('Reload')}</Button>}
+        subtitle={ta('Manage shared public paths and localized public titles for the main site pages and scooter detail pages.')}
+        action={
+          <Button
+            variant="outline"
+            size="md"
+            onClick={settingsMode === 'pages' ? load : loadScooters}
+          >
+            {ta('Reload')}
+          </Button>
+        }
       />
 
       <ErrorBanner error={error} onClose={() => setError(null)} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '280px minmax(0, 1fr)', gap: 16, alignItems: 'start' }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+        <Button variant={settingsMode === 'pages' ? 'dark' : 'outline'} onClick={() => setSettingsMode('pages')}>
+          {ta('Main pages')}
+        </Button>
+        <Button variant={settingsMode === 'scooters' ? 'dark' : 'outline'} onClick={() => setSettingsMode('scooters')}>
+          {ta('Scooters')}
+        </Button>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : `${sidebarWidth}px minmax(0, 1fr)`, gap: 16, alignItems: 'start' }}>
         <Panel style={{ padding: isMobile ? 16 : 20, position: isMobile ? 'static' : 'sticky', top: 20 }}>
           <div style={{ display: 'grid', gap: 14 }}>
             <div>
-                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
-                {ta('Pages')}
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                {settingsMode === 'pages' ? ta('Pages') : ta('Scooters')}
               </div>
               <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
-                {ta('Save one shared public path like')} <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>/news</span> {ta('and localized browser tab titles for each language.')}
+                {sectionSubtitle}
               </div>
             </div>
 
-            {pageSummaries.map(({ page, customizedLanguages, pathCustomized }) => {
-              const selected = activePage === page.key;
-              return (
-                <button
-                  key={page.key}
-                  type="button"
-                  onClick={() => setActivePage(page.key)}
-                  style={{
-                    textAlign: 'left',
-                    borderRadius: 12,
-                    border: `1px solid ${selected ? A.gold : A.g200}`,
-                    background: selected ? 'rgba(255,215,0,0.12)' : A.white,
-                    padding: '12px 14px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
-                    <div>
-                      <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 16, color: A.black, marginBottom: 4 }}>
-                        {page.label}
+            {settingsMode === 'pages' ? (
+              pageSummaries.map(({ page, customizedLanguages, pathCustomized }) => {
+                const selected = activePage === page.key;
+                return (
+                  <button
+                    key={page.key}
+                    type="button"
+                    onClick={() => setActivePage(page.key)}
+                    style={{
+                      textAlign: 'left',
+                      borderRadius: 12,
+                      border: `1px solid ${selected ? A.gold : A.g200}`,
+                      background: selected ? 'rgba(255,215,0,0.12)' : A.white,
+                      padding: '12px 14px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                      <div>
+                        <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 16, color: A.black, marginBottom: 4 }}>
+                          {page.label}
+                        </div>
+                        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, lineHeight: 1.45 }}>
+                          {page.defaultPath}
+                        </div>
                       </div>
-                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, lineHeight: 1.45 }}>
-                        {page.defaultPath}
+                      <div style={{ display: 'grid', gap: 6, justifyItems: 'end' }}>
+                        <Badge color={pathCustomized ? 'blue' : 'default'}>
+                          {pathCustomized ? ta('shared path') : ta('default path')}
+                        </Badge>
+                        <Badge color={customizedLanguages ? 'green' : 'default'}>
+                          {customizedLanguages}/6
+                        </Badge>
                       </div>
                     </div>
-                    <div style={{ display: 'grid', gap: 6, justifyItems: 'end' }}>
-                      <Badge color={pathCustomized ? 'blue' : 'default'}>
-                        {pathCustomized ? ta('shared path') : ta('default path')}
-                      </Badge>
-                      <Badge color={customizedLanguages ? 'green' : 'default'}>
-                        {customizedLanguages}/6
-                      </Badge>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })
+            ) : (
+              <>
+                <Field label={ta('Search scooters by title or slug')}>
+                  <input
+                    value={scooterSearch}
+                    onChange={(event) => setScooterSearch(event.target.value)}
+                    style={inputStyle}
+                    placeholder="pcx / honda-pcx-160"
+                  />
+                </Field>
+
+                {scootersLoading ? (
+                  <EmptyState label={ta('Loading scooter settings…')} />
+                ) : scooterSummaries.length === 0 ? (
+                  <EmptyState label={ta('Choose a scooter to edit.')} />
+                ) : (
+                  scooterSummaries.map(({ scooter, readyTitles }) => {
+                    const selected = activeScooterId === scooter.id;
+                    return (
+                      <button
+                        key={scooter.id}
+                        type="button"
+                        onClick={() => setActiveScooterId(scooter.id)}
+                        style={{
+                          textAlign: 'left',
+                          borderRadius: 12,
+                          border: `1px solid ${selected ? A.gold : A.g200}`,
+                          background: selected ? 'rgba(255,215,0,0.12)' : A.white,
+                          padding: '12px 14px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div
+                              style={{
+                                fontFamily: 'Sora, sans-serif',
+                                fontWeight: 700,
+                                fontSize: 16,
+                                color: A.black,
+                                marginBottom: 4,
+                                lineHeight: 1.25,
+                                wordBreak: 'break-word',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              {scooter.title}
+                            </div>
+                            <div
+                              style={{
+                                fontFamily: 'Inter, sans-serif',
+                                fontSize: 12,
+                                color: A.g500,
+                                lineHeight: 1.45,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {`/scooter/${scooter.slug}`}
+                            </div>
+                          </div>
+                          <div style={{ display: 'grid', gap: 6, justifyItems: 'end', flexShrink: 0 }}>
+                            <Badge color="blue">#{scooter.id}</Badge>
+                            <Badge color={readyTitles > 1 ? 'green' : 'default'}>
+                              {`${readyTitles}/6`}
+                            </Badge>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </>
+            )}
           </div>
         </Panel>
 
         <Panel style={{ padding: isMobile ? 16 : 20 }}>
-          {!activePageMeta ? (
+          {settingsMode === 'pages' ? !activePageMeta ? (
             <EmptyState label={ta('Choose a page to edit.')} />
           ) : (
             <div style={{ display: 'grid', gap: 18 }}>
@@ -4682,6 +4994,119 @@ function PageSettingsView({ isMobile }: { isMobile: boolean }) {
                   })}
                 </div>
               )}
+            </div>
+          ) : !activeScooter ? (
+            <EmptyState label={scootersLoading ? ta('Loading scooter settings…') : ta('Choose a scooter to edit.')} />
+          ) : (
+            <div style={{ display: 'grid', gap: 18 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                    {ta('Selected scooter')}
+                  </div>
+                  <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 26, color: A.black, marginBottom: 6 }}>
+                    {activeScooter.title}
+                  </div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6, maxWidth: 620 }}>
+                    {ta('Current public URL:')} <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>{scooterCurrentPath}</span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <Badge color="blue">{`#${activeScooter.id}`}</Badge>
+                  <Badge color="default">{activeScooter.status || 'available'}</Badge>
+                </div>
+              </div>
+
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, lineHeight: 1.6 }}>
+                {ta('The /scooter base stays fixed. Update the last path segment used in every language.')}
+              </div>
+
+              <div style={{ border: `1px solid ${A.g200}`, borderRadius: 16, padding: 14, background: A.white }}>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                        <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 17, color: A.black }}>
+                          {ta('Shared route segment')}
+                        </div>
+                        <Badge color="blue">{ta('shared path')}</Badge>
+                      </div>
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
+                        {scooterCurrentPath}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <Button variant="ghost" onClick={() => window.open(scooterCurrentPath, '_blank', 'noopener,noreferrer')} disabled={scooterPathBusy}>
+                        {ta('Open')}
+                      </Button>
+                      <Button variant="dark" onClick={() => saveScooterPath(activeScooter)} disabled={scooterPathBusy}>
+                        {scooterPathBusy ? ta('Saving…') : ta('Save')}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Field label={ta('Path segment')}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 8 }}>
+                      <input
+                        value={resolveScooterPathValue(activeScooter)}
+                        onChange={(event) => setScooterDraftValue(activeScooter.id, 'all', 'path', event.target.value)}
+                        style={inputStyle}
+                        placeholder={`/scooter/${activeScooter.slug}`}
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={() => setScooterDraftValue(activeScooter.id, 'all', 'path', `/scooter/${slugify(activeScooter.title || activeScooter.slug) || activeScooter.slug}`)}
+                      >
+                        {ta('Auto')}
+                      </Button>
+                    </div>
+                  </Field>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: 14 }}>
+                {SITE_CONTENT_LANGUAGES.map((language) => {
+                  const titleValue = resolveScooterTitleValue(activeScooter, language.code);
+                  const customized = Boolean(scooterTranslation(activeScooter, language.code)?.title?.trim()) || language.code === 'en';
+                  const busy = scooterSavingKey === `scooter:title:${activeScooter.id}:${language.code}`;
+
+                  return (
+                    <div key={language.code} style={{ border: `1px solid ${A.g200}`, borderRadius: 16, padding: 14, background: A.white }}>
+                      <div style={{ display: 'grid', gap: 12 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                              <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 17, color: A.black }}>
+                                {language.name}
+                              </div>
+                              <Badge color={customized ? 'green' : 'default'}>
+                                {customized ? ta('custom') : ta('default')}
+                              </Badge>
+                            </div>
+                            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
+                              {ta('This language uses the shared scooter URL')} <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>{scooterCurrentPath}</span>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <Button variant="dark" onClick={() => saveScooterTitle(activeScooter, language.code)} disabled={busy}>
+                              {busy ? ta('Saving…') : ta('Save')}
+                            </Button>
+                          </div>
+                        </div>
+
+                        <Field label={ta('Scooter title')}>
+                          <input
+                            value={titleValue}
+                            onChange={(event) => setScooterDraftValue(activeScooter.id, language.code, 'title', event.target.value)}
+                            style={inputStyle}
+                            placeholder={language.code === 'en' ? activeScooter.title || 'Honda PCX 160' : activeScooter.title || `Title in ${language.name}`}
+                          />
+                        </Field>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </Panel>

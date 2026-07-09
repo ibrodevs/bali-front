@@ -739,7 +739,7 @@ export const endpoints = {
   sendChatMessage: (body: { thread_id: number; text: string }) =>
     api<ApiChatMessage>('/chat/messages/', { method: 'POST', body, auth: true }),
 
-  adminScooters: (params?: { page?: number; search?: string; status?: string }) =>
+  adminScooters: (params?: { page?: number; page_size?: number; search?: string; status?: string }) =>
     api<Paginated<ApiScooterDetail> | ApiScooterDetail[]>('/admin/scooters/', { auth: true, query: params }),
   adminScooter: (id: number | string) =>
     api<ApiScooterDetail>(`/admin/scooters/${id}/`, { auth: true }),
