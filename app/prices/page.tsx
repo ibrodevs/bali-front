@@ -151,8 +151,7 @@ export default function PricesPage() {
         const minDailyUsd = featuredRate ? effectiveDailyPrice(featuredRate) : 0;
         const minDailyIdr = featuredRate ? effectiveDailyPriceIdr(featuredRate) : null;
         const routeId = String(
-          scooter?.apiId ??
-            resolveScooterRouteId(scooter?.id || group.slug, scooter?.name || group.title) ??
+          resolveScooterRouteId(scooter?.id || group.slug, scooter?.name || group.title) ??
             group.slug,
         );
         const imageUrl = scooter?.imageUrl || resolveScooterImage(group.slug, group.title);

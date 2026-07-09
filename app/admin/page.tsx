@@ -5011,9 +5011,15 @@ function PageSettingsView({ isMobile }: { isMobile: boolean }) {
                     {ta('Current public URL:')} <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>{scooterCurrentPath}</span>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                   <Badge color="blue">{`#${activeScooter.id}`}</Badge>
                   <Badge color="default">{activeScooter.status || 'available'}</Badge>
+                  <Button variant="ghost" onClick={() => window.open(scooterCurrentPath, '_blank', 'noopener,noreferrer')} disabled={scooterPathBusy}>
+                    {ta('Open')}
+                  </Button>
+                  <Button variant="dark" onClick={() => saveScooterPath(activeScooter)} disabled={scooterPathBusy}>
+                    {scooterPathBusy ? ta('Saving…') : ta('Save')}
+                  </Button>
                 </div>
               </div>
 

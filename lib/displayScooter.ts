@@ -106,6 +106,11 @@ export function resolveScooterImageObjectPosition(id?: string | number | null, l
 }
 
 export function resolveScooterRouteId(id?: string | number | null, label?: string | null): string | undefined {
+  const rawId = String(id || '').trim();
+  if (rawId && !/^\d+$/.test(rawId) && rawId.includes('-')) {
+    return rawId.toLowerCase();
+  }
+
   const variants = [normalizeLookup(id), normalizeLookup(label)].filter(Boolean);
   for (const key of variants) {
     const alias = SCOOTER_ROUTE_ALIASES[key.replace(/\s+/g, '')];
@@ -125,7 +130,7 @@ export function resolveScooterRouteId(id?: string | number | null, label?: strin
     if (value.includes('adv')) return 'honda-adv-160';
     if (value.includes('meteor')) return 'royal-enfield-meteor';
   }
-  return id ? String(id) : undefined;
+  return rawId || undefined;
 }
 
 function statusFromApi(s: ApiScooter): Scooter['status'] {

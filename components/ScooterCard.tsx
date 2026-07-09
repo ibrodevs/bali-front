@@ -15,7 +15,7 @@ export default function ScooterCard({ s, dark = false, large = false }: { s: Dis
   const sub = dark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.55)';
   const isAvail = s.status === 'available';
   const hasImage = Boolean(s.imageUrl);
-  const routeId = s.apiId ?? resolveScooterRouteId(s.id, s.name) ?? s.id;
+  const routeId = resolveScooterRouteId(s.id, s.name) ?? String(s.apiId ?? s.id);
   // Headline price (BRPrice) is always IDR. This hint shows the equivalent in
   // whatever currency the switcher is set to, and only when that isn't IDR itself.
   const approxLabel = currency === 'IDR'
