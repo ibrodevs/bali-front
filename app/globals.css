@@ -2358,3 +2358,9 @@ input[type="time"]:hover::-webkit-calendar-picker-indicator {
     justify-content: center !important;
   }
 }
+
+@media (max-width: 900px) {
+  .br-contacts-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

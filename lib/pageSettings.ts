@@ -6,6 +6,7 @@ export type ManagedPageKey =
   | 'prices'
   | 'how'
   | 'locations'
+  | 'contacts'
   | 'news'
   | 'booking'
   | 'payment'
@@ -98,6 +99,20 @@ export const PAGE_SETTINGS_DEFINITIONS: PageSettingDefinition[] = [
       id: 'Lokasi · BALI-RENT',
       de: 'Standorte · BALI-RENT',
       fr: 'Lieux · BALI-RENT',
+    },
+  },
+  {
+    key: 'contacts',
+    label: 'Contacts',
+    description: 'Contact links, support chat, and office address page.',
+    defaultPath: '/contacts',
+    defaultTitles: {
+      en: 'Contacts · BALI-RENT',
+      ru: 'Контакты · BALI-RENT',
+      zh: '联系方式 · BALI-RENT',
+      id: 'Kontak · BALI-RENT',
+      de: 'Kontakt · BALI-RENT',
+      fr: 'Contacts · BALI-RENT',
     },
   },
   {

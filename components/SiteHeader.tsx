@@ -29,6 +29,7 @@ export default function SiteHeader({
   const pricesPath = usePagePath('prices');
   const howPath = usePagePath('how');
   const locationsPath = usePagePath('locations');
+  const contactsPath = usePagePath('contacts');
   const newsPath = usePagePath('news');
   const loginPath = usePagePath('login');
   const profilePath = usePagePath('profile');
@@ -135,6 +136,7 @@ export default function SiteHeader({
       <Link href={pricesPath} onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{pricingLabel}</Link>
       <Link {...marker('nav.how')} href={howPath} onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.how}</Link>
       <Link {...marker('nav.locations')} href={locationsPath} onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.locations}</Link>
+      <Link {...marker('nav.contacts')} href={contactsPath} onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.contacts}</Link>
       <Link {...marker('nav.news')} href={newsPath} onClick={closeAll} style={{ color: fg, textDecoration: 'none' }}>{t.nav.news}</Link>
       {isAdmin && (
         <Link

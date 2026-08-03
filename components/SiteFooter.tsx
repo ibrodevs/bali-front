@@ -16,6 +16,7 @@ export default function SiteFooter() {
   const pricesPath = usePagePath('prices');
   const howPath = usePagePath('how');
   const locationsPath = usePagePath('locations');
+  const contactsPath = usePagePath('contacts');
   const newsPath = usePagePath('news');
   const footer = t.footer as typeof t.footer & {
     whatsappButton?: string;
@@ -32,6 +33,13 @@ export default function SiteFooter() {
     ['Tarifs', pricesPath],
     [t.nav.how, howPath],
     [t.nav.locations, locationsPath],
+    [t.nav.contacts, contactsPath],
+    ['Contact', contactsPath],
+    ['Контакты', contactsPath],
+    ['联系方式', contactsPath],
+    ['Kontak', contactsPath],
+    ['Kontakt', contactsPath],
+    ['Contacts', contactsPath],
     [t.nav.news, newsPath],
   ]);
   const cols = Object.entries(t.footer.cols)

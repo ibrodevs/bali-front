@@ -35,7 +35,7 @@ export function BRLogo({
       }}
     >
       <img
-        src="/logo.svg"
+        src="/logo1.svg"
         alt="Bali Rent"
         style={{
           height: logoHeight,

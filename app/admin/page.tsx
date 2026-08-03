@@ -474,7 +474,7 @@ function normalizeAdminCurrencyRates(raw: unknown) {
   }
 
   if (!next.USD) next.USD = 1;
-  next.IDR = DEFAULT_CURRENCY_RATES.IDR;
+  if (!next.IDR) next.IDR = DEFAULT_CURRENCY_RATES.IDR;
   return Object.keys(next).length ? next : { ...DEFAULT_CURRENCY_RATES };
 }
 
@@ -746,7 +746,7 @@ function CurrencySettingsView({ isMobile }: { isMobile: boolean }) {
                         disabled={code === 'USD'}
                       />
                     </Field>
-                    <Field label="Rate vs USD" style={{ margin: 0 }} hint={code === 'IDR' ? 'Fixed — IDR is the real price, never recalculated.' : undefined}>
+                    <Field label="Rate vs USD" style={{ margin: 0 }}>
                       <input
                         type="number"
                         min="0.0001"
@@ -754,7 +754,7 @@ function CurrencySettingsView({ isMobile }: { isMobile: boolean }) {
                         value={rates[code] ?? 0}
                         onChange={(event) => updateRate(code, event.target.value)}
                         style={inputStyle}
-                        disabled={code === 'USD' || code === 'IDR'}
+                        disabled={code === 'USD'}
                       />
                     </Field>
                     <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500 }}>
@@ -2432,6 +2432,7 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [newAddon, setNewAddon] = useState<AddonDraft>({
     name: '', description: '', price_usd: '0', price_type: 'per_day',
     is_active: true, sort_order: 0,
@@ -2440,9 +2441,10 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
 
   const load = () => {
     setLoading(true);
+    setError(null);
     endpoints.adminAddons({ page_size: 100 })
       .then((res) => setAddons(unwrapList(res)))
-      .catch(() => {})
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Unable to load add-ons.'))
       .finally(() => setLoading(false));
   };
 
@@ -2490,6 +2492,7 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
     const draft = drafts[addon.id];
     if (!draft) return;
     setSaving((p) => ({ ...p, [addon.id]: true }));
+    setError(null);
     try {
       await endpoints.adminUpdateAddon(addon.id, {
         name: draft.name,
@@ -2506,7 +2509,8 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
       load();
       setExpandedId(null);
       setDrafts((p) => { const n = { ...p }; delete n[addon.id]; return n; });
-    } catch {
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Unable to save add-on.');
     } finally {
       setSaving((p) => ({ ...p, [addon.id]: false }));
     }
@@ -2514,6 +2518,7 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
 
   const handleCreate = async () => {
     setCreating(true);
+    setError(null);
     try {
       const created = await endpoints.adminCreateAddon({
         name: newAddon.name,
@@ -2534,7 +2539,8 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
         translations: LANGUAGES.map((lang) => ({ language: lang, name: '', description: '' })),
       });
       load();
-    } catch {
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Unable to create add-on.');
     } finally {
       setCreating(false);
     }
@@ -2652,6 +2658,7 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
         subtitle="Manage add-ons with multilingual names and descriptions"
         action={<Button variant="primary" onClick={() => setShowCreateForm(true)}>+ Add add-on</Button>}
       />
+      <ErrorBanner error={error} onClose={() => setError(null)} />
 
       {loading ? (
         <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: A.g500 }}>Loading…</p>

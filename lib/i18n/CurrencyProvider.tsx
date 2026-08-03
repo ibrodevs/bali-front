@@ -64,7 +64,9 @@ function normalizeCurrencyRates(raw: unknown): Record<string, number> {
   if (!next.USD) {
     next.USD = 1;
   }
-  next.IDR = DEFAULT_CURRENCY_RATES.IDR;
+  if (!next.IDR) {
+    next.IDR = DEFAULT_CURRENCY_RATES.IDR;
+  }
 
   return Object.keys(next).length ? next : DEFAULT_CURRENCY_RATES;
 }
@@ -73,11 +75,7 @@ function isSupportedCurrencyCode(currency?: string | null, rates: Record<string,
   return Boolean(currency && normalizeCurrencyCode(currency) in rates);
 }
 
-// IDR is the real-world price the admin sets (e.g. when editing a scooter's tariff in IDR).
-// It must stay fixed no matter how exchange rates are reconfigured later — only USD and
-// other secondary currencies are allowed to move when rates change.
 function rateFor(code: string, rates: Record<string, number>): number {
-  if (code === 'IDR') return DEFAULT_CURRENCY_RATES.IDR;
   return rates[code] || 1;
 }
 

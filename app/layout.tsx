@@ -15,9 +15,9 @@ export async function generateMetadata(): Promise<Metadata> {
     twitter: metadata.twitter,
     robots: metadata.robots,
     icons: {
-      icon: '/logo.svg',
-      shortcut: '/logo.svg',
-      apple: '/logo.svg',
+      icon: '/logo1.svg',
+      shortcut: '/logo1.svg',
+      apple: '/logo1.svg',
     },
     manifest: '/manifest.webmanifest',
     formatDetection: {

@@ -6,6 +6,7 @@ import BookingPage from '@/app/booking/page';
 import CatalogPage from '@/app/catalog/page';
 import HowItWorksPage from '@/app/how-it-works/page';
 import LocationsPage from '@/app/locations/page';
+import ContactsPage from '@/app/contacts/page';
 import LoginPage from '@/app/login/page';
 import NewsPage from '@/app/news/page';
 import { NewsArticlePageContent } from '@/app/news/[slug]/page';
@@ -71,6 +72,8 @@ export default async function AliasPage({
       return <HowItWorksPage />;
     case 'locations':
       return <LocationsPage />;
+    case 'contacts':
+      return <ContactsPage />;
     case 'news':
       return <NewsPage />;
     case 'booking':

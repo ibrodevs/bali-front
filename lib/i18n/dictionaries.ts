@@ -20,7 +20,7 @@ type SharedMedia = {
 export type Dict = typeof en & SharedMedia;
 
 export const en = {
-  nav: { catalog: 'Catalog', how: 'How it works', locations: 'Locations', news: 'News', admin: 'Admin', book: 'Book now', login: 'Sign in', logout: 'Sign out', profile: 'Profile' },
+  nav: { catalog: 'Catalog', how: 'How it works', locations: 'Locations', contacts: 'Contacts', news: 'News', admin: 'Admin', book: 'Book now', login: 'Sign in', logout: 'Sign out', profile: 'Profile' },
   hero: {
     eyebrow: 'RIDE BALI. YOUR WAY.',
     title1: 'EXPLORE BALI',
@@ -246,7 +246,7 @@ export const en = {
 };
 
 export const ru: typeof en = {
-  nav: { catalog: 'Каталог', how: 'Как это работает', locations: 'Локации', news: 'Новости', admin: 'Админ', book: 'Забронировать', login: 'Войти', logout: 'Выйти', profile: 'Профиль' },
+  nav: { catalog: 'Каталог', how: 'Как это работает', locations: 'Локации', contacts: 'Контакты', news: 'Новости', admin: 'Админ', book: 'Забронировать', login: 'Войти', logout: 'Выйти', profile: 'Профиль' },
   hero: {
     eyebrow: 'ПОКОРИ БАЛИ. ПО-СВОЕМУ.',
     title1: 'ИССЛЕДУЙ БАЛИ',
@@ -457,7 +457,7 @@ export const ru: typeof en = {
 };
 
 export const zh: typeof en = {
-  nav: { catalog: '车型', how: '如何使用', locations: '地点', news: '新闻', admin: '管理', book: '立即预订', login: '登录', logout: '退出', profile: '资料' },
+  nav: { catalog: '车型', how: '如何使用', locations: '地点', contacts: '联系方式', news: '新闻', admin: '管理', book: '立即预订', login: '登录', logout: '退出', profile: '资料' },
   hero: { eyebrow: '畅游巴厘岛，随心所欲。', title1: '探索巴厘岛', title2: '由你', title3: '做主。', pickup: '取车', pickupDate: '取车日期', returnDate: '还车日期', model: '车型', cta: '查看可用车', locations: '6 个地点', available: '可用 {n}' },
   stats: { fleet: '车队规模', riders: '今年骑手', rating: '平均评分', support: '岛上支援' },
   fleet: { eyebrow: '01 — 车队', title: '阵容', viewAll: '查看全部 →' },
@@ -576,7 +576,7 @@ export const zh: typeof en = {
 };
 
 export const id: typeof en = {
-  nav: { catalog: 'Katalog', how: 'Cara kerja', locations: 'Lokasi', news: 'Berita', admin: 'Admin', book: 'Pesan sekarang', login: 'Masuk', logout: 'Keluar', profile: 'Profil' },
+  nav: { catalog: 'Katalog', how: 'Cara kerja', locations: 'Lokasi', contacts: 'Kontak', news: 'Berita', admin: 'Admin', book: 'Pesan sekarang', login: 'Masuk', logout: 'Keluar', profile: 'Profil' },
   hero: { eyebrow: 'JELAJAHI BALI. CARAMU.', title1: 'JELAJAHI BALI', title2: 'SESUAI', title3: 'AKALMU.', pickup: 'AMBIL', pickupDate: 'TANGGAL AMBIL', returnDate: 'TANGGAL KEMBALI', model: 'MODEL', cta: 'CEK KETERSEDIAAN', locations: '6 lokasi', available: '{n} tersedia' },
   stats: { fleet: 'Skuter di armada', riders: 'Pengendara tahun ini', rating: 'Peringkat rata-rata', support: 'Dukungan di pulau' },
   fleet: { eyebrow: '01 — ARMADA', title: 'Pilihan kami.', viewAll: 'Lihat semua →' },
@@ -695,7 +695,7 @@ export const id: typeof en = {
 };
 
 export const de: typeof en = {
-  nav: { catalog: 'Katalog', how: 'So funktioniert es', locations: 'Standorte', news: 'News', admin: 'Admin', book: 'Jetzt buchen', login: 'Anmelden', logout: 'Abmelden', profile: 'Profil' },
+  nav: { catalog: 'Katalog', how: 'So funktioniert es', locations: 'Standorte', contacts: 'Kontakt', news: 'News', admin: 'Admin', book: 'Jetzt buchen', login: 'Anmelden', logout: 'Abmelden', profile: 'Profil' },
   hero: { eyebrow: 'BALI ENTDECKEN. AUF DEINE ART.', title1: 'ERLEBE BALI', title2: 'NACH DEINEN', title3: 'REGELN.', pickup: 'ABHOLUNG', pickupDate: 'ABHOLDATUM', returnDate: 'RÜCKGABEDATUM', model: 'MODELL', cta: 'VERFÜGBARKEIT PRÜFEN', locations: '6 Standorte', available: '{n} verfügbar' },
   stats: { fleet: 'Roller im Bestand', riders: 'Fahrer dieses Jahr', rating: 'Ø Bewertung', support: 'Support vor Ort' },
   fleet: { eyebrow: '01 — FLOTTE', title: 'Unsere Auswahl.', viewAll: 'Alle ansehen →' },
@@ -814,7 +814,7 @@ export const de: typeof en = {
 };
 
 export const fr: typeof en = {
-  nav: { catalog: 'Catalogue', how: 'Comment ça marche', locations: 'Lieux', news: 'Actualités', admin: 'Admin', book: 'Réserver', login: 'Connexion', logout: 'Déconnexion', profile: 'Profil' },
+  nav: { catalog: 'Catalogue', how: 'Comment ça marche', locations: 'Lieux', contacts: 'Contacts', news: 'Actualités', admin: 'Admin', book: 'Réserver', login: 'Connexion', logout: 'Déconnexion', profile: 'Profil' },
   hero: { eyebrow: 'EXPLORER BALI. À TA FAÇON.', title1: 'EXPLORE BALI', title2: 'À TES', title3: 'CONDITIONS.', pickup: 'PRISE EN CHARGE', pickupDate: 'DATE DE PRISE', returnDate: 'DATE DE RETOUR', model: 'MODÈLE', cta: 'VÉRIFIER LA DISPO', locations: '6 lieux', available: '{n} dispo' },
   stats: { fleet: 'Scooters en flotte', riders: 'Pilotes cette année', rating: 'Note moyenne', support: 'Support sur l\'île' },
   fleet: { eyebrow: '01 — FLOTTE', title: 'La gamme.', viewAll: 'Voir tout →' },

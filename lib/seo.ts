@@ -14,10 +14,10 @@ import { resolveScooterImage, resolveScooterRouteId } from './displayScooter';
 
 const DEFAULT_SITE_URL = 'https://bali.bike';
 const SITE_NAME = 'BALI-RENT';
-const DEFAULT_OG_IMAGE = '/logo.svg';
+const DEFAULT_OG_IMAGE = '/logo1.svg';
 const SEO_REVALIDATE_SECONDS = 60 * 10;
 
-const INDEXED_PAGE_KEYS = ['home', 'catalog', 'prices', 'how', 'locations', 'news'] as const;
+const INDEXED_PAGE_KEYS = ['home', 'catalog', 'prices', 'how', 'locations', 'contacts', 'news'] as const;
 const NOINDEX_PAGE_KEYS = ['booking', 'payment', 'login', 'register', 'profile'] as const;
 
 const PAGE_DESCRIPTION_MAP: Record<ManagedPageKey, string> = {
@@ -26,6 +26,7 @@ const PAGE_DESCRIPTION_MAP: Record<ManagedPageKey, string> = {
   prices: 'See scooter rental prices in Bali, compare rates, and find the best option for your stay.',
   how: 'Learn how BALI-RENT delivery, booking, payments, and support work before your ride starts.',
   locations: 'Explore delivery areas across Bali and see where your scooter can be brought to you.',
+  contacts: 'Contact BALI-RENT in Bali by WhatsApp, Telegram, support chat, or office address.',
   news: 'Travel updates, rental tips, and the latest BALI-RENT news from Bali.',
   booking: 'Complete your scooter booking details and confirm your Bali rental.',
   payment: 'Review and complete payment for your Bali scooter rental booking.',

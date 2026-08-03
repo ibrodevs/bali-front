@@ -33,7 +33,7 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     theme_color: '#FFD700',
     icons: [
       {
-        src: '/logo.svg',
+        src: '/logo1.svg',
         sizes: 'any',
         type: 'image/svg+xml',
       },
