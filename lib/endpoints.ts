@@ -807,8 +807,8 @@ export const endpoints = {
     api<Paginated<ApiSupportTicket> | ApiSupportTicket[]>('/admin/support/tickets/', { auth: true, query: params }),
   adminChatThreads: (params?: { page?: number; status?: string; search?: string; page_size?: number }) =>
     api<Paginated<ApiChatThread> | ApiChatThread[]>('/admin/chat/threads/', { auth: true, query: params }),
-  adminAddons: (params?: { page?: number; page_size?: number }) =>
-    api<Paginated<ApiAddon> | ApiAddon[]>('/add-ons/', { auth: true, query: params }),
+  adminAddons: (params?: { page?: number; page_size?: number }, signal?: AbortSignal) =>
+    api<Paginated<ApiAddon> | ApiAddon[]>('/add-ons/', { auth: true, query: params, signal }),
   adminCreateAddon: (body: Partial<AdminAddonPayload>) =>
     api<ApiAddon>('/add-ons/', { method: 'POST', body, auth: true }),
   adminUpdateAddon: (id: number | string, body: Partial<AdminAddonPayload>) =>

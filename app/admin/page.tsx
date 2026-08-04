@@ -1922,6 +1922,23 @@ function addonIdrInputValue(addon: ApiAddon) {
   return usdToIdrInput(addon.price_usd || addon.priceUSD || 0);
 }
 
+function isUnsupportedPriceIdrError(err: unknown) {
+  if (!(err instanceof ApiError)) return false;
+  const text = `${err.message} ${JSON.stringify(err.data || '')}`.toLowerCase();
+  return text.includes('price_idr') && (
+    text.includes('unknown') ||
+    text.includes('unexpected') ||
+    text.includes('not a valid field') ||
+    text.includes('not allowed')
+  );
+}
+
+function withoutPriceIdr<T extends { price_idr?: unknown }>(payload: T) {
+  const next = { ...payload };
+  delete next.price_idr;
+  return next;
+}
+
 function formatShortDate(value?: string | Date | null) {
   if (!value) return '—';
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(value));
@@ -2466,16 +2483,53 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
     translations: LANGUAGES.map((lang) => ({ language: lang, name: '', description: '' })),
   });
 
-  const load = () => {
+  const load = useCallback((signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
-    endpoints.adminAddons({ page_size: 100 })
-      .then((res) => setAddons(unwrapList(res)))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Unable to load add-ons.'))
-      .finally(() => setLoading(false));
-  };
+    endpoints.adminAddons({ page_size: 100 }, signal)
+      .then((res) => {
+        if (signal?.aborted) return;
+        setAddons(unwrapList(res));
+      })
+      .catch((err) => {
+        if (signal?.aborted) return;
+        setError(err instanceof ApiError ? err.message : 'Unable to load add-ons.');
+        setAddons([]);
+      })
+      .finally(() => {
+        if (!signal?.aborted) setLoading(false);
+      });
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => {
+      controller.abort();
+      setLoading(false);
+      setError('Unable to load add-ons: API request timed out. Check NEXT_PUBLIC_API_URL and try again.');
+    }, 12000);
+
+    setLoading(true);
+    setError(null);
+    endpoints.adminAddons({ page_size: 100 }, controller.signal)
+      .then((res) => {
+        setAddons(unwrapList(res));
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        setAddons([]);
+        setError(err instanceof ApiError ? err.message : 'Unable to load add-ons.');
+      })
+      .finally(() => {
+        window.clearTimeout(timeoutId);
+        if (!controller.signal.aborted) setLoading(false);
+      });
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, []);
 
   const openAddon = (addon: ApiAddon) => {
     if (expandedId === addon.id) { setExpandedId(null); return; }
@@ -2521,7 +2575,7 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
     setSaving((p) => ({ ...p, [addon.id]: true }));
     setError(null);
     try {
-      await endpoints.adminUpdateAddon(addon.id, {
+      const payload = {
         name: draft.name,
         description: draft.description,
         price_idr: Number(draft.price_usd) || 0,
@@ -2529,7 +2583,13 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
         price_type: draft.price_type,
         is_active: draft.is_active,
         sort_order: draft.sort_order,
-      });
+      };
+      try {
+        await endpoints.adminUpdateAddon(addon.id, payload);
+      } catch (err) {
+        if (!isUnsupportedPriceIdrError(err)) throw err;
+        await endpoints.adminUpdateAddon(addon.id, withoutPriceIdr(payload));
+      }
       const transToSave = draft.translations.filter((t) => t.name.trim() || t.description.trim());
       if (transToSave.length > 0) {
         await endpoints.adminSaveAddonTranslations(addon.id, transToSave);
@@ -2548,7 +2608,7 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
     setCreating(true);
     setError(null);
     try {
-      const created = await endpoints.adminCreateAddon({
+      const payload = {
         name: newAddon.name,
         description: newAddon.description,
         price_idr: Number(newAddon.price_usd) || 0,
@@ -2556,7 +2616,14 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
         price_type: newAddon.price_type,
         is_active: newAddon.is_active,
         sort_order: newAddon.sort_order,
-      });
+      };
+      let created: ApiAddon;
+      try {
+        created = await endpoints.adminCreateAddon(payload);
+      } catch (err) {
+        if (!isUnsupportedPriceIdrError(err)) throw err;
+        created = await endpoints.adminCreateAddon(withoutPriceIdr(payload));
+      }
       const transToSave = newAddon.translations.filter((t) => t.name.trim() || t.description.trim());
       if (transToSave.length > 0) {
         await endpoints.adminSaveAddonTranslations(created.id, transToSave);
@@ -2689,7 +2756,18 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
       />
       <ErrorBanner error={error} onClose={() => setError(null)} />
 
-      {loading ? (
+      {error ? (
+        <div style={{ display: 'grid', gap: 12 }}>
+          <div style={{ border: `1px solid ${A.red}`, background: A.redBg, color: A.red, borderRadius: 14, padding: 16, fontFamily: 'Inter, sans-serif', fontSize: 14 }}>
+            {error}
+          </div>
+          <div>
+            <Button variant="outline" onClick={() => load()}>
+              Retry loading add-ons
+            </Button>
+          </div>
+        </div>
+      ) : loading ? (
         <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: A.g500 }}>Loading…</p>
       ) : addons.length === 0 ? (
         <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: A.g500 }}>No add-ons yet.</p>
