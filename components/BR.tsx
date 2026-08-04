@@ -35,8 +35,8 @@ export function BRLogo({
       }}
     >
       <img
-        src="/logo1.svg"
-        alt="Bali Rent"
+        src="/logo-tropical-bikes.png"
+        alt="Tropical Bikes Bali Scooter Rental"
         style={{
           height: logoHeight,
           width: 'auto',
