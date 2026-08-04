@@ -53,7 +53,17 @@ import { useAuth } from '@/lib/i18n/AuthProvider';
 import { CURRENCY_SYMBOLS, DEFAULT_CURRENCY_RATES, formatCurrencyAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { SITE_CONTENT_FIELDS, SITE_CONTENT_LANGUAGES, SITE_CONTENT_PAGES, getDefaultSiteContentValue, pageMatchesField } from '@/lib/siteContentSchema';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { DEFAULT_ADDRESS_SETTINGS, DEFAULT_SOCIAL_LINKS, type AddressSettingKey, type AddressSettings, type SocialLinkKey, type SocialLinks } from '@/lib/siteSettings';
+import {
+  DEFAULT_ADDRESS_SETTINGS,
+  DEFAULT_SOCIAL_LINKS,
+  SITE_ADDRESS_SETTINGS_STORAGE_KEY,
+  SITE_SETTINGS_SYNC_EVENT,
+  SITE_SOCIAL_LINKS_STORAGE_KEY,
+  type AddressSettingKey,
+  type AddressSettings,
+  type SocialLinkKey,
+  type SocialLinks,
+} from '@/lib/siteSettings';
 import { PAGE_SETTINGS_DEFINITIONS, normalizePagePath, type ManagedPageKey } from '@/lib/pageSettings';
 
 function useWindowWidth() {
@@ -872,7 +882,12 @@ function SocialSettingsView({ isMobile }: { isMobile: boolean }) {
         ? await endpoints.adminUpdateSiteContent(entry.id, body)
         : await endpoints.adminCreateSiteContent(body);
       setEntry(saved);
-      setLinks(normalizeAdminSocialLinks(saved.json_value));
+      const normalizedSavedLinks = normalizeAdminSocialLinks(saved.json_value);
+      setLinks(normalizedSavedLinks);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(SITE_SOCIAL_LINKS_STORAGE_KEY, JSON.stringify(normalizedSavedLinks));
+        window.dispatchEvent(new Event(SITE_SETTINGS_SYNC_EVENT));
+      }
       setSaveMessage('Social links saved. Header, footer, home page, locations, and prices now use these values.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to save social links');
@@ -1041,7 +1056,12 @@ function AddressSettingsView({ isMobile }: { isMobile: boolean }) {
         ? await endpoints.adminUpdateSiteContent(entry.id, body)
         : await endpoints.adminCreateSiteContent(body);
       setEntry(saved);
-      setAddresses(normalizeAdminAddressSettings(saved.json_value));
+      const normalizedSavedAddresses = normalizeAdminAddressSettings(saved.json_value);
+      setAddresses(normalizedSavedAddresses);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(SITE_ADDRESS_SETTINGS_STORAGE_KEY, JSON.stringify(normalizedSavedAddresses));
+        window.dispatchEvent(new Event(SITE_SETTINGS_SYNC_EVENT));
+      }
       setSaveMessage('Address settings saved. Footer address line now uses these values across the website.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to save address settings');
@@ -1891,8 +1911,15 @@ function usdToIdrInput(value?: string | number | null) {
 function idrToUsdNumber(value?: string | number | null) {
   const amountIdr = Number(value ?? 0);
   const normalizedIdr = Number.isFinite(amountIdr) ? amountIdr : 0;
-  // 4 decimal places matches the backend's storage precision (max_digits=12, decimal_places=4).
-  return Number((normalizedIdr / ADMIN_IDR_RATE).toFixed(4));
+  return Number((normalizedIdr / ADMIN_IDR_RATE).toFixed(2));
+}
+
+function addonIdrInputValue(addon: ApiAddon) {
+  const explicitIdr = addon.price_idr ?? addon.priceIDR;
+  if (explicitIdr !== undefined && explicitIdr !== null && explicitIdr !== '') {
+    return String(Math.round(Number(explicitIdr) || 0));
+  }
+  return usdToIdrInput(addon.price_usd || addon.priceUSD || 0);
 }
 
 function formatShortDate(value?: string | Date | null) {
@@ -2461,7 +2488,7 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
         [addon.id]: {
           name: addon.name,
           description: addon.description || '',
-          price_usd: usdToIdrInput(addon.price_usd || addon.priceUSD || 0),
+          price_usd: addonIdrInputValue(addon),
           price_type: addon.price_type || addon.priceType || 'per_day',
           is_active: addon.is_active !== false,
           sort_order: addon.sort_order || 0,
@@ -2497,6 +2524,7 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
       await endpoints.adminUpdateAddon(addon.id, {
         name: draft.name,
         description: draft.description,
+        price_idr: Number(draft.price_usd) || 0,
         price_usd: idrToUsdNumber(draft.price_usd),
         price_type: draft.price_type,
         is_active: draft.is_active,
@@ -2523,6 +2551,7 @@ function AddonsView({ isMobile }: { isMobile: boolean }) {
       const created = await endpoints.adminCreateAddon({
         name: newAddon.name,
         description: newAddon.description,
+        price_idr: Number(newAddon.price_usd) || 0,
         price_usd: idrToUsdNumber(newAddon.price_usd),
         price_type: newAddon.price_type,
         is_active: newAddon.is_active,

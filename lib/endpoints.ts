@@ -100,7 +100,9 @@ export type ApiAddon = {
   icon?: string;
   category?: string;
   price_usd?: string | number;
+  price_idr?: string | number;
   priceUSD?: string | number;
+  priceIDR?: string | number;
   price?: string | number;
   price_type?: string;
   priceType?: string;
@@ -114,6 +116,7 @@ export type AdminAddonPayload = {
   code: string;
   name: string;
   description: string;
+  price_idr: string | number;
   price_usd: string | number;
   price_type: string;
   is_active: boolean;

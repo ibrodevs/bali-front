@@ -118,7 +118,7 @@ export default function SiteFooter() {
         ))}
       </div>
       <div className="br-site-footer-meta" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 24, gap: 16, flexWrap: 'wrap' }}>
-        <div {...marker('footer.metaLine')} className="br-mono" style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.1em' }}>{footer.metaLine || footerAddressLine}</div>
+        <div {...marker('footer.metaLine')} className="br-mono" style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.1em' }}>{footerAddressLine || footer.metaLine}</div>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
           <span {...marker('footer.localesLine')} className="br-mono" style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{footer.localesLine || 'EN · ID · RU · DE · FR · ZH'}</span>
           <span className="br-mono" style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{supportedCurrencies}</span>

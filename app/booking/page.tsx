@@ -46,6 +46,10 @@ function addonPriceValue(addon: ApiAddon) {
   return Number(addon.priceUSD ?? addon.price_usd ?? addon.price ?? 0);
 }
 
+function addonPriceIdrValue(addon: ApiAddon) {
+  return Number(addon.priceIDR ?? addon.price_idr ?? 0);
+}
+
 function getAddonName(addon: ApiAddon, locale: string): string {
   if (addon.translations && addon.translations.length > 0) {
     const translation = addon.translations.find((t) => t.language === locale);
@@ -292,6 +296,12 @@ function BookingPageInner() {
       return sum + (found ? addonPriceValue(found) : 0);
     }, 0);
   }, [addons, selectedAddOnIds]);
+  const addonsSubtotalIdr = useMemo(() => {
+    return selectedAddOnIds.reduce((sum, id) => {
+      const found = addons.find((a) => a.id === id);
+      return sum + (found ? addonPriceIdrValue(found) : 0);
+    }, 0);
+  }, [addons, selectedAddOnIds]);
 
   // When the selected currency is IDR, prefer the exact admin-entered figures the backend
   // computes from price_idr/billed_periods over re-deriving them from the USD total through
@@ -346,7 +356,7 @@ function BookingPageInner() {
     ? quote.add_ons_price_idr != null
       ? quote.add_ons_price_idr
       : convertAmountValue(Number(quote.add_ons_price || 0), quoteCurrency, 'IDR')
-    : convertPrice(addonsSubtotal, 'IDR');
+    : addonsSubtotalIdr || convertPrice(addonsSubtotal, 'IDR');
   const deliveryTotalIdr = quote
     ? quote.delivery_price_idr != null
       ? quote.delivery_price_idr
@@ -532,7 +542,7 @@ function BookingPageInner() {
                       >
                         <span>{getAddonName(addon, locale)}</span>
                         <span className="br-mono" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-                          <span>{fmtIdr(convertPrice(addonPriceValue(addon), 'IDR'))}</span>
+                          <span>{fmtIdr(addonPriceIdrValue(addon) || convertPrice(addonPriceValue(addon), 'IDR'))}</span>
                           {showSecondaryCurrency ? (
                             <span style={{ fontSize: 11, opacity: 0.6 }}>≈ {formatCurrencyAmount(convertPrice(addonPriceValue(addon)), selectedCurrency)}</span>
                           ) : null}

@@ -26,7 +26,7 @@ import { formatBillingLabel, formatRateRange } from '@/lib/rentalRates';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
 import { usePagePath } from '@/lib/usePageSettings';
 
-type AddonView = { id: string | number; apiId?: number; name: string; icon: string; price: number };
+type AddonView = { id: string | number; apiId?: number; name: string; icon: string; price: number; priceIdr?: number };
 
 const FALLBACK_TONES = ['sand', 'jungle', 'sunset', 'ocean'];
 const richTextStyle = {
@@ -39,6 +39,13 @@ const richTextStyle = {
 
 function addonPriceValue(addon: ApiAddon): number {
   return Number(addon.priceUSD ?? addon.price_usd ?? addon.price ?? 0);
+}
+
+function addonPriceIdrValue(addon: ApiAddon): number | undefined {
+  const value = addon.priceIDR ?? addon.price_idr;
+  if (value === undefined || value === null || value === '') return undefined;
+  const normalized = Number(value);
+  return Number.isFinite(normalized) ? normalized : undefined;
 }
 
 function getAddonName(addon: ApiAddon, locale: string): string {
@@ -100,12 +107,12 @@ export default function ScooterDetailPage() {
         setGallery(Array.from(new Set(imgs)));
         setPhotoIdx(0);
         const apiAddons: AddonView[] = (detail.available_addons || []).map((a: ApiAddon) => ({
-          id: a.id, apiId: a.id, name: getAddonName(a, locale), icon: a.icon || 'spark', price: addonPriceValue(a),
+          id: a.id, apiId: a.id, name: getAddonName(a, locale), icon: a.icon || 'spark', price: addonPriceValue(a), priceIdr: addonPriceIdrValue(a),
         }));
         if (apiAddons.length === 0) {
           try {
             const all = unwrapList(await endpoints.addons(locale)).map((a) => ({
-              id: a.id, apiId: a.id, name: getAddonName(a, locale), icon: a.icon || 'spark', price: addonPriceValue(a),
+              id: a.id, apiId: a.id, name: getAddonName(a, locale), icon: a.icon || 'spark', price: addonPriceValue(a), priceIdr: addonPriceIdrValue(a),
             }));
             setAddons(all);
           } catch {
@@ -451,7 +458,7 @@ export default function ScooterDetailPage() {
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 14, fontWeight: 500 }}>{a.name}</div>
                         <div className="br-mono" style={{ fontSize: 11, color: sub }}>
-                          Rp {formatGroupedAmount(convertPrice(a.price, 'IDR'), 0)}/{t.common.day}
+                          Rp {formatGroupedAmount(a.priceIdr ?? convertPrice(a.price, 'IDR'), 0)}/{t.common.day}
                           {currency !== 'IDR' ? (
                             <span style={{ opacity: 0.65 }}> · ≈ {symbol}{formatGroupedAmount(convertPrice(a.price), 2)}</span>
                           ) : null}
