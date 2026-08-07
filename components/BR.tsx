@@ -15,7 +15,7 @@ export function BRLogo({
   dark?: boolean;
   withBackdrop?: boolean;
 }) {
-  const logoHeight = size * 1.7;
+  const logoHeight = size * 2;
   const homePath = usePagePath('home');
 
   return (
@@ -64,7 +64,7 @@ const STATUS_MAP: Record<string, { color: string; bg: string; text: string }> = 
   partial:   { color: '#F59E0B', bg: 'rgba(245,158,11,0.14)', text: 'PARTIAL' },
   service:   { color: '#9CA3AF', bg: 'rgba(156,163,175,0.16)', text: 'SERVICE' },
   confirmed: { color: '#FFD700', bg: 'rgba(255,215,0,0.18)', text: 'CONFIRMED' },
-  active:    { color: '#16A34A', bg: 'rgba(22,163,74,0.12)', text: 'ACTIVE' },
+  active:    { color: '#16A34A', bg: 'rgba(22,163,175,0.12)', text: 'ACTIVE' },
   completed: { color: '#9CA3AF', bg: 'rgba(156,163,175,0.16)', text: 'COMPLETED' },
   cancelled: { color: '#6B7280', bg: 'rgba(107,114,128,0.16)', text: 'CANCELLED' },
   created:   { color: '#3B82F6', bg: 'rgba(59,130,246,0.12)', text: 'CREATED' },
