@@ -15,7 +15,7 @@ export function BRLogo({
   dark?: boolean;
   withBackdrop?: boolean;
 }) {
-  const logoHeight = size * 2;
+  const logoHeight = size * 2.2;
   const homePath = usePagePath('home');
 
   return (
