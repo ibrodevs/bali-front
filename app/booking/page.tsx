@@ -285,8 +285,8 @@ function BookingPageInner() {
   const rentalDays = Number(quote?.rental_days || 0);
   const appliedTariffLabel = formatAppliedTariffLabel(quote?.applied_tariff, locale);
   const effectiveRatePerDay = quote?.applied_tariff
-    ? selectedCurrency === 'IDR' && quote.applied_tariff.price_idr != null
-      ? Math.round(Number(quote.applied_tariff.price_idr) / (quote.applied_tariff.billing_period_days || 1))
+    ? selectedCurrency === 'IDR' && quote.applied_tariff.effective_daily_price_idr != null
+      ? Number(quote.applied_tariff.effective_daily_price_idr)
       : convertAmountValue(Number(quote.applied_tariff.effective_daily_price_usd || 0), quoteCurrency, selectedCurrency)
     : 0;
 
@@ -343,8 +343,8 @@ function BookingPageInner() {
     formatCurrencyAmount(amount, 'IDR', 'en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   const showSecondaryCurrency = selectedCurrency !== 'IDR';
   const effectiveRatePerDayIdr = quote?.applied_tariff
-    ? quote.applied_tariff.price_idr != null
-      ? Math.round(Number(quote.applied_tariff.price_idr) / (quote.applied_tariff.billing_period_days || 1))
+    ? quote.applied_tariff.effective_daily_price_idr != null
+      ? Number(quote.applied_tariff.effective_daily_price_idr)
       : convertAmountValue(Number(quote.applied_tariff.effective_daily_price_usd || 0), quoteCurrency, 'IDR')
     : 0;
   const baseTotalIdr = quote

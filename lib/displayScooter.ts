@@ -63,6 +63,7 @@ export type DisplayScooter = Scooter & {
   imageObjectPosition?: string;
   reviewsCount?: number;
   rating?: number;
+  sortOrder?: number;
   // Exact admin-entered IDR price, when available — avoids re-deriving the headline price
   // from `price` (USD) through the currency switcher's exchange rate.
   priceIdr?: number;
@@ -161,6 +162,7 @@ export function mapApiScooter(s: ApiScooter): DisplayScooter {
     imageObjectPosition: resolveScooterImageObjectPosition(id, s.title),
     reviewsCount: s.reviews_count,
     rating: s.rating_avg,
+    sortOrder: s.sort_order ?? 0,
   };
 }
 
@@ -177,11 +179,12 @@ export function mapApiScooterDetail(s: ApiScooterDetail): DisplayScooter {
 }
 
 export function fallbackScooters(): DisplayScooter[] {
-  return BR_SCOOTERS.map((s) => ({
+  return BR_SCOOTERS.map((s, index) => ({
     ...s,
     apiId: undefined,
     typeCode: s.type.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
     imageUrl: resolveScooterImage(s.id, s.name),
     imageObjectPosition: resolveScooterImageObjectPosition(s.id, s.name),
+    sortOrder: index + 1,
   }));
 }

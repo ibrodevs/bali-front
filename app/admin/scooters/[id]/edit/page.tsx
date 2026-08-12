@@ -190,6 +190,7 @@ type DraftScooter = {
   base_price_idr: string;
   status: string;
   quantity: string;
+  sort_order: string;
   mileage: string;
   is_featured: boolean;
 };
@@ -260,6 +261,7 @@ export default function AdminEditScooterPage() {
     base_price_idr: '',
     status: 'available',
     quantity: '1',
+    sort_order: '0',
     mileage: '0',
     is_featured: false,
   });
@@ -332,6 +334,7 @@ export default function AdminEditScooterPage() {
           base_price_idr: priceIdrRaw != null ? String(priceIdrRaw) : '',
           status: scooterRes.status || 'available',
           quantity: scooterRes.quantity != null ? String(scooterRes.quantity) : '1',
+          sort_order: scooterRes.sort_order != null ? String(scooterRes.sort_order) : '0',
           mileage: scooterRes.mileage != null ? String(scooterRes.mileage) : '0',
           is_featured: scooterRes.is_featured || false,
         });
@@ -494,6 +497,7 @@ export default function AdminEditScooterPage() {
         base_price_idr: Number(draft.base_price_idr),
         status: draft.status,
         quantity: Math.max(1, Number(draft.quantity || 1)),
+        sort_order: Math.max(0, Number(draft.sort_order || 0)),
         mileage: Number(draft.mileage || 0),
         is_featured: draft.is_featured,
       } satisfies AdminScooterPayload);
@@ -814,6 +818,21 @@ export default function AdminEditScooterPage() {
                     onChange={(e) => updateDraft('quantity', e.target.value)}
                     style={inputStyle}
                     placeholder="1"
+                  />
+                </Field>
+
+                <Field
+                  label="Catalog order"
+                  hint="Lower numbers appear first in the public catalog."
+                >
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={draft.sort_order}
+                    onChange={(e) => updateDraft('sort_order', e.target.value)}
+                    style={inputStyle}
+                    placeholder="0"
                   />
                 </Field>
 

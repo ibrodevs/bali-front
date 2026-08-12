@@ -195,6 +195,7 @@ type DraftScooter = {
   base_price_idr: string;
   status: string;
   quantity: string;
+  sort_order: string;
   mileage: string;
   is_featured: boolean;
 };
@@ -246,6 +247,7 @@ const EMPTY_SCOOTER: DraftScooter = {
   base_price_idr: '',
   status: 'available',
   quantity: '1',
+  sort_order: '0',
   mileage: '0',
   is_featured: false,
 };
@@ -480,6 +482,7 @@ export default function AdminNewScooterPage() {
         base_price_idr: Number(scooterDraft.base_price_idr),
         status: scooterDraft.status,
         quantity: Math.max(1, Number(scooterDraft.quantity || 1)),
+        sort_order: Math.max(0, Number(scooterDraft.sort_order || 0)),
         mileage: Number(scooterDraft.mileage || 0),
         is_featured: scooterDraft.is_featured,
       } satisfies AdminScooterPayload);
@@ -675,6 +678,9 @@ export default function AdminNewScooterPage() {
                 </div>
                 <Field label="Quantity available for booking" hint="How many identical scooters this card represents. The card stays bookable until all units are taken for the selected dates — no need to create duplicate cards.">
                   <input type="number" min="1" step="1" value={scooterDraft.quantity} onChange={(event) => updateScooterDraft('quantity', event.target.value)} style={inputStyle} placeholder="1" />
+                </Field>
+                <Field label="Catalog order" hint="Lower numbers appear first in the public catalog.">
+                  <input type="number" min="0" step="1" value={scooterDraft.sort_order} onChange={(event) => updateScooterDraft('sort_order', event.target.value)} style={inputStyle} placeholder="0" />
                 </Field>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14 }}>
                   <input type="checkbox" checked={scooterDraft.is_featured} onChange={(event) => updateScooterDraft('is_featured', event.target.checked)} />

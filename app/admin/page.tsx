@@ -7249,6 +7249,7 @@ function FleetView({
       base_price_idr: '',
       status: 'available',
       quantity: '1',
+      sort_order: '0',
       mileage: '0',
       is_featured: false,
     }),
@@ -7279,6 +7280,7 @@ function FleetView({
       base_price_idr: Number(draft.base_price_idr),
       status: draft.status,
       quantity: Math.max(1, Number(draft.quantity || 1)),
+      sort_order: Math.max(0, Number(draft.sort_order || 0)),
       mileage: Number(draft.mileage || 0),
       is_featured: draft.is_featured,
     });
@@ -7509,6 +7511,17 @@ function FleetView({
                 onChange={(event) => updateDraft('quantity', event.target.value)}
                 style={inputStyle}
                 placeholder="1"
+              />
+            </Field>
+            <Field label="Catalog order" hint="Lower numbers appear first in the public catalog.">
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={draft.sort_order}
+                onChange={(event) => updateDraft('sort_order', event.target.value)}
+                style={inputStyle}
+                placeholder="0"
               />
             </Field>
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'Inter, sans-serif', fontSize: 14, color: A.black }}>

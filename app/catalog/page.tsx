@@ -101,7 +101,7 @@ export default function CatalogPage() {
       if (sort === 'price-desc') return b.price - a.price;
       if (sort === 'engine') return b.cc - a.cc;
       if (sort === 'rating') return (b.rating || 0) - (a.rating || 0);
-      return Number(Boolean(b.apiId)) - Number(Boolean(a.apiId));
+      return (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER);
     });
 
   return (

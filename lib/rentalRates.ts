@@ -163,5 +163,7 @@ export function formatBillingLabel(billingPeriodDays: number, locale?: RentalRat
 
 export function formatAppliedTariffLabel(tariff?: ApiAppliedTariff | null, locale?: RentalRateLocale) {
   if (!tariff) return null;
-  return `${formatRateRange(tariff.min_days, tariff.max_days, locale)} · ${formatBillingLabel(tariff.billing_period_days, locale)}`;
+  const primary = `${formatRateRange(tariff.min_days, tariff.max_days, locale)} · ${formatBillingLabel(tariff.billing_period_days, locale)}`;
+  if (!tariff.remainder_days) return primary;
+  return `${primary} + ${formatRateRange(tariff.remainder_days, tariff.remainder_days, locale)}`;
 }

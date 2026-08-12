@@ -17,6 +17,7 @@ export type ApiScooter = {
   main_image?: string | null;
   status?: string;
   quantity?: number;
+  sort_order?: number;
   rating_avg?: number;
   reviews_count?: number;
   short_description?: string;
@@ -358,7 +359,9 @@ export type ApiAppliedTariff = {
   price_idr?: number | null;
   billing_period_days: number;
   billed_periods: number;
+  remainder_days?: number;
   effective_daily_price_usd: string | number;
+  effective_daily_price_idr?: number | null;
 };
 
 export type ApiBookingQuote = {
@@ -542,6 +545,7 @@ export type AdminScooterPayload = {
   base_price_idr: number;
   status: string;
   quantity: number;
+  sort_order: number;
   mileage: number;
   is_featured: boolean;
 };
