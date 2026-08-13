@@ -18,6 +18,7 @@ import {
 } from '@/components/Icons';
 import { endpoints, ApiAddon, ApiScooterDetail, unwrapList } from '@/lib/endpoints';
 import { mediaUrl } from '@/lib/api';
+import { formatAddonPriceType } from '@/lib/addonPricing';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { BR_ADDONS } from '@/lib/data';
 import { BR_SCOOTERS } from '@/lib/data';
@@ -26,7 +27,16 @@ import { formatBillingLabel, formatRateRange } from '@/lib/rentalRates';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
 import { usePagePath } from '@/lib/usePageSettings';
 
-type AddonView = { id: string | number; apiId?: number; name: string; icon: string; price: number; priceIdr?: number };
+type AddonView = {
+  id: string | number;
+  apiId?: number;
+  name: string;
+  icon: string;
+  price: number;
+  priceIdr?: number;
+  price_type?: string;
+  priceType?: string;
+};
 
 const FALLBACK_TONES = ['sand', 'jungle', 'sunset', 'ocean'];
 const richTextStyle = {
@@ -107,16 +117,16 @@ export default function ScooterDetailPage() {
         setGallery(Array.from(new Set(imgs)));
         setPhotoIdx(0);
         const apiAddons: AddonView[] = (detail.available_addons || []).map((a: ApiAddon) => ({
-          id: a.id, apiId: a.id, name: getAddonName(a, locale), icon: a.icon || 'spark', price: addonPriceValue(a), priceIdr: addonPriceIdrValue(a),
+          id: a.id, apiId: a.id, name: getAddonName(a, locale), icon: a.icon || 'spark', price: addonPriceValue(a), priceIdr: addonPriceIdrValue(a), price_type: a.price_type, priceType: a.priceType,
         }));
         if (apiAddons.length === 0) {
           try {
             const all = unwrapList(await endpoints.addons(locale)).map((a) => ({
-              id: a.id, apiId: a.id, name: getAddonName(a, locale), icon: a.icon || 'spark', price: addonPriceValue(a), priceIdr: addonPriceIdrValue(a),
+              id: a.id, apiId: a.id, name: getAddonName(a, locale), icon: a.icon || 'spark', price: addonPriceValue(a), priceIdr: addonPriceIdrValue(a), price_type: a.price_type, priceType: a.priceType,
             }));
             setAddons(all);
           } catch {
-            setAddons(BR_ADDONS.map((a) => ({ id: a.id, name: a.name, icon: a.icon, price: a.price })));
+            setAddons(BR_ADDONS.map((a) => ({ id: a.id, name: a.name, icon: a.icon, price: a.price, price_type: 'per_day' })));
           }
         } else {
           setAddons(apiAddons);
@@ -131,7 +141,7 @@ export default function ScooterDetailPage() {
           setCharacteristics({});
           setPricingTiers([]);
           setPhotoIdx(0);
-          setAddons(BR_ADDONS.map((a) => ({ id: a.id, name: a.name, icon: a.icon, price: a.price })));
+          setAddons(BR_ADDONS.map((a) => ({ id: a.id, name: a.name, icon: a.icon, price: a.price, price_type: 'per_day' })));
           setLoading(false);
         } else {
           setNotFound(true);
@@ -458,7 +468,7 @@ export default function ScooterDetailPage() {
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 14, fontWeight: 500 }}>{a.name}</div>
                         <div className="br-mono" style={{ fontSize: 11, color: sub }}>
-                          Rp {formatGroupedAmount(a.priceIdr ?? convertPrice(a.price, 'IDR'), 0)}/{t.common.day}
+                          Rp {formatGroupedAmount(a.priceIdr ?? convertPrice(a.price, 'IDR'), 0)} · {formatAddonPriceType(a, locale)}
                           {currency !== 'IDR' ? (
                             <span style={{ opacity: 0.65 }}> · ≈ {symbol}{formatGroupedAmount(convertPrice(a.price), 2)}</span>
                           ) : null}

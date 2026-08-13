@@ -165,5 +165,13 @@ export function formatAppliedTariffLabel(tariff?: ApiAppliedTariff | null, local
   if (!tariff) return null;
   const primary = `${formatRateRange(tariff.min_days, tariff.max_days, locale)} · ${formatBillingLabel(tariff.billing_period_days, locale)}`;
   if (!tariff.remainder_days) return primary;
-  return `${primary} + ${formatRateRange(tariff.remainder_days, tariff.remainder_days, locale)}`;
+  const remainder = formatRateRange(tariff.remainder_days, tariff.remainder_days, locale);
+  switch (normalizeLocale(locale)) {
+    case 'ru': return `${primary} · ещё ${remainder} по этому же тарифу`;
+    case 'zh': return `${primary} · 额外${remainder}沿用同一费率`;
+    case 'id': return `${primary} · tambahan ${remainder} dengan tarif yang sama`;
+    case 'de': return `${primary} · weitere ${remainder} zum gleichen Tarif`;
+    case 'fr': return `${primary} · ${remainder} supplémentaires au même tarif`;
+    default: return `${primary} · extra ${remainder} at the same rate`;
+  }
 }

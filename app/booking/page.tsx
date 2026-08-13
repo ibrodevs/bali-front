@@ -19,6 +19,7 @@ import {
   unwrapList,
 } from '@/lib/endpoints';
 import { bookingDraftStore } from '@/lib/bookingDraft';
+import { formatAddonPriceType } from '@/lib/addonPricing';
 import { formatCurrencyAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { formatAppliedTariffLabel } from '@/lib/rentalRates';
@@ -543,6 +544,7 @@ function BookingPageInner() {
                         <span>{getAddonName(addon, locale)}</span>
                         <span className="br-mono" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
                           <span>{fmtIdr(addonPriceIdrValue(addon) || convertPrice(addonPriceValue(addon), 'IDR'))}</span>
+                          <span style={{ fontSize: 11, opacity: 0.6 }}>{formatAddonPriceType(addon, locale)}</span>
                           {showSecondaryCurrency ? (
                             <span style={{ fontSize: 11, opacity: 0.6 }}>≈ {formatCurrencyAmount(convertPrice(addonPriceValue(addon)), selectedCurrency)}</span>
                           ) : null}
