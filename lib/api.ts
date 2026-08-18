@@ -114,7 +114,7 @@ async function refreshAccess(): Promise<string | null> {
     if (!res.ok) return null;
     const data = await res.json();
     if (!data.access) return null;
-    tokens.set({ access: data.access, refresh: t.refresh });
+    tokens.set({ access: data.access, refresh: data.refresh || t.refresh });
     return data.access;
   } catch {
     return null;
