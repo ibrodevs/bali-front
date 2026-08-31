@@ -7685,6 +7685,11 @@ function BookingsView({
                   <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500 }}>
                     {item.scooter?.title || 'Scooter'}
                   </div>
+                  {item.scooter?.color ? (
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginTop: 3 }}>
+                      Color: <span style={{ color: A.g700, fontWeight: 600 }}>{item.scooter.color}</span>
+                    </div>
+                  ) : null}
                 </div>
                 <div>
                   <div

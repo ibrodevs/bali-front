@@ -141,7 +141,7 @@ export type ApiBooking = {
   contact_has_telegram?: boolean;
   contact_has_wechat?: boolean;
   contact_has_whatsapp?: boolean;
-  scooter: { id: number; title: string; sku?: string };
+  scooter: { id: number; title: string; sku?: string; color?: string };
   start_datetime: string;
   end_datetime: string;
   delivery_time?: string | null;
