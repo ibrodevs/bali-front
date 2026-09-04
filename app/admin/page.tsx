@@ -24,6 +24,7 @@ import {
   ApiAnalyticsFunnel,
   ApiAnalyticsRevenue,
   AdminScooterPayload,
+  AdminBookingPayload,
   ApiAddon,
   ApiAddonTranslation,
   ApiAuditLog,
@@ -1960,6 +1961,24 @@ function formatDateRange(start?: string | null, end?: string | null) {
   return `${formatDateTime(start)} – ${formatDateTime(end)}`;
 }
 
+function formatBookingRentalDuration(start?: string | null, end?: string | null) {
+  if (!start || !end) return '';
+  const s = new Date(start);
+  const e = new Date(end);
+  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime()) || e <= s) return '';
+  const diffMs = e.getTime() - s.getTime();
+  const totalHours = Math.round((diffMs / (1000 * 60 * 60)) * 10) / 10;
+  const days = Math.floor(totalHours / 24);
+  const remainingHours = Math.round((totalHours % 24) * 10) / 10;
+  if (days > 0 && remainingHours > 0) {
+    return `${days}d ${remainingHours}h`;
+  }
+  if (days > 0 && remainingHours === 0) {
+    return `${days}d`;
+  }
+  return `${totalHours}h`;
+}
+
 function paymentBadgeColor(status?: string | null): BadgeColor {
   if (!status) return 'default';
   if (['succeeded', 'paid'].includes(status)) return 'green';
@@ -3787,6 +3806,8 @@ export default function AdminPage() {
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
   const [busyBookingId, setBusyBookingId] = useState<number | null>(null);
+  const [editingBooking, setEditingBooking] = useState<ApiBooking | null>(null);
+  const [creatingBooking, setCreatingBooking] = useState(false);
   const [savingScooterId, setSavingScooterId] = useState<number | null>(null);
   const [savingFleetForm, setSavingFleetForm] = useState(false);
   const [savingAdminUser, setSavingAdminUser] = useState(false);
@@ -4046,6 +4067,28 @@ export default function AdminPage() {
     }
   }
 
+  async function handleCreateBooking(payload: AdminBookingPayload) {
+    setError(null);
+    try {
+      await endpoints.adminCreateBooking(payload);
+      await loadAdminData();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Unable to create booking');
+      throw err;
+    }
+  }
+
+  async function handleUpdateBooking(bookingId: number, payload: AdminBookingPayload) {
+    setError(null);
+    try {
+      await endpoints.adminUpdateBooking(bookingId, payload);
+      await loadAdminData();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Unable to update booking');
+      throw err;
+    }
+  }
+
   async function handleSendReply(threadId: number, text: string) {
     setSendingReply(true);
     setError(null);
@@ -4159,9 +4202,35 @@ export default function AdminPage() {
         isMobile={isMobile}
       />
     ),
-    bookings: <BookingsView bookings={data.bookings} busyBookingId={busyBookingId} onBookingAction={handleBookingAction} isMobile={isMobile} />,
+    bookings: (
+      <BookingsView
+        bookings={data.bookings}
+        scooters={data.scooters}
+        busyBookingId={busyBookingId}
+        onBookingAction={handleBookingAction}
+        onOpenCreateModal={() => {
+          setEditingBooking(null);
+          setCreatingBooking(true);
+        }}
+        onOpenEditModal={(b) => {
+          setEditingBooking(b);
+          setCreatingBooking(false);
+        }}
+        isMobile={isMobile}
+      />
+    ),
     crm: <CRMView profiles={data.profiles} users={data.users} bookings={data.bookings} isMobile={isMobile} />,
-    calendar: <CalendarView bookings={data.bookings} scooters={data.scooters} isMobile={isMobile} />,
+    calendar: (
+      <CalendarView
+        bookings={data.bookings}
+        scooters={data.scooters}
+        onEditBooking={(b) => {
+          setEditingBooking(b);
+          setCreatingBooking(false);
+        }}
+        isMobile={isMobile}
+      />
+    ),
     analytics: <AnalyticsView revenue={data.revenue} funnel={data.funnel} bookings={data.bookings} isMobile={isMobile} />,
     support: (
       <SupportView
@@ -4170,9 +4239,14 @@ export default function AdminPage() {
         quickReplies={data.quickReplies}
         activeThreadId={activeThreadId}
         currentUser={user}
+        bookings={data.bookings}
         onSelectThread={setActiveThreadId}
         onSendReply={handleSendReply}
         onUpdateThreadStatus={handleThreadStatus}
+        onEditBooking={(b) => {
+          setEditingBooking(b);
+          setCreatingBooking(false);
+        }}
         sendingReply={sendingReply}
         isMobile={isMobile}
       />
@@ -4344,6 +4418,24 @@ export default function AdminPage() {
             </div>
           </>
         ) : null}
+
+        <BookingFormModal
+          isOpen={creatingBooking || Boolean(editingBooking)}
+          mode={editingBooking ? 'edit' : 'create'}
+          booking={editingBooking}
+          scooters={data.scooters}
+          onClose={() => {
+            setCreatingBooking(false);
+            setEditingBooking(null);
+          }}
+          onSave={async (payload, bookingId) => {
+            if (bookingId) {
+              await handleUpdateBooking(bookingId, payload);
+            } else {
+              await handleCreateBooking(payload);
+            }
+          }}
+        />
       </div>
     );
   }
@@ -4375,6 +4467,24 @@ export default function AdminPage() {
           )}
         </div>
       </div>
+
+      <BookingFormModal
+        isOpen={creatingBooking || Boolean(editingBooking)}
+        mode={editingBooking ? 'edit' : 'create'}
+        booking={editingBooking}
+        scooters={data.scooters}
+        onClose={() => {
+          setCreatingBooking(false);
+          setEditingBooking(null);
+        }}
+        onSave={async (payload, bookingId) => {
+          if (bookingId) {
+            await handleUpdateBooking(bookingId, payload);
+          } else {
+            await handleCreateBooking(payload);
+          }
+        }}
+      />
     </div>
   );
 }
@@ -7555,23 +7665,501 @@ function FleetView({
   );
 }
 
+function BookingFormModal({
+  isOpen,
+  mode,
+  booking,
+  scooters,
+  onClose,
+  onSave,
+}: {
+  isOpen: boolean;
+  mode: 'create' | 'edit';
+  booking: ApiBooking | null;
+  scooters: ApiScooterDetail[];
+  onClose: () => void;
+  onSave: (payload: AdminBookingPayload, bookingId?: number) => Promise<void>;
+}) {
+  const [vehicleId, setVehicleId] = useState('');
+  const [startAt, setStartAt] = useState('');
+  const [endAt, setEndAt] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [userEmail, setUserEmail] = useState('');
+  const [hasTelegram, setHasTelegram] = useState(false);
+  const [hasWhatsApp, setHasWhatsApp] = useState(false);
+  const [hasWeChat, setHasWeChat] = useState(false);
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [deliveryTime, setDeliveryTime] = useState('');
+  const [status, setStatus] = useState('confirmed');
+  const [paymentStatus, setPaymentStatus] = useState('pending');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [totalUsd, setTotalUsd] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setError(null);
+    if (mode === 'edit' && booking) {
+      setVehicleId(String(booking.scooter?.id || ''));
+      setStartAt(toDateTimeLocalValue(new Date(booking.start_datetime)));
+      setEndAt(toDateTimeLocalValue(new Date(booking.end_datetime)));
+      setContactName(booking.contact_name || booking.user || '');
+      setContactPhone(booking.contact_phone || '');
+      setUserEmail(booking.user || '');
+      setHasTelegram(Boolean(booking.contact_has_telegram));
+      setHasWhatsApp(Boolean(booking.contact_has_whatsapp));
+      setHasWeChat(Boolean(booking.contact_has_wechat));
+      setDeliveryAddress(booking.delivery_address || '');
+      setDeliveryTime(booking.delivery_time || '');
+      setStatus(booking.status || 'confirmed');
+      setPaymentStatus(booking.payment_status || 'pending');
+      setPaymentMethod(booking.payment_method || 'cash');
+      setTotalUsd(String(booking.total_price || ''));
+    } else {
+      const s = new Date();
+      s.setHours(9, 0, 0, 0);
+      const e = new Date();
+      e.setDate(e.getDate() + 3);
+      e.setHours(18, 0, 0, 0);
+      setVehicleId(scooters[0] ? String(scooters[0].id) : '');
+      setStartAt(toDateTimeLocalValue(s));
+      setEndAt(toDateTimeLocalValue(e));
+      setContactName('');
+      setContactPhone('');
+      setUserEmail('');
+      setHasTelegram(false);
+      setHasWhatsApp(true);
+      setHasWeChat(false);
+      setDeliveryAddress('');
+      setDeliveryTime('');
+      setStatus('confirmed');
+      setPaymentStatus('paid');
+      setPaymentMethod('cash');
+      setTotalUsd('75');
+    }
+  }, [isOpen, mode, booking, scooters]);
+
+  if (!isOpen) return null;
+
+  const durationText = formatBookingRentalDuration(startAt, endAt);
+
+  const handlePresetDays = (days: number) => {
+    const s = fromDateTimeLocalValue(startAt) || new Date();
+    const e = new Date(s);
+    e.setDate(e.getDate() + days);
+    setEndAt(toDateTimeLocalValue(e));
+  };
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!vehicleId) {
+      setError('Please select a scooter.');
+      return;
+    }
+    if (!startAt || !endAt) {
+      setError('Please provide start and end dates and times.');
+      return;
+    }
+    const sDate = fromDateTimeLocalValue(startAt);
+    const eDate = fromDateTimeLocalValue(endAt);
+    if (!sDate || !eDate || eDate <= sDate) {
+      setError('End date and time must be after start date.');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const payload: AdminBookingPayload = {
+        vehicle_id: Number(vehicleId),
+        start_at: sDate.toISOString(),
+        end_at: eDate.toISOString(),
+        start_datetime: sDate.toISOString(),
+        end_datetime: eDate.toISOString(),
+        contact_name: contactName.trim() || 'Guest',
+        contact_phone: contactPhone.trim(),
+        user_email: userEmail.trim(),
+        contact_has_telegram: hasTelegram,
+        contact_has_whatsapp: hasWhatsApp,
+        contact_has_wechat: hasWeChat,
+        delivery_address: deliveryAddress.trim(),
+        delivery_time: deliveryTime.trim() || null,
+        status,
+        payment_status: paymentStatus,
+        payment_method: paymentMethod,
+        total_usd: totalUsd ? parseFloat(totalUsd) : undefined,
+        total_price: totalUsd ? parseFloat(totalUsd) : undefined,
+      };
+      await onSave(payload, booking?.id);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to save booking.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(13,13,13,0.55)',
+        display: 'grid',
+        placeItems: 'center',
+        padding: 16,
+        zIndex: 100,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%',
+          maxWidth: 680,
+          maxHeight: 'min(90vh, 850px)',
+          overflowY: 'auto',
+          background: A.white,
+          borderRadius: 18,
+          padding: 24,
+          boxShadow: '0 24px 80px rgba(0,0,0,0.25)',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+          <div>
+            <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 20, color: A.black }}>
+              {mode === 'edit' ? `Edit Booking #${booking?.order_number || ''}` : 'Create New Booking'}
+            </div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, marginTop: 2 }}>
+              {mode === 'edit'
+                ? 'Unrestricted admin edit — change dates, hours, scooter, pricing & status.'
+                : 'Unrestricted admin creation — create bookings for any past or future period.'}
+            </div>
+          </div>
+          <Button variant="ghost" onClick={onClose}>Close</Button>
+        </div>
+
+        {error && (
+          <div style={{ marginBottom: 16 }}>
+            <InlineStatus message={error} tone="error" />
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 16 }}>
+          {/* Scooter Selection */}
+          <div>
+            <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+              Scooter
+            </label>
+            <select
+              value={vehicleId}
+              onChange={(e) => setVehicleId(e.target.value)}
+              style={{ ...inputBaseStyle, minHeight: 42 }}
+              required
+            >
+              <option value="">Select a scooter</option>
+              {scooters.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.title} {s.color ? `(${s.color})` : ''} — ${s.base_price_usd || s.price_per_day}/day
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Dates & Hours */}
+          <div style={{ border: `1px solid ${A.g200}`, borderRadius: 12, padding: 14, background: A.g100 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                Rental Dates & Hours
+              </span>
+              {durationText ? (
+                <Badge color="gold">{durationText}</Badge>
+              ) : null}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 10 }}>
+              <div>
+                <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 600, color: A.g500, marginBottom: 4 }}>
+                  Start Date & Time
+                </label>
+                <input
+                  type="datetime-local"
+                  value={startAt}
+                  onChange={(e) => setStartAt(e.target.value)}
+                  style={inputBaseStyle}
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 600, color: A.g500, marginBottom: 4 }}>
+                  End Date & Time
+                </label>
+                <input
+                  type="datetime-local"
+                  value={endAt}
+                  onChange={(e) => setEndAt(e.target.value)}
+                  style={inputBaseStyle}
+                  required
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: A.g500, alignSelf: 'center', marginRight: 4 }}>Extend:</span>
+              {[1, 3, 7, 14, 30].map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => handlePresetDays(d)}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    border: `1px solid ${A.g300}`,
+                    background: A.white,
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  +{d} {d === 1 ? 'day' : 'days'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Customer & Contact Details */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Customer / Guest Name
+              </label>
+              <input
+                type="text"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                placeholder="Full Name"
+                style={inputBaseStyle}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                placeholder="+62 812..."
+                style={inputBaseStyle}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                User Email
+              </label>
+              <input
+                type="email"
+                value={userEmail}
+                onChange={(e) => setUserEmail(e.target.value)}
+                placeholder="guest@example.com"
+                style={inputBaseStyle}
+              />
+            </div>
+          </div>
+
+          {/* Messengers */}
+          <div>
+            <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+              Available Messengers
+            </label>
+            <div style={{ display: 'flex', gap: 16 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'Inter, sans-serif', fontSize: 13, cursor: 'pointer' }}>
+                <input type="checkbox" checked={hasWhatsApp} onChange={(e) => setHasWhatsApp(e.target.checked)} />
+                WhatsApp
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'Inter, sans-serif', fontSize: 13, cursor: 'pointer' }}>
+                <input type="checkbox" checked={hasTelegram} onChange={(e) => setHasTelegram(e.target.checked)} />
+                Telegram
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'Inter, sans-serif', fontSize: 13, cursor: 'pointer' }}>
+                <input type="checkbox" checked={hasWeChat} onChange={(e) => setHasWeChat(e.target.checked)} />
+                WeChat
+              </label>
+            </div>
+          </div>
+
+          {/* Delivery Details */}
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Delivery Address
+              </label>
+              <input
+                type="text"
+                value={deliveryAddress}
+                onChange={(e) => setDeliveryAddress(e.target.value)}
+                placeholder="Villa / Hotel / Airport address"
+                style={inputBaseStyle}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Delivery Time / Note
+              </label>
+              <input
+                type="text"
+                value={deliveryTime}
+                onChange={(e) => setDeliveryTime(e.target.value)}
+                placeholder="e.g. 10:00 AM"
+                style={inputBaseStyle}
+              />
+            </div>
+          </div>
+
+          {/* Status, Payment Status, Payment Method, Total Price */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Booking Status
+              </label>
+              <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ ...inputBaseStyle, minHeight: 42 }}>
+                <option value="created">created</option>
+                <option value="pending_payment">pending_payment</option>
+                <option value="confirmed">confirmed</option>
+                <option value="delivery">delivery</option>
+                <option value="active">active</option>
+                <option value="completed">completed</option>
+                <option value="cancelled">cancelled</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Payment Status
+              </label>
+              <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)} style={{ ...inputBaseStyle, minHeight: 42 }}>
+                <option value="pending">pending</option>
+                <option value="paid">paid</option>
+                <option value="refunded">refunded</option>
+                <option value="failed">failed</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Payment Method
+              </label>
+              <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} style={{ ...inputBaseStyle, minHeight: 42 }}>
+                <option value="cash">cash</option>
+                <option value="card">card</option>
+                <option value="crypto">crypto</option>
+                <option value="bank_transfer">bank_transfer</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Total USD ($)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={totalUsd}
+                onChange={(e) => setTotalUsd(e.target.value)}
+                placeholder="0.00"
+                style={inputBaseStyle}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+            <Button variant="ghost" onClick={onClose} disabled={saving}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" disabled={saving}>
+              {saving ? 'Saving...' : mode === 'edit' ? 'Save Changes' : 'Create Booking'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function BookingsView({
   bookings,
+  scooters,
   busyBookingId,
   onBookingAction,
+  onOpenCreateModal,
+  onOpenEditModal,
   isMobile,
 }: {
   bookings: ApiBooking[];
+  scooters: ApiScooterDetail[];
   busyBookingId: number | null;
   onBookingAction: (
     id: number,
     action: 'confirm' | 'mark-delivery' | 'mark-active' | 'complete' | 'cancel' | 'delete',
   ) => void;
+  onOpenCreateModal: () => void;
+  onOpenEditModal: (booking: ApiBooking) => void;
   isMobile: boolean;
 }) {
   const [filter, setFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'latest_created' | 'oldest_created' | 'start_desc' | 'start_asc' | 'price_desc' | 'price_asc'>('latest_created');
   const formatMoney = useAdminMoneyFormatter();
-  const filtered = filter === 'all' ? bookings : bookings.filter((item) => item.status === filter);
+
+  const counts = useMemo(() => {
+    const map: Record<string, number> = { all: bookings.length };
+    for (const b of bookings) {
+      map[b.status] = (map[b.status] || 0) + 1;
+    }
+    return map;
+  }, [bookings]);
+
+  const filteredAndSorted = useMemo(() => {
+    let list = filter === 'all' ? bookings : bookings.filter((item) => item.status === filter);
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter((item) => {
+        const orderNum = String(item.order_number || '').toLowerCase();
+        const contact = String(item.contact_name || item.user || '').toLowerCase();
+        const phone = String(item.contact_phone || '').toLowerCase();
+        const scooterTitle = String(item.scooter?.title || '').toLowerCase();
+        const address = String(item.delivery_address || '').toLowerCase();
+        return (
+          orderNum.includes(q) ||
+          contact.includes(q) ||
+          phone.includes(q) ||
+          scooterTitle.includes(q) ||
+          address.includes(q)
+        );
+      });
+    }
+
+    const sorted = [...list].sort((a, b) => {
+      if (sortBy === 'oldest_created') {
+        return (a.created_at ? new Date(a.created_at).getTime() : a.id) - (b.created_at ? new Date(b.created_at).getTime() : b.id);
+      }
+      if (sortBy === 'start_desc') {
+        return new Date(b.start_datetime).getTime() - new Date(a.start_datetime).getTime();
+      }
+      if (sortBy === 'start_asc') {
+        return new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime();
+      }
+      if (sortBy === 'price_desc') {
+        return Number(b.total_price || 0) - Number(a.total_price || 0);
+      }
+      if (sortBy === 'price_asc') {
+        return Number(a.total_price || 0) - Number(b.total_price || 0);
+      }
+      // default: latest_created
+      return (b.created_at ? new Date(b.created_at).getTime() : b.id) - (a.created_at ? new Date(a.created_at).getTime() : a.id);
+    });
+
+    return sorted;
+  }, [bookings, filter, searchQuery, sortBy]);
+
   const contactBadges = (item: ApiBooking) =>
     [
       item.contact_has_telegram ? 'Telegram' : null,
@@ -7603,7 +8191,10 @@ function BookingsView({
     }
     buttons.push({ action: 'delete', label: 'Delete', variant: 'danger' });
     return (
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
+        <Button variant="outline" onClick={() => onOpenEditModal(item)}>
+          Edit
+        </Button>
         {buttons.map(({ action, label, variant }) => (
           <Button key={action} variant={variant} disabled={busy} onClick={() => onBookingAction(item.id, action)}>
             {busy ? '...' : label}
@@ -7615,122 +8206,223 @@ function BookingsView({
 
   return (
     <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? '16px' : '28px 32px' }}>
-      <SectionHeader title="Bookings" subtitle={`${bookings.length} bookings loaded from backend`} />
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflowX: 'auto', paddingBottom: 4 }}>
-        {['all', 'created', 'pending_payment', 'confirmed', 'delivery', 'active', 'completed', 'cancelled'].map((value) => (
-          <div
-            key={value}
-            onClick={() => setFilter(value)}
+      <SectionHeader
+        title="Bookings"
+        subtitle={`${bookings.length} total bookings · Full unrestricted management`}
+        action={
+          <Button variant="primary" size="md" onClick={onOpenCreateModal}>
+            + New Booking
+          </Button>
+        }
+      />
+
+      {/* Search and Sort toolbar */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', gap: 10, marginBottom: 14 }}>
+        <div style={{ position: 'relative' }}>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by order #, guest name, phone, scooter, address..."
             style={{
-              padding: isMobile ? '6px 12px' : '8px 16px',
-              borderRadius: 8,
-              background: filter === value ? A.black : A.white,
-              border: `1px solid ${filter === value ? A.black : A.g200}`,
-              color: filter === value ? A.white : A.g700,
-              fontFamily: 'Inter, sans-serif',
-              fontSize: isMobile ? 12 : 13,
+              ...inputBaseStyle,
+              paddingLeft: 36,
+              paddingRight: searchQuery ? 36 : 12,
+            }}
+          />
+          <span style={{ position: 'absolute', left: 12, top: 11, color: A.g500, fontSize: 14 }}>
+            🔍
+          </span>
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              style={{
+                position: 'absolute',
+                right: 10,
+                top: 10,
+                background: 'transparent',
+                border: 'none',
+                color: A.g500,
+                cursor: 'pointer',
+                fontSize: 14,
+              }}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, whiteSpace: 'nowrap' }}>Sort:</span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as never)}
+            style={{
+              ...inputBaseStyle,
+              minHeight: 40,
+              width: isMobile ? '100%' : 200,
               fontWeight: 600,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              flexShrink: 0,
             }}
           >
-            {value}
-          </div>
-        ))}
+            <option value="latest_created">Newest created first</option>
+            <option value="oldest_created">Oldest created first</option>
+            <option value="start_desc">Start date (Latest first)</option>
+            <option value="start_asc">Start date (Earliest first)</option>
+            <option value="price_desc">Price (Highest first)</option>
+            <option value="price_asc">Price (Lowest first)</option>
+          </select>
+        </div>
       </div>
-      {filtered.length === 0 ? (
-        <EmptyState label="No bookings for this filter." />
+
+      {/* Filter Tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflowX: 'auto', paddingBottom: 4 }}>
+        {['all', 'created', 'pending_payment', 'confirmed', 'delivery', 'active', 'completed', 'cancelled'].map((value) => {
+          const count = counts[value] || 0;
+          return (
+            <div
+              key={value}
+              onClick={() => setFilter(value)}
+              style={{
+                padding: isMobile ? '6px 12px' : '8px 16px',
+                borderRadius: 8,
+                background: filter === value ? A.black : A.white,
+                border: `1px solid ${filter === value ? A.black : A.g200}`,
+                color: filter === value ? A.white : A.g700,
+                fontFamily: 'Inter, sans-serif',
+                fontSize: isMobile ? 12 : 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <span>{value}</span>
+              <span
+                style={{
+                  fontSize: 11,
+                  padding: '2px 6px',
+                  borderRadius: 10,
+                  background: filter === value ? 'rgba(255,255,255,0.25)' : A.g100,
+                  color: filter === value ? A.white : A.g500,
+                }}
+              >
+                {count}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {filteredAndSorted.length === 0 ? (
+        <EmptyState label={searchQuery ? 'No bookings match your search query.' : 'No bookings for this filter.'} />
       ) : (
         <div style={{ display: 'grid', gap: isMobile ? 10 : 14 }}>
-          {filtered.map((item) => (
-            <Panel key={item.id} style={{ padding: isMobile ? 14 : 20 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr 1fr', gap: isMobile ? 10 : 16, alignItems: 'start' }}>
-                <div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-                    <Badge color={bookingBadgeColor(item.status)}>{item.status}</Badge>
-                    <Badge color={paymentBadgeColor(item.latest_payment?.status || item.payment_status)}>
-                      {item.latest_payment?.status || item.payment_status}
-                    </Badge>
-                  </div>
-                  <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 17, color: A.black, marginBottom: 4 }}>
-                    #{item.order_number}
-                  </div>
-                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700 }}>
-                    {item.contact_name || item.user || 'Guest'}
-                  </div>
-                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500 }}>
-                    {item.contact_phone || 'Phone not provided'}
-                  </div>
-                  {contactBadges(item).length > 0 && (
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                      {contactBadges(item).map((label) => (
-                        <span
-                          key={label}
-                          style={{
-                            padding: '4px 8px',
-                            borderRadius: 999,
-                            background: A.g100,
-                            color: A.g700,
-                            fontFamily: 'Inter, sans-serif',
-                            fontSize: 11,
-                            fontWeight: 600,
-                          }}
-                        >
-                          {label}
-                        </span>
-                      ))}
+          {filteredAndSorted.map((item) => {
+            const duration = formatBookingRentalDuration(item.start_datetime, item.end_datetime);
+            return (
+              <Panel key={item.id} style={{ padding: isMobile ? 14 : 20 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1.1fr 1fr', gap: isMobile ? 10 : 16, alignItems: 'start' }}>
+                  <div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                      <Badge color={bookingBadgeColor(item.status)}>{item.status}</Badge>
+                      <Badge color={paymentBadgeColor(item.latest_payment?.status || item.payment_status)}>
+                        {item.latest_payment?.status || item.payment_status}
+                      </Badge>
                     </div>
-                  )}
-                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500 }}>
-                    {item.scooter?.title || 'Scooter'}
-                  </div>
-                  {item.scooter?.color ? (
-                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginTop: 3 }}>
-                      Color: <span style={{ color: A.g700, fontWeight: 600 }}>{item.scooter.color}</span>
+                    <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 17, color: A.black, marginBottom: 4 }}>
+                      #{item.order_number}
                     </div>
-                  ) : null}
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600, color: A.g700 }}>
+                      {item.contact_name || item.user || 'Guest'}
+                    </div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500 }}>
+                      {item.contact_phone || 'Phone not provided'}
+                    </div>
+                    {contactBadges(item).length > 0 && (
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                        {contactBadges(item).map((label) => (
+                          <span
+                            key={label}
+                            style={{
+                              padding: '4px 8px',
+                              borderRadius: 999,
+                              background: A.g100,
+                              color: A.g700,
+                              fontFamily: 'Inter, sans-serif',
+                              fontSize: 11,
+                              fontWeight: 600,
+                            }}
+                          >
+                            {label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.black, marginTop: 8, fontWeight: 600 }}>
+                      {item.scooter?.title || 'Scooter'}
+                    </div>
+                    {item.scooter?.color ? (
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginTop: 2 }}>
+                        Color: <span style={{ color: A.g700, fontWeight: 600 }}>{item.scooter.color}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                  <div>
+                    <div
+                      style={{
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: A.g500,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.08em',
+                        marginBottom: 6,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                      }}
+                    >
+                      <span>Rental Period</span>
+                      {duration && <Badge color="gold">{duration}</Badge>}
+                    </div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.black, lineHeight: 1.6 }}>
+                      {formatDateTime(item.start_datetime)}
+                      <div style={{ color: A.g500, fontSize: 12 }}>↓ until</div>
+                      {formatDateTime(item.end_datetime)}
+                    </div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g700, marginTop: 8 }}>
+                      <strong>Delivery:</strong> {item.delivery_address || 'Not specified'}
+                    </div>
+                    {item.delivery_time && (
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginTop: 2 }}>
+                        <strong>Time:</strong> {item.delivery_time}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ textAlign: isMobile ? 'left' : 'right' }}>
+                    <div
+                      style={{
+                        fontFamily: 'Sora, sans-serif',
+                        fontWeight: 800,
+                        fontSize: 20,
+                        color: A.black,
+                        marginBottom: 4,
+                      }}
+                    >
+                      {formatMoney(item.total_price)}
+                    </div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginBottom: 12 }}>
+                      {item.rental_days} days · {item.payment_method}
+                    </div>
+                    {actionButtons(item)}
+                  </div>
                 </div>
-                <div>
-                  <div
-                    style={{
-                      fontFamily: 'Inter, sans-serif',
-                      fontSize: 12,
-                      color: A.g500,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.08em',
-                      marginBottom: 6,
-                    }}
-                  >
-                    Rental
-                  </div>
-                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.black, lineHeight: 1.6 }}>
-                    {formatDateRange(item.start_datetime, item.end_datetime)}
-                  </div>
-                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginTop: 8 }}>
-                    {item.delivery_address || 'Delivery address not provided'}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div
-                    style={{
-                      fontFamily: 'Sora, sans-serif',
-                      fontWeight: 800,
-                      fontSize: 20,
-                      color: A.black,
-                      marginBottom: 8,
-                    }}
-                  >
-                    {formatMoney(item.total_price)}
-                  </div>
-                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginBottom: 14 }}>
-                    {item.rental_days} days · {item.payment_method}
-                  </div>
-                  {actionButtons(item)}
-                </div>
-              </div>
-            </Panel>
-          ))}
+              </Panel>
+            );
+          })}
         </div>
       )}
     </div>
@@ -7898,7 +8590,17 @@ function CRMView({
   );
 }
 
-function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]; scooters: ApiScooterDetail[]; isMobile: boolean }) {
+function CalendarView({
+  bookings,
+  scooters,
+  onEditBooking,
+  isMobile,
+}: {
+  bookings: ApiBooking[];
+  scooters: ApiScooterDetail[];
+  onEditBooking?: (booking: ApiBooking) => void;
+  isMobile: boolean;
+}) {
   const formatMoney = useAdminMoneyFormatter();
   type CalendarBlock = { id: number; vehicle: number; start_at: string; end_at: string; type: string; comment?: string };
   type CalendarBooking = ApiBooking & { startDate: Date; endDate: Date };
@@ -8150,16 +8852,72 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
     }
   }
 
+  const monthTitle = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(weekStart);
+
   return (
     <div style={{ overflowY: 'auto', height: '100%', padding: isMobile ? '16px' : '28px 32px' }}>
       <SectionHeader
         title="Occupancy Calendar"
-        subtitle={`${formatShortDate(weekStart)} – ${formatShortDate(addDays(weekStart, 6))}`}
+        subtitle={`${formatShortDate(weekStart)} – ${formatShortDate(addDays(weekStart, 6))} (${monthTitle})`}
         action={
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button variant="outline" onClick={() => setWeekStart((current) => addDays(current, -7))}>‹</Button>
-            <Button variant="dark" onClick={() => setWeekStart(startOfWeek(new Date()))}>Today</Button>
-            <Button variant="outline" onClick={() => setWeekStart((current) => addDays(current, 7))}>›</Button>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setWeekStart((current) => {
+                  const d = new Date(current);
+                  d.setMonth(d.getMonth() - 1);
+                  return startOfWeek(d);
+                })
+              }
+            >
+              ‹ Month
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setWeekStart((current) => addDays(current, -7))}>
+              ‹ Week
+            </Button>
+            <Button variant="dark" size="sm" onClick={() => setWeekStart(startOfWeek(new Date()))}>
+              Today
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setWeekStart((current) => addDays(current, 7))}>
+              Week ›
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setWeekStart((current) => {
+                  const d = new Date(current);
+                  d.setMonth(d.getMonth() + 1);
+                  return startOfWeek(d);
+                })
+              }
+            >
+              Month ›
+            </Button>
+            <input
+              type="month"
+              value={`${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}`}
+              onChange={(e) => {
+                if (!e.target.value) return;
+                const [y, m] = e.target.value.split('-').map(Number);
+                if (y && m) {
+                  setWeekStart(startOfWeek(new Date(y, m - 1, 1)));
+                }
+              }}
+              style={{
+                padding: '6px 10px',
+                borderRadius: 8,
+                border: `1.5px solid ${A.g200}`,
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 12,
+                fontWeight: 600,
+                background: A.white,
+                color: A.black,
+                cursor: 'pointer',
+              }}
+            />
           </div>
         }
       />
@@ -8499,41 +9257,69 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
                       </div>
                     ) : (
                       <>
-                        {matches.map((item) => (
-                          <div
-                            key={item.id}
-                            style={{
-                              background:
-                                item.status === 'completed'
-                                  ? A.blueBg
-                                  : item.status === 'active'
-                                    ? A.greenBg
-                                    : A.orangeBg,
-                              borderLeft: `3px solid ${
-                                item.status === 'completed' ? A.blue : item.status === 'active' ? A.green : A.orange
-                              }`,
-                              borderRadius: '0 8px 8px 0',
-                              padding: '8px 10px',
-                              marginBottom: 4,
-                            }}
-                          >
-                            <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 11, color: A.black }}>
-                              #{item.order_number}
-                            </div>
+                        {matches.map((item) => {
+                          const sDay = isSameCalendarDay(item.startDate, day);
+                          const eDay = isSameCalendarDay(item.endDate, day);
+                          let timeBadge = 'All day';
+                          if (sDay && eDay) {
+                            timeBadge = `${formatTimeOnly(item.start_datetime)} - ${formatTimeOnly(item.end_datetime)}`;
+                          } else if (sDay) {
+                            timeBadge = `Starts ${formatTimeOnly(item.start_datetime)}`;
+                          } else if (eDay) {
+                            timeBadge = `Ends ${formatTimeOnly(item.end_datetime)}`;
+                          }
+
+                          return (
                             <div
+                              key={item.id}
                               style={{
-                                fontFamily: 'Inter, sans-serif',
-                                fontSize: 11,
-                                color: A.g700,
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
+                                background:
+                                  item.status === 'completed'
+                                    ? A.blueBg
+                                    : item.status === 'active'
+                                      ? A.greenBg
+                                      : A.orangeBg,
+                                borderLeft: `3px solid ${
+                                  item.status === 'completed' ? A.blue : item.status === 'active' ? A.green : A.orange
+                                }`,
+                                borderRadius: '0 8px 8px 0',
+                                padding: '6px 8px',
+                                marginBottom: 4,
                               }}
                             >
-                              {item.contact_name || item.user || 'Guest'}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                                <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 11, color: A.black }}>
+                                  #{item.order_number}
+                                </div>
+                                <span
+                                  style={{
+                                    fontSize: 9,
+                                    fontWeight: 700,
+                                    padding: '1px 4px',
+                                    borderRadius: 4,
+                                    background: 'rgba(0,0,0,0.06)',
+                                    color: A.g700,
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  {timeBadge}
+                                </span>
+                              </div>
+                              <div
+                                style={{
+                                  fontFamily: 'Inter, sans-serif',
+                                  fontSize: 11,
+                                  color: A.g700,
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                }}
+                              >
+                                {item.contact_name || item.user || 'Guest'}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                         {blockMatches.map((item) => (
                           <div
                             key={`block-${item.id}`}
@@ -8622,35 +9408,55 @@ function CalendarView({ bookings, scooters, isMobile }: { bookings: ApiBooking[]
               <Button variant="ghost" onClick={() => setSelectedCell(null)}>Close</Button>
             </div>
             <div style={{ display: 'grid', gap: 12 }}>
-              {selectedCell.bookings.map((item) => (
-                <div key={`selected-booking-${item.id}`} style={{ border: `1px solid ${A.g200}`, borderRadius: 12, padding: '14px 16px', background: A.white }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                    <div>
-                      <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 15, color: A.black }}>
-                        #{item.order_number} · {item.contact_name || item.user || 'Guest'}
+              {selectedCell.bookings.map((item) => {
+                const duration = formatBookingRentalDuration(item.start_datetime, item.end_datetime);
+                return (
+                  <div key={`selected-booking-${item.id}`} style={{ border: `1px solid ${A.g200}`, borderRadius: 12, padding: '14px 16px', background: A.white }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                      <div>
+                        <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 15, color: A.black }}>
+                          #{item.order_number} · {item.contact_name || item.user || 'Guest'}
+                        </div>
+                        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, marginTop: 4 }}>
+                          {formatDateTime(item.start_datetime)} → {formatDateTime(item.end_datetime)}
+                          {duration && (
+                            <span style={{ marginLeft: 6, fontWeight: 600, color: A.black }}>
+                              ({duration})
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, marginTop: 4 }}>
-                        {formatDateTime(item.start_datetime)} → {formatDateTime(item.end_datetime)}
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <Badge color={item.status === 'active' ? 'green' : item.status === 'completed' ? 'blue' : 'default'}>{item.status}</Badge>
+                        <Badge color={item.payment_status === 'paid' ? 'green' : 'default'}>{item.payment_status}</Badge>
+                        {onEditBooking && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedCell(null);
+                              onEditBooking(item);
+                            }}
+                          >
+                            Edit Booking
+                          </Button>
+                        )}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <Badge color={item.status === 'active' ? 'green' : item.status === 'completed' ? 'blue' : 'default'}>{item.status}</Badge>
-                      <Badge color={item.payment_status === 'paid' ? 'green' : 'default'}>{item.payment_status}</Badge>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: 10, marginTop: 12 }}>
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700 }}>
+                        <strong style={{ color: A.black }}>Phone:</strong> {item.contact_phone || '—'}
+                      </div>
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700 }}>
+                        <strong style={{ color: A.black }}>Total:</strong> {formatMoney(item.total_price)}
+                      </div>
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700 }}>
+                        <strong style={{ color: A.black }}>Delivery:</strong> {item.delivery_address || '—'}
+                      </div>
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: 10, marginTop: 12 }}>
-                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700 }}>
-                      <strong style={{ color: A.black }}>Phone:</strong> {item.contact_phone || '—'}
-                    </div>
-                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700 }}>
-                      <strong style={{ color: A.black }}>Total:</strong> {formatMoney(item.total_price)}
-                    </div>
-                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700 }}>
-                      <strong style={{ color: A.black }}>Delivery:</strong> {item.delivery_address || '—'}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               {selectedCell.manualBlocks.map((item) => (
                 <div key={`selected-block-${item.id}`} style={{ border: `1px solid ${A.g200}`, borderRadius: 12, padding: '14px 16px', background: A.redBg }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -8703,21 +9509,28 @@ function AnalyticsView({
   const zoneTotals = new Map<string, number>();
 
   for (const booking of bookings) {
+    if (booking.status === 'cancelled') continue;
     const vehicleName = booking.scooter?.title || 'Unknown scooter';
     vehicleTotals.set(vehicleName, (vehicleTotals.get(vehicleName) || 0) + Number(booking.total_price || 0));
     const zoneLabel = (booking.delivery_address || 'Unknown zone').split(',')[0].trim() || 'Unknown zone';
     zoneTotals.set(zoneLabel, (zoneTotals.get(zoneLabel) || 0) + 1);
   }
 
-  const topVehicles = Array.from(vehicleTotals.entries())
-    .map(([name, amount]) => ({ name, amount }))
-    .sort((l, r) => r.amount - l.amount)
-    .slice(0, 6);
+  const topVehicles =
+    revenue.vehicles && revenue.vehicles.length > 0
+      ? revenue.vehicles.map((v) => ({ name: v.name, amount: Number(v.amount || 0) }))
+      : Array.from(vehicleTotals.entries())
+          .map(([name, amount]) => ({ name, amount }))
+          .sort((l, r) => r.amount - l.amount)
+          .slice(0, 8);
 
-  const topZones = Array.from(zoneTotals.entries())
-    .map(([name, count]) => ({ name, count }))
-    .sort((l, r) => r.count - l.count)
-    .slice(0, 6);
+  const topZones =
+    revenue.zones && revenue.zones.length > 0
+      ? revenue.zones.map((z) => ({ name: z.name, count: Number(z.count || 0) }))
+      : Array.from(zoneTotals.entries())
+          .map(([name, count]) => ({ name, count }))
+          .sort((l, r) => r.count - l.count)
+          .slice(0, 8);
 
   const maxVehicle = Math.max(...topVehicles.map((item) => item.amount), 1);
   const maxZone = Math.max(...topZones.map((item) => item.count), 1);
@@ -8854,9 +9667,11 @@ function SupportView({
   quickReplies,
   activeThreadId,
   currentUser,
+  bookings,
   onSelectThread,
   onSendReply,
   onUpdateThreadStatus,
+  onEditBooking,
   sendingReply,
   isMobile,
 }: {
@@ -8865,15 +9680,45 @@ function SupportView({
   quickReplies: ApiQuickReply[];
   activeThreadId: number | null;
   currentUser: ApiUser | null;
+  bookings: ApiBooking[];
   onSelectThread: (id: number) => void;
   onSendReply: (threadId: number, text: string) => void;
   onUpdateThreadStatus: (threadId: number, status: 'open' | 'closed') => void;
+  onEditBooking?: (booking: ApiBooking) => void;
   sendingReply: boolean;
   isMobile: boolean;
 }) {
   const activeThread = threads.find((t) => t.id === activeThreadId) || threads[0] || null;
   const [draft, setDraft] = useState('');
   const [showChat, setShowChat] = useState(false);
+  const formatMoney = useAdminMoneyFormatter();
+
+  const matchedBooking = useMemo(() => {
+    if (!activeThread) return null;
+    const anyThread = activeThread as unknown as { booking_id?: number; booking?: { id: number } };
+    if (anyThread.booking_id) {
+      const found = bookings.find((b) => b.id === anyThread.booking_id);
+      if (found) return found;
+    }
+    if (anyThread.booking?.id) {
+      const found = bookings.find((b) => b.id === anyThread.booking.id);
+      if (found) return found;
+    }
+    const titleMatch = (activeThread.title || '').match(/#([A-Za-z0-9_-]+)/);
+    if (titleMatch && titleMatch[1]) {
+      const orderNum = titleMatch[1];
+      const found = bookings.find((b) => b.order_number === orderNum || String(b.id) === orderNum);
+      if (found) return found;
+    }
+    const clientEmail = (activeThread.participants || [])
+      .find((p) => p.role === 'client')?.user?.email?.toLowerCase();
+    if (clientEmail) {
+      const found = bookings.find((b) => (b.user || '').toLowerCase() === clientEmail);
+      if (found) return found;
+    }
+    return null;
+  }, [activeThread, bookings]);
+
   const supportParticipantIds = useMemo(
     () =>
       new Set(
@@ -9028,6 +9873,44 @@ function SupportView({
               </Button>
             </div>
           </div>
+          {matchedBooking ? (
+            <div
+              style={{
+                padding: isMobile ? '10px 14px' : '12px 24px',
+                background: A.white,
+                borderBottom: `1px solid ${A.g200}`,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: 12,
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 13, color: A.black }}>
+                  #{matchedBooking.order_number} · {matchedBooking.scooter?.title || 'Scooter'}
+                </span>
+                <Badge color={bookingBadgeColor(matchedBooking.status)}>{matchedBooking.status}</Badge>
+                <Badge color={paymentBadgeColor(matchedBooking.payment_status)}>{matchedBooking.payment_status}</Badge>
+                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g700 }}>
+                  {formatDateTime(matchedBooking.start_datetime)} → {formatDateTime(matchedBooking.end_datetime)}
+                  <strong style={{ marginLeft: 6, color: A.black }}>
+                    ({formatBookingRentalDuration(matchedBooking.start_datetime, matchedBooking.end_datetime)})
+                  </strong>
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 800, fontSize: 15, color: A.black }}>
+                  {formatMoney(matchedBooking.total_price)}
+                </div>
+                {onEditBooking ? (
+                  <Button variant="outline" size="sm" onClick={() => onEditBooking(matchedBooking)}>
+                    Edit Booking
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
           <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '14px 12px' : '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {messages.length === 0 ? (
               <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: A.g500 }}>

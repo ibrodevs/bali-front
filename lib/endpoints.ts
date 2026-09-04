@@ -193,6 +193,32 @@ export type ApiAnalyticsRevenue = {
   revenue: string | number;
   currency: string;
   period?: string;
+  vehicles?: Array<{ id: number; name: string; amount: number; count: number }>;
+  zones?: Array<{ name: string; count: number }>;
+};
+
+export type AdminBookingPayload = {
+  vehicle_id?: number | string;
+  scooter_id?: number | string;
+  start_datetime?: string;
+  end_datetime?: string;
+  start_at?: string;
+  end_at?: string;
+  delivery_time?: string | null;
+  delivery_address?: string;
+  contact_name?: string;
+  contact_phone?: string;
+  contact_has_telegram?: boolean;
+  contact_has_wechat?: boolean;
+  contact_has_whatsapp?: boolean;
+  user_email?: string;
+  user_id?: number | string;
+  payment_method?: string;
+  payment_status?: string;
+  status?: string;
+  total_price?: string | number;
+  total_usd?: string | number;
+  currency?: string;
 };
 
 export type ApiAnalyticsFunnelStep = {
@@ -765,8 +791,12 @@ export const endpoints = {
   adminDeleteRentalRate: (id: number | string) =>
     api<void>(`/admin/pricing/rental-rates/${id}/`, { method: 'DELETE', auth: true }),
 
-  adminBookings: (params?: { page?: number; status?: string }) =>
+  adminBookings: (params?: { page?: number; status?: string; search?: string; page_size?: number }) =>
     api<Paginated<ApiBooking> | ApiBooking[]>('/admin/bookings/', { auth: true, query: params }),
+  adminCreateBooking: (body: AdminBookingPayload) =>
+    api<ApiBooking>('/admin/bookings/', { method: 'POST', body, auth: true }),
+  adminUpdateBooking: (id: number | string, body: Partial<AdminBookingPayload>) =>
+    api<ApiBooking>(`/admin/bookings/${id}/`, { method: 'PATCH', body, auth: true }),
   adminDeleteBooking: (id: number | string) =>
     api<void>(`/admin/bookings/${id}/`, { method: 'DELETE', auth: true }),
   adminConfirmBooking: (id: number | string) =>

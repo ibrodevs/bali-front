@@ -684,7 +684,7 @@ function AvailabilityCalendarBlock({
   }, []);
 
   const [cursor, setCursor] = useState({ year: today.getFullYear(), month: today.getMonth() });
-  const [calendar, setCalendar] = useState<CalendarMonth | null>(null);
+  const [months, setMonths] = useState<CalendarMonth[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -694,17 +694,33 @@ function AvailabilityCalendarBlock({
     setLoading(true);
     setError(null);
 
-    endpoints.scooterAvailability(scooterId, {
-      year: cursor.year,
-      month: cursor.month + 1,
-    })
-      .then((data) => {
+    const m1Date = new Date(cursor.year, cursor.month, 1);
+    const m2Date = new Date(cursor.year, cursor.month + 1, 1);
+
+    Promise.all([
+      endpoints.scooterAvailability(scooterId, {
+        year: m1Date.getFullYear(),
+        month: m1Date.getMonth() + 1,
+      }),
+      endpoints.scooterAvailability(scooterId, {
+        year: m2Date.getFullYear(),
+        month: m2Date.getMonth() + 1,
+      }),
+    ])
+      .then(([data1, data2]) => {
         if (cancelled) return;
-        setCalendar({
-          year: cursor.year,
-          month: cursor.month,
-          data: 'days' in data ? (data as ApiAvailabilityCalendar) : null,
-        });
+        setMonths([
+          {
+            year: m1Date.getFullYear(),
+            month: m1Date.getMonth(),
+            data: 'days' in data1 ? (data1 as ApiAvailabilityCalendar) : null,
+          },
+          {
+            year: m2Date.getFullYear(),
+            month: m2Date.getMonth(),
+            data: 'days' in data2 ? (data2 as ApiAvailabilityCalendar) : null,
+          },
+        ]);
       })
       .catch((e) => {
         if (cancelled) return;
@@ -721,13 +737,15 @@ function AvailabilityCalendarBlock({
 
   const dayStatusMap = useMemo(() => {
     const map = new Map<string, AvailabilityDayStatus>();
-    if (calendar?.data) {
-      for (const day of calendar.data.days) {
-        map.set(day.date, day.status);
+    for (const m of months) {
+      if (m.data) {
+        for (const day of m.data.days) {
+          map.set(day.date, day.status);
+        }
       }
     }
     return map;
-  }, [calendar]);
+  }, [months]);
 
   const handleDayClick = useCallback(
     (key: string) => {
@@ -771,32 +789,32 @@ function AvailabilityCalendarBlock({
   }
 
   return (
-    <div className="br-booking-card br-booking-calendar-panel" style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 22, padding: 24 }}>
+    <div className="br-booking-card br-booking-calendar-panel" style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 20, padding: '20px 22px' }}>
       <div className="br-booking-calendar-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <div className="br-mono" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.55)' }}>
           <span {...marker('booking.calendarTitle')}>{copy.calendarTitle}</span>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button type="button" onClick={() => shiftMonth(-1)} className="br-mono" style={navButtonStyle}>←</button>
-          <button type="button" onClick={() => shiftMonth(1)} className="br-mono" style={navButtonStyle}>→</button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button type="button" onClick={() => shiftMonth(-1)} className="br-mono" style={{ ...navButtonStyle, padding: '4px 10px', fontSize: 13 }}>←</button>
+          <button type="button" onClick={() => shiftMonth(1)} className="br-mono" style={{ ...navButtonStyle, padding: '4px 10px', fontSize: 13 }}>→</button>
         </div>
       </div>
 
-      <div className="br-booking-calendar-legend" style={{ display: 'flex', gap: 16, marginTop: 14, color: 'rgba(0,0,0,0.62)', fontSize: 12 }}>
+      <div className="br-booking-calendar-legend" style={{ display: 'flex', gap: 14, marginTop: 10, color: 'rgba(0,0,0,0.62)', fontSize: 11 }}>
         <Legend color="#16A34A" label={copy.legendAvailable} contentKey="booking.legendAvailable" />
         <Legend color="#DC2626" label={copy.legendBooked} contentKey="booking.legendBooked" />
         <Legend color="#FFD700" label={copy.legendSelected} contentKey="booking.legendSelected" />
       </div>
 
-      {loading && <div className="br-mono" style={{ marginTop: 14, color: 'rgba(0,0,0,0.55)', fontSize: 12 }}>{t.common.loading}</div>}
-      {error && <div className="br-mono" style={{ marginTop: 14, color: '#B91C1C', fontSize: 12 }}>{error}</div>}
+      {loading && <div className="br-mono" style={{ marginTop: 12, color: 'rgba(0,0,0,0.55)', fontSize: 11 }}>{t.common.loading}</div>}
+      {error && <div className="br-mono" style={{ marginTop: 12, color: '#B91C1C', fontSize: 11 }}>{error}</div>}
 
-      <div className="br-booking-calendar-months" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 18, marginTop: 18 }}>
-        {calendar ? (
+      <div className="br-booking-calendar-months" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginTop: 14 }}>
+        {months.map((m) => (
           <MonthGrid
-            key={`${calendar.year}-${calendar.month}`}
-            year={calendar.year}
-            month={calendar.month}
+            key={`${m.year}-${m.month}`}
+            year={m.year}
+            month={m.month}
             locale={locale}
             weekdays={copy.weekdays}
             today={today}
@@ -805,11 +823,11 @@ function AvailabilityCalendarBlock({
             statusMap={dayStatusMap}
             onPick={handleDayClick}
           />
-        ) : null}
+        ))}
       </div>
 
       {startDateKey && !endDateKey ? (
-        <div className="br-mono" {...marker('booking.pickEndDate')} style={{ marginTop: 14, color: 'rgba(0,0,0,0.62)', fontSize: 12 }}>
+        <div className="br-mono" {...marker('booking.pickEndDate')} style={{ marginTop: 12, color: 'rgba(0,0,0,0.62)', fontSize: 11 }}>
           {copy.pickEndDate.replace('{date}', startDateKey)}
         </div>
       ) : null}
@@ -850,18 +868,18 @@ function MonthGrid({
   }
 
   return (
-    <div className="br-booking-month-grid">
-      <div className="br-mono" style={{ fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.62)' }}>
+    <div className="br-booking-month-grid" style={{ background: 'rgba(0,0,0,0.015)', borderRadius: 14, padding: 12, border: '1px solid rgba(0,0,0,0.05)' }}>
+      <div className="br-mono" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.7)', textAlign: 'center', marginBottom: 8 }}>
         {monthLabel}
       </div>
-      <div className="br-booking-month-days" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginTop: 10, fontSize: 11 }}>
+      <div className="br-booking-month-days" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, fontSize: 10 }}>
         {weekdays.map((d, i) => (
-          <div key={i} className="br-mono" style={{ textAlign: 'center', color: 'rgba(0,0,0,0.45)', padding: '4px 0' }}>
+          <div key={i} className="br-mono" style={{ textAlign: 'center', color: 'rgba(0,0,0,0.4)', padding: '2px 0', fontSize: 10 }}>
             {d}
           </div>
         ))}
         {cells.map((cell, idx) => {
-          if (!cell) return <div key={idx} />;
+          if (!cell) return <div key={idx} style={{ height: 28 }} />;
           const dayDate = new Date(year, month, cell.day);
           const isPast = dayDate < today;
           const status = statusMap.get(cell.key) || (isPast ? 'booked' : 'available');
@@ -876,14 +894,14 @@ function MonthGrid({
           const selected = isStart || isEnd || inRange;
 
           let bg = '#F5F5F5';
-          let color = 'rgba(0,0,0,0.4)';
+          let color = 'rgba(0,0,0,0.35)';
           if (isAvailable) {
             bg = 'rgba(22,163,74,0.12)';
             color = '#15803D';
           }
           if (status !== 'available' || isPast) {
-            bg = 'rgba(220,38,38,0.12)';
-            color = 'rgba(220,38,38,0.9)';
+            bg = 'rgba(220,38,38,0.10)';
+            color = 'rgba(220,38,38,0.85)';
           }
           if (selected) {
             bg = '#FFD700';
@@ -897,15 +915,19 @@ function MonthGrid({
               disabled={!isAvailable}
               onClick={() => onPick(cell.key)}
               style={{
-                aspectRatio: '1 / 1',
+                height: 28,
                 border: 'none',
-                borderRadius: 8,
+                borderRadius: 6,
                 background: bg,
                 color,
                 cursor: isAvailable ? 'pointer' : 'not-allowed',
-                fontSize: 13,
+                fontSize: 11,
                 fontFamily: 'var(--br-mono)',
                 fontWeight: selected ? 700 : 500,
+                display: 'grid',
+                placeItems: 'center',
+                padding: 0,
+                transition: 'all 0.15s ease',
               }}
               aria-label={`${cell.key} ${status}`}
             >
