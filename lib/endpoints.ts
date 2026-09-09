@@ -674,14 +674,51 @@ export type PromoCodePayload = {
   is_active?: boolean;
 };
 
+type ListRequestOptions = {
+  auth?: boolean;
+  query?: Record<string, string | number | undefined>;
+  lang?: string;
+  signal?: AbortSignal;
+};
+
+/**
+ * Load a complete DRF collection instead of silently stopping at PAGE_SIZE.
+ * DRF returns `next` as a fully-qualified URL, which `api` also supports.
+ */
+async function apiAllPages<T>(path: string, options: ListRequestOptions = {}): Promise<T[]> {
+  const items: T[] = [];
+  const visited = new Set<string>();
+  let next: string | null = path;
+  let firstPage = true;
+
+  while (next && !visited.has(next)) {
+    visited.add(next);
+    const response: Paginated<T> | T[] = await api<Paginated<T> | T[]>(next, {
+      ...options,
+      query: firstPage ? options.query : undefined,
+    });
+    firstPage = false;
+
+    if (Array.isArray(response)) {
+      items.push(...response);
+      break;
+    }
+
+    items.push(...(response.results || []));
+    next = response.next;
+  }
+
+  return items;
+}
+
 export const endpoints = {
   bootstrap: (lang?: string) => api<ApiBootstrap>('/public/bootstrap/', { lang }),
   publicPageSettings: () => api<ApiPublicPageSettings>('/public/page-settings/'),
 
   scooters: (params?: { search?: string; start_date?: string; end_date?: string; page?: number }, lang?: string) =>
-    api<Paginated<ApiScooter> | ApiScooter[]>('/scooters/', { query: params, lang }),
+    apiAllPages<ApiScooter>('/scooters/', { query: params, lang }),
   scooter: (idOrSlug: string | number, lang?: string) => api<ApiScooterDetail>(`/scooters/${idOrSlug}/`, { lang }),
-  scooterTypes: (lang?: string) => api<Paginated<ApiVehicleType> | ApiVehicleType[]>('/scooter-types/', { lang }),
+  scooterTypes: (lang?: string) => apiAllPages<ApiVehicleType>('/scooter-types/', { lang }),
   adminCreateScooterType: (body: { code: string; name: string }) =>
     api<ApiVehicleType>('/scooter-types/', { method: 'POST', body, auth: true }),
   adminUpdateScooterType: (id: number | string, body: Partial<{ code: string; name: string }>) =>
@@ -692,7 +729,7 @@ export const endpoints = {
     api<ApiVehicleTypeTranslation[]>(`/scooter-types/${id}/translations/`, { auth: true }),
   adminSaveScooterTypeTranslations: (id: number | string, translations: ApiVehicleTypeTranslation[]) =>
     api<{ status: string }>(`/scooter-types/${id}/translations/`, { method: 'POST', body: translations, auth: true }),
-  scooterModels: () => api<Paginated<ApiVehicleModel> | ApiVehicleModel[]>('/scooter-models/'),
+  scooterModels: () => apiAllPages<ApiVehicleModel>('/scooter-models/'),
   adminCreateScooterModel: (body: AdminScooterModelPayload) =>
     api<ApiVehicleModel>('/scooter-models/', { method: 'POST', body, auth: true }),
   scooterAvailability: (id: number | string, params: { year?: number; month?: number; start_date?: string; end_date?: string }) =>
@@ -773,7 +810,7 @@ export const endpoints = {
     api<ApiChatMessage>('/chat/messages/', { method: 'POST', body, auth: true }),
 
   adminScooters: (params?: { page?: number; page_size?: number; search?: string; status?: string }) =>
-    api<Paginated<ApiScooterDetail> | ApiScooterDetail[]>('/admin/scooters/', { auth: true, query: params }),
+    apiAllPages<ApiScooterDetail>('/admin/scooters/', { auth: true, query: params }),
   adminScooter: (id: number | string) =>
     api<ApiScooterDetail>(`/admin/scooters/${id}/`, { auth: true }),
   adminCreateScooter: (body: AdminScooterPayload) =>
