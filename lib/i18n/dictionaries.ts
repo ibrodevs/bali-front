@@ -935,7 +935,7 @@ export const fr: typeof en = {
 const SHARED_MEDIA: SharedMedia = {
   media: {
     home: {
-      heroVideo: '/hero.mp4',
+      heroVideo: '',
     },
   },
 };

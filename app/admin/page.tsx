@@ -4,6 +4,7 @@ import { CSSProperties, ReactNode, useCallback, useEffect, useMemo, useRef, useS
 import Link from 'next/link';
 import { AdminSidebarCurrencySwitcher, AdminSidebarLanguageSwitcher } from '@/components/AdminRouteShell';
 import { ApiError, ApiUser, mediaUrl } from '@/lib/api';
+import { resolveHeroVideoUrl } from '@/lib/media';
 import {
   ClipboardIcon,
   CloseIcon,
@@ -1606,14 +1607,16 @@ function SiteContentValuePreview({
   }
 
   if (field.valueType === 'video') {
-    return mediaPreviewUrl ? (
+    const resolvedVideo = resolveHeroVideoUrl(mediaPreviewUrl || value);
+    return resolvedVideo ? (
       <video
+        key={resolvedVideo}
         controls
         muted
         playsInline
         style={{ width: '100%', maxHeight: compact ? 240 : 300, borderRadius: 14, border: `1px solid ${A.g200}`, background: A.black }}
       >
-        <source src={mediaPreviewUrl} />
+        <source src={resolvedVideo} />
       </video>
     ) : (
       <div style={{ fontFamily: 'Inter, sans-serif', fontSize: fontBase, color: A.g500 }}>No video selected yet.</div>
@@ -5502,6 +5505,19 @@ function SiteContentView({
     setDrafts((current) => ({ ...current, [stateKey]: value }));
   }
 
+  const heroVideoField = useMemo(
+    () => SITE_CONTENT_FIELDS.find((field) => field.key === 'media.home.heroVideo') || null,
+    [],
+  );
+  const heroDraftValue = heroVideoField ? resolveDraftValue(heroVideoField, 'all') : '';
+  const heroCurrentEntry = heroVideoField ? fieldEntry(heroVideoField, 'all') : null;
+  const heroStateKey = heroVideoField ? fieldStateKey(heroVideoField, 'all') : 'all:media.home.heroVideo';
+  const heroMediaDraft = mediaDrafts[heroStateKey] || null;
+  const heroBusy = heroVideoField
+    ? savingKey === heroStateKey || savingKey === `bulk:${heroVideoField.key}` || savingKey === `reset:${heroVideoField.key}`
+    : false;
+  const currentHeroVideoResolved = resolveHeroVideoUrl(heroDraftValue);
+
   useEffect(() => {
     if (selectedFieldKey && !previewFields.some((field) => field.key === selectedFieldKey)) {
       setSelectedFieldKey(null);
@@ -5794,6 +5810,7 @@ function SiteContentView({
       value_type: typeof field.valueType;
       value: string;
       json_value?: unknown;
+      media?: null;
       is_active: boolean;
     };
 
@@ -5813,6 +5830,16 @@ function SiteContentView({
         value_type: field.valueType,
         value: '',
         json_value: draftValue.trim() ? JSON.parse(draftValue) : null,
+        is_active: true,
+      };
+    } else if (field.valueType === 'image' || field.valueType === 'video' || field.valueType === 'file') {
+      const shouldClearMedia = Boolean(existing?.media_url && draftValue !== existing.media_url);
+      body = {
+        key: field.key,
+        language,
+        value_type: field.valueType,
+        value: draftValue,
+        ...(shouldClearMedia ? { media: null } : {}),
         is_active: true,
       };
     } else {
@@ -6425,10 +6452,36 @@ function SiteContentView({
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <Badge color="blue">{`${previewSelectableFields.length} clickable content fields`}</Badge>
               <Badge color="green">{`${pageFields.length} total content entries`}</Badge>
               <Badge color="orange">Preview: {activeLanguage.toUpperCase()}</Badge>
+              {activePage === 'home' && heroVideoField ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedFieldKey('media.home.heroVideo');
+                    const el = document.getElementById('hero-video-manager');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: 'rgba(255, 215, 0, 0.16)',
+                    border: `1px solid ${A.gold}`,
+                    borderRadius: 999,
+                    padding: '3px 10px',
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: A.black,
+                  }}
+                >
+                  🎬 Hero Video
+                </button>
+              ) : null}
             </div>
 
             <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.6 }}>
@@ -6440,6 +6493,34 @@ function SiteContentView({
                 Quick Shortcuts
               </div>
               <div style={{ display: 'grid', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivePage('home');
+                    setSelectedFieldKey('media.home.heroVideo');
+                    setTimeout(() => {
+                      const el = document.getElementById('hero-video-manager');
+                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 50);
+                  }}
+                  style={{
+                    background: 'none',
+                    border: `1px solid ${A.g200}`,
+                    borderRadius: 12,
+                    padding: '10px 12px',
+                    color: A.black,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    width: '100%',
+                  }}
+                >
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>🎬</span> Hero Video
+                  </div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
+                    Upload, change, or remove background video on the landing page.
+                  </div>
+                </button>
                 <Link href="/admin?view=fleet" style={{ textDecoration: 'none' }}>
                   <div style={{ border: `1px solid ${A.g200}`, borderRadius: 12, padding: '10px 12px', color: A.black }}>
                     <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 13 }}>Scooter pages</div>
@@ -6477,6 +6558,150 @@ function SiteContentView({
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.4fr) minmax(340px, 0.8fr)', gap: 16, alignItems: 'start' }}>
           <div style={{ display: 'grid', gap: 16, position: isMobile ? 'static' : 'sticky', top: 20 }}>
+            {activePage === 'home' && heroVideoField ? (
+              <div id="hero-video-manager">
+                <Panel style={{ padding: isMobile ? 16 : 20, border: `1px solid ${A.gold}`, background: 'linear-gradient(180deg, #FFFFFF 0%, #FAFAF8 100%)' }}>
+                <div style={{ display: 'grid', gap: 14 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 20 }}>🎬</span>
+                        <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18, color: A.black }}>
+                          Hero Background Video
+                        </div>
+                        <Badge color={
+                          heroDraftValue === '__none__' || heroDraftValue === 'none'
+                            ? 'orange'
+                            : heroMediaDraft
+                            ? 'gold'
+                            : heroCurrentEntry?.media_url
+                            ? 'green'
+                            : heroDraftValue?.startsWith('http')
+                            ? 'blue'
+                            : heroDraftValue
+                            ? 'default'
+                            : 'orange'
+                        }>
+                          {heroDraftValue === '__none__' || heroDraftValue === 'none'
+                            ? '❌ Video removed from site'
+                            : heroMediaDraft
+                            ? '⚡ New video draft'
+                            : heroCurrentEntry?.media_url
+                            ? '🟢 Saved on server'
+                            : heroDraftValue?.startsWith('http')
+                            ? '🌐 External URL'
+                            : heroDraftValue
+                            ? '🎬 Active video'
+                            : '❌ No video set'}
+                        </Badge>
+                      </div>
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, lineHeight: 1.5 }}>
+                        Manage the background video playing on the landing page hero section. Upload a video file to the server, provide an external URL, or remove it entirely from the frontend.
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <Button
+                        variant="dark"
+                        onClick={() => saveFieldLanguage(heroVideoField, 'all')}
+                        disabled={heroBusy}
+                      >
+                        {heroBusy ? 'Saving to server…' : 'Save to Server'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(240px, 320px) minmax(0, 1fr)', gap: 16, alignItems: 'start' }}>
+                    {/* Video Player Preview */}
+                    <div style={{ borderRadius: 14, overflow: 'hidden', border: `1px solid ${A.g200}`, background: '#0A0A0F', position: 'relative' }}>
+                      {currentHeroVideoResolved ? (
+                        <video
+                          key={currentHeroVideoResolved}
+                          controls
+                          muted
+                          playsInline
+                          style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block' }}
+                        >
+                          <source src={currentHeroVideoResolved} />
+                        </video>
+                      ) : (
+                        <div style={{ height: 180, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.7)', textAlign: 'center', padding: 16 }}>
+                          <span style={{ fontSize: 28, marginBottom: 8 }}>🚫</span>
+                          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600 }}>Video removed from frontend</span>
+                          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 4 }}>Hero displays clean dark gradient background</span>
+                        </div>
+                      )}
+                      <div style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.85)', color: A.white, fontSize: 11, fontFamily: 'ui-monospace, monospace', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                        {currentHeroVideoResolved || 'No video active (removed)'}
+                      </div>
+                    </div>
+
+                    {/* Controls */}
+                    <div style={{ display: 'grid', gap: 12 }}>
+                      <div>
+                        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, color: A.black, marginBottom: 6 }}>
+                          Upload new video file (MP4, WebM, MOV)
+                        </div>
+                        <input
+                          type="file"
+                          accept="video/mp4,video/webm,video/quicktime,video/*"
+                          style={{ ...inputStyle, padding: '8px 12px' }}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] ?? null;
+                            if (file) {
+                              setMediaDraft(heroVideoField, 'all', file);
+                              setDraftValue(heroVideoField, 'all', URL.createObjectURL(file));
+                            }
+                          }}
+                        />
+                        {heroMediaDraft ? (
+                          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#B8860B', fontWeight: 600, marginTop: 4 }}>
+                            Selected: {heroMediaDraft.name} ({(heroMediaDraft.size / (1024 * 1024)).toFixed(2)} MB) — previewing live! Click &ldquo;Save to Server&rdquo; to store on backend.
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div>
+                        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, color: A.black, marginBottom: 6 }}>
+                          Or enter direct video link
+                        </div>
+                        <input
+                          value={heroDraftValue === '__none__' ? '' : heroDraftValue}
+                          onChange={(e) => {
+                            setMediaDraft(heroVideoField, 'all', null);
+                            setDraftValue(heroVideoField, 'all', e.target.value);
+                          }}
+                          style={inputStyle}
+                          placeholder="https://example.com/video.mp4 or /media/site_content/..."
+                        />
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 4 }}>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setMediaDraft(heroVideoField, 'all', null);
+                            setDraftValue(heroVideoField, 'all', '__none__');
+                          }}
+                          disabled={heroBusy}
+                        >
+                          ❌ Remove video from frontend
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => resetFieldLanguage(heroVideoField, 'all')}
+                          disabled={heroBusy}
+                        >
+                          🔄 Clear server video
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Panel>
+            </div>
+          ) : null}
+
             <Panel style={{ padding: isMobile ? 16 : 20 }}>
               <div style={{ display: 'grid', gap: 14 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -6673,8 +6898,58 @@ function SiteContentView({
                               </div>
                             </div>
 
-                            <Field label="Text">
-                              {selectedField.valueType === 'json' ? (
+                            <Field label={selectedField.valueType === 'video' ? 'Video' : selectedField.valueType === 'image' ? 'Image' : selectedField.valueType === 'file' ? 'File' : 'Text'}>
+                              {selectedField.valueType === 'video' || selectedField.valueType === 'image' || selectedField.valueType === 'file' ? (
+                                <div style={{ display: 'grid', gap: 12 }}>
+                                  <SiteContentValuePreview
+                                    field={selectedField}
+                                    value={draftValue}
+                                    mediaPreviewUrl={draftValue}
+                                    compact
+                                  />
+                                  <input
+                                    type="file"
+                                    accept={selectedField.valueType === 'video' ? 'video/*' : selectedField.valueType === 'image' ? 'image/*' : '*'}
+                                    style={{ ...inputStyle, padding: '8px 12px' }}
+                                    onChange={(event) => {
+                                      const file = event.target.files?.[0] ?? null;
+                                      setMediaDraft(selectedField, lang.code, file);
+                                      setDraftValue(selectedField, lang.code, file ? URL.createObjectURL(file) : (currentEntry?.media_url || currentEntry?.value || defaultValue || ''));
+                                    }}
+                                  />
+                                  <input
+                                    value={draftValue === '__none__' ? '' : draftValue}
+                                    onChange={(event) => {
+                                      setMediaDraft(selectedField, lang.code, null);
+                                      setDraftValue(selectedField, lang.code, event.target.value);
+                                    }}
+                                    style={inputStyle}
+                                    placeholder="Or paste an external media URL"
+                                  />
+                                  {selectedField.key === 'media.home.heroVideo' ? (
+                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                      <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                          setMediaDraft(selectedField, lang.code, null);
+                                          setDraftValue(selectedField, lang.code, '__none__');
+                                        }}
+                                      >
+                                        Remove video from site
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                          setMediaDraft(selectedField, lang.code, null);
+                                          setDraftValue(selectedField, lang.code, '');
+                                        }}
+                                      >
+                                        Clear video
+                                      </Button>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ) : selectedField.valueType === 'json' ? (
                                 <textarea
                                   value={draftValue}
                                   onChange={(event) => setDraftValue(selectedField, lang.code, event.target.value)}

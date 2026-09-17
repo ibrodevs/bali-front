@@ -17,6 +17,7 @@ import ScooterCard from '@/components/ScooterCard';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import { mediaUrl } from '@/lib/api';
+import { resolveHeroVideoUrl } from '@/lib/media';
 import { formatGroupedAmount, useCurrency } from '@/lib/i18n/CurrencyProvider';
 import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { endpoints } from '@/lib/endpoints';
@@ -147,6 +148,7 @@ export default function LandingPage() {
   const minPriceLabel = `Rp ${formatGroupedAmount(convertPrice(minPrice, 'IDR'), 0)}`;
   const supportChatLabel = SUPPORT_CHAT_COPY[locale as keyof typeof SUPPORT_CHAT_COPY] || SUPPORT_CHAT_COPY.en;
   const supportChatLink = `${profilePath}?tab=support`;
+  const heroVideoUrl = resolveHeroVideoUrl(t.media?.home?.heroVideo);
 
   return (
     <div style={{ width: '100%', minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#FAFAF5', color: '#0A0A0F', fontFamily: 'var(--br-body)', WebkitFontSmoothing: 'antialiased' }}>
@@ -154,12 +156,20 @@ export default function LandingPage() {
       <SiteHeader transparent />
 
       {/* ── 01 HERO ─────────────────────────────────────────────────── */}
-      <section style={{ position: 'relative', height: '100vh', minHeight: 620, overflow: 'hidden' }}>
-        <video autoPlay muted loop playsInline aria-hidden="true"
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-        >
-          <source src={t.media.home.heroVideo} type="video/mp4" />
-        </video>
+      <section style={{ position: 'relative', height: '100vh', minHeight: 620, overflow: 'hidden', background: '#0A0A0F' }}>
+        {heroVideoUrl ? (
+          <video
+            key={heroVideoUrl}
+            autoPlay
+            muted
+            loop
+            playsInline
+            aria-hidden="true"
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          >
+            <source src={heroVideoUrl} type="video/mp4" />
+          </video>
+        ) : null}
 
         <div aria-hidden style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.25) 55%, rgba(0,0,0,0.1) 100%)' }} />
 

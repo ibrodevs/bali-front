@@ -477,7 +477,7 @@ export function pageMatchesField(page: SiteContentPage, field: SiteContentField)
 }
 
 export function getDefaultSiteContentValue(key: string, locale: Locale) {
-  if (key === 'media.home.heroVideo') return '/hero.mp4';
+  if (key === 'media.home.heroVideo') return '';
   if (key.startsWith('app.')) {
     const appKey = key.slice(4) as keyof typeof APP_TEXT_DEFAULTS;
     return APP_TEXT_DEFAULT_OVERRIDES[locale]?.[appKey] ?? APP_TEXT_DEFAULTS[appKey] ?? '';
