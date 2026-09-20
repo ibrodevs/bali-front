@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <linearGradient id="scooter-body" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#94A3B8" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#64748B" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="scooter-wheel" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#334155"/>
+      <stop offset="100%" stop-color="#0F172A"/>
+    </linearGradient>
+    <radialGradient id="scooter-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#E2E8F0" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#E2E8F0" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background subtle shadow/ground -->
+  <ellipse cx="300" cy="330" rx="220" ry="16" fill="rgba(0,0,0,0.06)"/>
+
+  <!-- Rear Wheel -->
+  <g>
+    <circle cx="160" cy="270" r="48" fill="url(#scooter-wheel)" stroke="#475569" stroke-width="4"/>
+    <circle cx="160" cy="270" r="30" fill="none" stroke="#94A3B8" stroke-width="3" stroke-dasharray="8 6"/>
+    <circle cx="160" cy="270" r="14" fill="#CBD5E1" stroke="#334155" stroke-width="3"/>
+    <circle cx="160" cy="270" r="4" fill="#0F172A"/>
+  </g>
+
+  <!-- Front Wheel -->
+  <g>
+    <circle cx="440" cy="270" r="48" fill="url(#scooter-wheel)" stroke="#475569" stroke-width="4"/>
+    <circle cx="440" cy="270" r="30" fill="none" stroke="#94A3B8" stroke-width="3" stroke-dasharray="8 6"/>
+    <circle cx="440" cy="270" r="14" fill="#CBD5E1" stroke="#334155" stroke-width="3"/>
+    <circle cx="440" cy="270" r="4" fill="#0F172A"/>
+  </g>
+
+  <!-- Transmission & Exhaust -->
+  <rect x="140" y="250" width="90" height="22" rx="10" fill="#475569" stroke="#334155" stroke-width="2"/>
+  <path d="M125 258 L145 258" stroke="#64748B" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- Main Body / Underseat / Floorboard -->
+  <path d="M 160 270
+           L 210 270
+           L 240 280
+           L 340 280
+           L 365 240
+           L 410 200
+           L 415 140
+           L 405 130
+           L 375 160
+           L 350 200
+           L 330 220
+           L 245 220
+           L 170 215
+           Z"
+        fill="url(#scooter-body)" stroke="#475569" stroke-width="3"/>
+
+  <!-- Rear Fender / Tail -->
+  <path d="M 120 250 Q 140 210 180 205 L 230 205 L 210 250 Z"
+        fill="#64748B" stroke="#475569" stroke-width="2"/>
+  <path d="M 115 245 L 125 245" stroke="#EF4444" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Seat -->
+  <path d="M 180 205
+           C 200 180, 240 180, 260 190
+           C 280 198, 300 205, 330 205
+           L 325 218
+           L 180 212
+           Z"
+        fill="#1E293B" stroke="#0F172A" stroke-width="2"/>
+
+  <!-- Front Cowl & Headlight -->
+  <path d="M 375 160
+           L 415 140
+           L 435 155
+           L 420 220
+           L 395 245
+           L 370 220
+           Z"
+        fill="url(#scooter-body)" stroke="#475569" stroke-width="3"/>
+
+  <!-- Headlight beam accent -->
+  <path d="M 425 165 L 438 185 L 420 195 Z" fill="#FDE047" opacity="0.85" stroke="#EAB308" stroke-width="1.5"/>
+
+  <!-- Front Fork & Fender -->
+  <path d="M 412 170 L 440 270" stroke="#64748B" stroke-width="7" stroke-linecap="round"/>
+  <path d="M 415 230 Q 440 210 465 240" stroke="#475569" stroke-width="5" fill="none" stroke-linecap="round"/>
+
+  <!-- Handlebars & Mirrors -->
+  <path d="M 388 135 L 402 105 L 375 102" stroke="#334155" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="370" cy="98" r="8" fill="#475569" stroke="#1E293B" stroke-width="2"/>
+  <path d="M 402 105 L 418 102" stroke="#334155" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="423" cy="98" r="8" fill="#475569" stroke="#1E293B" stroke-width="2"/>
+
+  <!-- Windscreen -->
+  <path d="M 403 125 L 410 85 Q 420 80 430 90 L 420 130 Z"
+        fill="rgba(148, 163, 184, 0.4)" stroke="#94A3B8" stroke-width="2"/>
+</svg>

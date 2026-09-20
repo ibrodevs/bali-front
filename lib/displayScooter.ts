@@ -3,47 +3,8 @@ import { mediaUrl } from './api';
 import { Scooter, BR_SCOOTERS } from './data';
 
 const TONES = ['sand', 'ocean', 'sunset', 'mist', 'jungle', 'warm'];
-const GRAY_SCOOTER = '/scooters/scooter-gray-new.png';
-const RED_SPORT_SCOOTER = '/scooters/scooter-red-sport-new.png';
-const RED_CLASSIC_SCOOTER = '/scooters/scooter-red-classic-new.png';
-const LOCAL_SCOOTER_IMAGES: Record<string, string> = {
-  pcx160: GRAY_SCOOTER,
-  'honda-pcx-160': GRAY_SCOOTER,
-  nmax155: GRAY_SCOOTER,
-  'yamaha-nmax-155': GRAY_SCOOTER,
-  'honda-vario-160': GRAY_SCOOTER,
-  vespa: RED_CLASSIC_SCOOTER,
-  'vespa-sprint-150': RED_CLASSIC_SCOOTER,
-  'vespa-primavera-125': RED_CLASSIC_SCOOTER,
-  xmax: RED_SPORT_SCOOTER,
-  'yamaha-xmax-300': RED_SPORT_SCOOTER,
-  forza: RED_SPORT_SCOOTER,
-  'honda-forza-250': RED_SPORT_SCOOTER,
-  scoopy: RED_CLASSIC_SCOOTER,
-  'honda-scoopy-110': RED_CLASSIC_SCOOTER,
-  beat: RED_CLASSIC_SCOOTER,
-  'honda-beat-110': RED_CLASSIC_SCOOTER,
-  aerox: RED_SPORT_SCOOTER,
-  'yamaha-aerox-155': RED_SPORT_SCOOTER,
-  fazzio: RED_CLASSIC_SCOOTER,
-  'yamaha-fazzio-125': RED_CLASSIC_SCOOTER,
-  'honda-adv-160': RED_SPORT_SCOOTER,
-  'royal-enfield-meteor': RED_CLASSIC_SCOOTER,
-};
-const LOCAL_SCOOTER_KEYWORDS: Array<[string[], string]> = [
-  [['pcx'], GRAY_SCOOTER],
-  [['nmax'], GRAY_SCOOTER],
-  [['vario'], GRAY_SCOOTER],
-  [['vespa'], RED_CLASSIC_SCOOTER],
-  [['xmax'], RED_SPORT_SCOOTER],
-  [['forza'], RED_SPORT_SCOOTER],
-  [['scoopy'], RED_CLASSIC_SCOOTER],
-  [['beat'], RED_CLASSIC_SCOOTER],
-  [['aerox'], RED_SPORT_SCOOTER],
-  [['fazzio'], RED_CLASSIC_SCOOTER],
-  [['adv'], RED_SPORT_SCOOTER],
-  [['meteor'], RED_CLASSIC_SCOOTER],
-];
+const SCOOTER_PLACEHOLDER = '/placeholder-scooter.svg';
+
 const SCOOTER_ROUTE_ALIASES: Record<string, string> = {
   pcx160: 'honda-pcx-160',
   nmax155: 'yamaha-nmax-155',
@@ -84,17 +45,8 @@ function normalizeLookup(value?: string | number | null): string {
     .replace(/\s+/g, ' ');
 }
 
-export function resolveScooterImage(id?: string | number | null, label?: string | null): string | undefined {
-  const variants = [normalizeLookup(id), normalizeLookup(label)].filter(Boolean);
-  for (const key of variants) {
-    if (LOCAL_SCOOTER_IMAGES[key]) return LOCAL_SCOOTER_IMAGES[key];
-  }
-  for (const value of variants) {
-    for (const [keywords, image] of LOCAL_SCOOTER_KEYWORDS) {
-      if (keywords.every((keyword) => value.includes(keyword))) return image;
-    }
-  }
-  return undefined;
+export function resolveScooterImage(_id?: string | number | null, _label?: string | null): string | undefined {
+  return SCOOTER_PLACEHOLDER;
 }
 
 export function resolveScooterImageObjectPosition(id?: string | number | null, label?: string | null): string {
