@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 type RichTextEditorProps = {
   value: string;
@@ -46,14 +46,9 @@ export default function RichTextEditor({
   placeholder = 'Enter text…',
   minHeight = 160,
 }: RichTextEditorProps) {
-  const editorRef = useRef<HTMLDivElement>(null);
-
-  // By storing the initial HTML in a ref and passing it to dangerouslySetInnerHTML,
-  // React marks this DOM element as externally managed. On subsequent re-renders,
-  // React will NEVER reconcile or touch the DOM children of this element!
-  const initialHtmlRef = useRef<string>(value || '<p><br></p>');
-  const lastEmittedValueRef = useRef<string>(value || '');
-  const isTypingRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<HTMLDivElement | null>(null);
+  const lastEmittedRef = useRef<string>(value || '');
 
   const [hasContent, setHasContent] = useState(() => !isContentEmpty(value));
   const [activeFormats, setActiveFormats] = useState({
@@ -83,24 +78,6 @@ export default function RichTextEditor({
     setWordCount({ words, chars });
   };
 
-  // Sync external changes (e.g. switching articles, form reset) into editor
-  useEffect(() => {
-    if (isTypingRef.current) return;
-
-    if (editorRef.current) {
-      const currentHtml = editorRef.current.innerHTML;
-      const normalizedCurrent = isContentEmpty(currentHtml) ? '' : currentHtml;
-      const normalizedNext = isContentEmpty(value) ? '' : value;
-
-      if (normalizedNext !== lastEmittedValueRef.current && normalizedCurrent !== normalizedNext) {
-        editorRef.current.innerHTML = normalizedNext || '<p><br></p>';
-        lastEmittedValueRef.current = normalizedNext;
-        setHasContent(!isContentEmpty(normalizedNext));
-        computeCounts(editorRef.current.innerText || '');
-      }
-    }
-  }, [value]);
-
   const updateFormatStates = () => {
     if (typeof document === 'undefined') return;
     try {
@@ -127,29 +104,84 @@ export default function RichTextEditor({
     } catch {}
   };
 
-  const handleInput = () => {
-    if (!editorRef.current) return;
-    isTypingRef.current = true;
-    const rawHtml = editorRef.current.innerHTML;
-    const empty = isContentEmpty(rawHtml);
-    setHasContent(!empty);
+  // Mount native contentEditable element.
+  // Using a native DOM element completely decouples rich text editing from React's
+  // virtual DOM reconciliation, guaranteeing 100% reliable native typing in all browsers.
+  useEffect(() => {
+    if (!containerRef.current) return;
 
-    const emitted = empty ? '' : rawHtml;
-    lastEmittedValueRef.current = emitted;
-    onChange(emitted);
-    computeCounts(editorRef.current.innerText || '');
-    updateFormatStates();
-    isTypingRef.current = false;
-  };
+    const el = document.createElement('div');
+    el.contentEditable = 'true';
+    el.spellcheck = true;
+    el.style.width = '100%';
+    el.style.minHeight = `${minHeight}px`;
+    el.style.height = editorHeight ? `${editorHeight}px` : 'auto';
+    el.style.padding = '14px 16px';
+    el.style.outline = 'none';
+    el.style.fontFamily = 'Inter, sans-serif';
+    el.style.fontSize = '14px';
+    el.style.lineHeight = '1.75';
+    el.style.color = '#111827';
+    el.style.background = 'transparent';
+    el.style.overflowY = 'auto';
+    el.style.boxSizing = 'border-box';
+    el.style.cursor = 'text';
 
-  const handleBlur = () => {
-    if (!editorRef.current) return;
-    const rawHtml = editorRef.current.innerHTML;
-    const empty = isContentEmpty(rawHtml);
-    if (empty && rawHtml !== '<p><br></p>') {
-      editorRef.current.innerHTML = '<p><br></p>';
+    const initial = value || '<p><br></p>';
+    el.innerHTML = initial;
+    editorRef.current = el;
+    containerRef.current.appendChild(el);
+    computeCounts(el.innerText || '');
+
+    const handleInput = () => {
+      const html = el.innerHTML;
+      const empty = isContentEmpty(html);
+      setHasContent(!empty);
+      const emitted = empty ? '' : html;
+      lastEmittedRef.current = emitted;
+      onChange(emitted);
+      computeCounts(el.innerText || '');
+      updateFormatStates();
+    };
+
+    const handleKeyUp = () => {
+      updateFormatStates();
+    };
+
+    const handleMouseUp = () => {
+      updateFormatStates();
+    };
+
+    el.addEventListener('input', handleInput);
+    el.addEventListener('keyup', handleKeyUp);
+    el.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      el.removeEventListener('input', handleInput);
+      el.removeEventListener('keyup', handleKeyUp);
+      el.removeEventListener('mouseup', handleMouseUp);
+      if (containerRef.current && containerRef.current.contains(el)) {
+        containerRef.current.removeChild(el);
+      }
+      editorRef.current = null;
+    };
+  }, []);
+
+  // Sync external changes (e.g. switching articles, form reset) into editor
+  useEffect(() => {
+    if (editorRef.current && value !== lastEmittedRef.current) {
+      const currentHtml = editorRef.current.innerHTML;
+      const normalizedCurrent = isContentEmpty(currentHtml) ? '' : currentHtml;
+      const normalizedNext = isContentEmpty(value) ? '' : value;
+
+      if (normalizedCurrent !== normalizedNext) {
+        editorRef.current.innerHTML = normalizedNext || '<p><br></p>';
+        lastEmittedRef.current = normalizedNext;
+        setHasContent(!isContentEmpty(normalizedNext));
+        computeCounts(editorRef.current.innerText || '');
+      }
     }
-  };
+  }, [value]);
 
   const exec = (command: string, val: string | undefined = undefined) => {
     if (editorRef.current) {
@@ -161,7 +193,7 @@ export default function RichTextEditor({
       const empty = isContentEmpty(html);
       setHasContent(!empty);
       const emitted = empty ? '' : html;
-      lastEmittedValueRef.current = emitted;
+      lastEmittedRef.current = emitted;
       onChange(emitted);
       computeCounts(editorRef.current.innerText || '');
     }
@@ -183,7 +215,7 @@ export default function RichTextEditor({
       const empty = isContentEmpty(html);
       setHasContent(!empty);
       const emitted = empty ? '' : html;
-      lastEmittedValueRef.current = emitted;
+      lastEmittedRef.current = emitted;
       onChange(emitted);
       computeCounts(editorRef.current.innerText || '');
     }
@@ -207,7 +239,7 @@ export default function RichTextEditor({
     const empty = isContentEmpty(html);
     setHasContent(!empty);
     const emitted = empty ? '' : html;
-    lastEmittedValueRef.current = emitted;
+    lastEmittedRef.current = emitted;
     onChange(emitted);
     setCurrentFont(fontFamilyValue);
     updateFormatStates();
@@ -228,7 +260,6 @@ export default function RichTextEditor({
         f.parentNode?.replaceChild(span, f);
       });
     } else {
-      // Set container font size directly so text typed next adopts this size
       editorRef.current.style.fontSize = `${sizePx}px`;
     }
 
@@ -236,7 +267,7 @@ export default function RichTextEditor({
     const empty = isContentEmpty(html);
     setHasContent(!empty);
     const emitted = empty ? '' : html;
-    lastEmittedValueRef.current = emitted;
+    lastEmittedRef.current = emitted;
     onChange(emitted);
     setCurrentFontSize(String(sizePx));
     updateFormatStates();
@@ -250,12 +281,11 @@ export default function RichTextEditor({
 
   const toggleCodeView = () => {
     if (isCodeView) {
-      // Returning from code view to visual view
       setIsCodeView(false);
       setTimeout(() => {
         if (editorRef.current) {
           editorRef.current.innerHTML = value || '<p><br></p>';
-          lastEmittedValueRef.current = value || '';
+          lastEmittedRef.current = value || '';
           setHasContent(!isContentEmpty(value));
           computeCounts(editorRef.current.innerText || '');
         }
@@ -265,16 +295,10 @@ export default function RichTextEditor({
     }
   };
 
-  const focusEditorAtEnd = () => {
-    if (!editorRef.current) return;
-    editorRef.current.focus();
-    const sel = window.getSelection();
-    if (sel) {
-      const range = document.createRange();
-      range.selectNodeContents(editorRef.current);
-      range.collapse(false);
-      sel.removeAllRanges();
-      sel.addRange(range);
+  const handleHeightPreset = (h: number) => {
+    setEditorHeight(h);
+    if (editorRef.current) {
+      editorRef.current.style.height = `${h}px`;
     }
   };
 
@@ -625,89 +649,70 @@ export default function RichTextEditor({
         </button>
       </div>
 
-      {/* ── Editor contentEditable Area OR HTML Code View ────────────── */}
-      {isCodeView ? (
-        <textarea
-          value={value}
-          onChange={(e) => {
-            const html = e.target.value;
-            lastEmittedValueRef.current = html;
-            onChange(html);
-            computeCounts(html);
-          }}
-          placeholder="Write HTML markup here…"
-          style={{
-            width: '100%',
-            minHeight,
-            height: editorHeight ? `${editorHeight}px` : undefined,
-            padding: '14px 16px',
-            fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-            fontSize: 13,
-            lineHeight: 1.6,
-            border: 'none',
-            outline: 'none',
-            resize: 'vertical',
-            background: '#1F2937',
-            color: '#F9FAFB',
-            boxSizing: 'border-box',
-          }}
-        />
-      ) : (
-        <div
-          onClick={focusEditorAtEnd}
-          style={{
-            position: 'relative',
-            cursor: 'text',
-            minHeight,
-            background: '#fff',
-          }}
-        >
-          {/* Floating placeholder: does NOT use :before on contentEditable, so it never blocks WebKit caret */}
-          {!hasContent && (
-            <div
-              style={{
-                position: 'absolute',
-                top: 14,
-                left: 16,
-                color: '#9CA3AF',
-                pointerEvents: 'none',
-                fontFamily: currentFont || 'Inter, sans-serif',
-                fontSize: `${currentFontSize}px`,
-                lineHeight: 1.75,
-                userSelect: 'none',
-              }}
-            >
-              {placeholder}
-            </div>
-          )}
-
+      {/* ── Editor Area ─────────────────────────────────────────── */}
+      <div style={{ position: 'relative', minHeight, background: '#fff' }}>
+        {/* Floating placeholder */}
+        {!hasContent && !isCodeView && (
           <div
-            ref={editorRef}
-            contentEditable
-            suppressContentEditableWarning
-            dangerouslySetInnerHTML={{ __html: initialHtmlRef.current }}
-            onInput={handleInput}
-            onKeyUp={updateFormatStates}
-            onMouseUp={updateFormatStates}
-            onBlur={handleBlur}
             style={{
-              padding: '14px 16px',
-              minHeight,
-              height: editorHeight ? `${editorHeight}px` : undefined,
-              resize: 'vertical',
-              outline: 'none',
+              position: 'absolute',
+              top: 14,
+              left: 16,
+              color: '#9CA3AF',
+              pointerEvents: 'none',
               fontFamily: currentFont || 'Inter, sans-serif',
               fontSize: `${currentFontSize}px`,
               lineHeight: 1.75,
-              color: '#111827',
-              background: 'transparent',
-              overflowY: 'auto',
+              userSelect: 'none',
+              zIndex: 1,
+            }}
+          >
+            {placeholder}
+          </div>
+        )}
+
+        {/* Native contentEditable container */}
+        <div
+          ref={containerRef}
+          style={{
+            display: isCodeView ? 'none' : 'block',
+            minHeight,
+            resize: 'vertical',
+            overflow: 'auto',
+          }}
+        />
+
+        {/* HTML textarea */}
+        {isCodeView && (
+          <textarea
+            value={value}
+            onChange={(e) => {
+              const html = e.target.value;
+              lastEmittedRef.current = html;
+              onChange(html);
+              computeCounts(html);
+              setHasContent(!isContentEmpty(html));
+            }}
+            placeholder="Write HTML markup here…"
+            style={{
+              width: '100%',
+              minHeight,
+              height: editorHeight ? `${editorHeight}px` : undefined,
+              padding: '14px 16px',
+              fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+              fontSize: 13,
+              lineHeight: 1.6,
+              border: 'none',
+              outline: 'none',
+              resize: 'vertical',
+              background: '#1F2937',
+              color: '#F9FAFB',
               boxSizing: 'border-box',
-              cursor: 'text',
+              display: 'block',
             }}
           />
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ── Status bar & Height Controls ─────────────────────────── */}
       <div
@@ -745,7 +750,7 @@ export default function RichTextEditor({
             <button
               key={preset.label}
               type="button"
-              onClick={() => setEditorHeight(preset.h)}
+              onClick={() => handleHeightPreset(preset.h)}
               style={{
                 background: editorHeight === preset.h ? '#E5E7EB' : 'transparent',
                 border: '1px solid rgba(0,0,0,0.1)',
@@ -765,6 +770,7 @@ export default function RichTextEditor({
     </div>
   );
 }
+
 
 
 
