@@ -23,13 +23,36 @@ import { useLocale } from '@/lib/i18n/LocaleProvider';
 import { endpoints } from '@/lib/endpoints';
 import {
   DisplayScooter,
-  fallbackScooters,
   resolveScooterImage,
   resolveScooterImageObjectPosition,
 } from '@/lib/displayScooter';
 import { useSiteContentPreview } from '@/lib/siteContentPreview';
 import { useSiteSettings } from '@/lib/siteSettings';
 import { PageTitleSync, usePagePath } from '@/lib/usePageSettings';
+
+function ScooterSkeletonCard() {
+  return (
+    <div style={{
+      background: '#fff',
+      borderRadius: 24,
+      border: '1.5px solid rgba(0,0,0,0.06)',
+      overflow: 'hidden',
+      padding: 'clamp(20px, 2.5vw, 32px)',
+      display: 'flex',
+      flexDirection: 'column',
+      minHeight: 380,
+    }}>
+      <div className="br-skeleton" style={{ width: 80, height: 12, borderRadius: 999, marginBottom: 12 }} />
+      <div className="br-skeleton" style={{ width: '70%', height: 26, borderRadius: 6, marginBottom: 8 }} />
+      <div className="br-skeleton" style={{ width: '40%', height: 14, borderRadius: 4, marginBottom: 24 }} />
+      <div className="br-skeleton" style={{ width: '100%', height: 180, borderRadius: 16, marginBottom: 24 }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+        <div className="br-skeleton" style={{ width: 90, height: 24, borderRadius: 6 }} />
+        <div className="br-skeleton" style={{ width: 100, height: 40, borderRadius: 999 }} />
+      </div>
+    </div>
+  );
+}
 
 function FAQItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
@@ -100,8 +123,10 @@ export default function LandingPage() {
   const { socialLinks } = useSiteSettings();
   const catalogPath = usePagePath('catalog');
   const profilePath = usePagePath('profile');
-  const [featured, setFeatured] = useState<DisplayScooter[]>(fallbackScooters().slice(0, 3));
+  const [featured, setFeatured] = useState<DisplayScooter[]>([]);
+  const [featuredLoading, setFeaturedLoading] = useState(true);
   const [zones, setZones] = useState<Array<{ id: number; name: string; freeDelivery?: boolean }>>([]);
+  const [zonesLoading, setZonesLoading] = useState(true);
   const [apiFaqs, setApiFaqs] = useState<Array<{ q: string; a: string }>>([]);
   const [locationSection, setLocationSection] = useState<{
     title1?: string; title2?: string; desc?: string; mapEyebrow?: string; mapRegion?: string;
@@ -109,10 +134,15 @@ export default function LandingPage() {
 
   useEffect(() => {
     let cancelled = false;
+    setFeaturedLoading(true);
+    setZonesLoading(true);
     endpoints.bootstrap(locale)
       .then((bootstrap) => {
         if (cancelled) return;
-        const nextFeatured = (bootstrap.fleet?.featured || []).map((item) => ({
+        const fleetList = (bootstrap.fleet?.featured && bootstrap.fleet.featured.length > 0)
+          ? bootstrap.fleet.featured
+          : (((bootstrap.fleet?.items as any[]) || []).slice(0, 3));
+        const nextFeatured = fleetList.map((item: any) => ({
           id: item.slug, apiId: item.id, name: item.name,
           cc: Number(String(item.engine || '').replace(/[^\d]/g, '')) || 0,
           type: item.typeLabel || item.type || 'Scooter',
@@ -124,8 +154,10 @@ export default function LandingPage() {
           imageUrl: item.mainImage ? mediaUrl(item.mainImage) : (resolveScooterImage(item.slug, item.name) || undefined),
           imageObjectPosition: resolveScooterImageObjectPosition(item.slug, item.name),
         }));
-        if (nextFeatured.length) setFeatured(nextFeatured);
+        setFeatured(nextFeatured);
+        setFeaturedLoading(false);
         setZones((bootstrap.deliveryZones || []).map((z) => ({ id: z.id, name: z.name, freeDelivery: z.freeDelivery })));
+        setZonesLoading(false);
         const faqData = (bootstrap.content as Record<string, unknown> | undefined);
         const faqItems = (faqData?.home as Record<string, unknown> | undefined)?.faq;
         const items = (faqItems as Record<string, unknown> | undefined)?.items;
@@ -133,19 +165,27 @@ export default function LandingPage() {
         const ls = (bootstrap as Record<string, unknown>).locationSection;
         if (ls && typeof ls === 'object') setLocationSection(ls as typeof locationSection);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) {
+          setFeaturedLoading(false);
+          setZonesLoading(false);
+        }
+      });
     return () => { cancelled = true; };
   }, [locale]);
 
-  const activeZones = useMemo(() => {
-    const names = zones.map((z) => z.name);
-    return names.length ? names : BR_LOCATIONS;
-  }, [zones]);
+  const activeZones = useMemo(() => zones.map((z) => z.name), [zones]);
 
   const faqs = apiFaqs.length ? apiFaqs : t.home.faqs;
   const homeReviews = t.home.reviews;
-  const minPrice = featured[0]?.price || 8;
-  const minPriceLabel = `Rp ${formatGroupedAmount(convertPrice(minPrice, 'IDR'), 0)}`;
+  const minPrice = useMemo(() => {
+    if (featured.length > 0) {
+      const prices = featured.map((f) => f.price).filter((p) => p > 0);
+      return prices.length ? Math.min(...prices) : 0;
+    }
+    return 0;
+  }, [featured]);
+  const minPriceLabel = minPrice > 0 ? `Rp ${formatGroupedAmount(convertPrice(minPrice, 'IDR'), 0)}` : '…';
   const supportChatLabel = SUPPORT_CHAT_COPY[locale as keyof typeof SUPPORT_CHAT_COPY] || SUPPORT_CHAT_COPY.en;
   const supportChatLink = `${profilePath}?tab=support`;
   const heroVideoUrl = resolveHeroVideoUrl(t.media?.home?.heroVideo);
@@ -410,18 +450,24 @@ export default function LandingPage() {
           </motion.div>
         </motion.div>
 
-        <motion.div
-          variants={stagger} initial="hidden" whileInView="visible"
-          viewport={{ once: true, margin: '-60px' }}
+        <div
           className="br-home-fleet-grid"
           style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}
         >
-          {featured.slice(0, 3).map((s) => (
-            <motion.div key={s.id} variants={fadeUp}>
-              <ScooterCard s={s} large />
-            </motion.div>
-          ))}
-        </motion.div>
+          {featuredLoading ? (
+            <>
+              <ScooterSkeletonCard />
+              <ScooterSkeletonCard />
+              <ScooterSkeletonCard />
+            </>
+          ) : (
+            featured.slice(0, 3).map((s) => (
+              <motion.div key={s.id} variants={fadeUp}>
+                <ScooterCard s={s} large />
+              </motion.div>
+            ))
+          )}
+        </div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
@@ -512,15 +558,21 @@ export default function LandingPage() {
               <span {...marker('delivery.desc')}>{locationSection?.desc || t.delivery.desc}</span>
             </motion.p>
             <motion.div variants={fadeUp} className="br-home-delivery-zones" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {activeZones.slice(0, 8).map((l) => (
-                <div key={l} style={{ padding: '10px 14px', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 10, fontFamily: 'var(--br-mono)', fontSize: 11, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                  <span>{l}</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <CheckIcon size={10} color="#22C55E" strokeWidth={2.5} />
-                    <span {...marker('home.deliveryFree')} style={{ color: '#22C55E', fontSize: 10 }}>{t.home.deliveryFree}</span>
-                  </span>
-                </div>
-              ))}
+              {zonesLoading ? (
+                Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="br-skeleton" style={{ height: 38, borderRadius: 10, background: 'rgba(255,255,255,0.06)' }} />
+                ))
+              ) : activeZones.length > 0 ? (
+                activeZones.slice(0, 8).map((l) => (
+                  <div key={l} style={{ padding: '10px 14px', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 10, fontFamily: 'var(--br-mono)', fontSize: 11, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                    <span>{l}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <CheckIcon size={10} color="#22C55E" strokeWidth={2.5} />
+                      <span {...marker('home.deliveryFree')} style={{ color: '#22C55E', fontSize: 10 }}>{t.home.deliveryFree}</span>
+                    </span>
+                  </div>
+                ))
+              ) : null}
             </motion.div>
           </motion.div>
         </div>

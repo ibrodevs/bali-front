@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -51,6 +51,7 @@ export function NewsArticlePageContent({ slugOverride }: { slugOverride?: string
   const [article, setArticle] = useState<ApiNewsArticle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -68,6 +69,34 @@ export function NewsArticlePageContent({ slugOverride }: { slugOverride?: string
       document.title = `${article.title} · BALI-RENT`;
     }
   }, [article?.title]);
+
+  const allImages = useMemo(() => {
+    const list: string[] = [];
+    if (article?.image) list.push(article.image);
+    if (article?.images && Array.isArray(article.images)) {
+      article.images.forEach((img) => {
+        if (img.image && !list.includes(img.image)) {
+          list.push(img.image);
+        }
+      });
+    }
+    return list;
+  }, [article]);
+
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLightboxIndex(null);
+      if (e.key === 'ArrowRight') {
+        setLightboxIndex((prev) => (prev !== null ? (prev + 1) % allImages.length : null));
+      }
+      if (e.key === 'ArrowLeft') {
+        setLightboxIndex((prev) => (prev !== null ? (prev - 1 + allImages.length) % allImages.length : null));
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxIndex, allImages.length]);
 
   return (
     <>
@@ -138,24 +167,130 @@ export function NewsArticlePageContent({ slugOverride }: { slugOverride?: string
               initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
             >
-              {/* Hero image — full width, above everything */}
-              {article.image && (
-                <div style={{
-                  borderRadius: 28, overflow: 'hidden',
-                  background: '#F0EDE6', marginBottom: 48,
-                  boxShadow: '0 24px 64px -28px rgba(0,0,0,0.22)',
-                  maxHeight: 540, position: 'relative',
-                }}>
+              {/* ── Multi-image Gallery / Showcase ─────────────────────── */}
+              {allImages.length === 1 ? (
+                <div
+                  onClick={() => setLightboxIndex(0)}
+                  style={{
+                    borderRadius: 28, overflow: 'hidden',
+                    background: '#F0EDE6', marginBottom: 48,
+                    boxShadow: '0 24px 64px -28px rgba(0,0,0,0.22)',
+                    maxHeight: 540, position: 'relative', cursor: 'zoom-in',
+                  }}
+                >
                   <img
-                    src={mediaUrl(article.image)}
+                    src={mediaUrl(allImages[0])}
                     alt={article.title}
                     style={{
                       display: 'block', width: '100%',
                       height: 540, objectFit: 'cover',
+                      transition: 'transform 360ms ease',
                     }}
+                    className="br-news-hero-img"
                   />
                 </div>
-              )}
+              ) : allImages.length === 2 ? (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                  gap: 16,
+                  marginBottom: 48,
+                }}>
+                  {allImages.map((img, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => setLightboxIndex(idx)}
+                      style={{
+                        borderRadius: 24, overflow: 'hidden',
+                        background: '#F0EDE6', height: 380,
+                        boxShadow: '0 16px 40px -20px rgba(0,0,0,0.18)',
+                        cursor: 'zoom-in', position: 'relative',
+                      }}
+                    >
+                      <img
+                        src={mediaUrl(img)}
+                        alt={`${article.title} - photo ${idx + 1}`}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 360ms ease' }}
+                        className="br-news-hero-img"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : allImages.length >= 3 ? (
+                <div style={{ marginBottom: 48 }}>
+                  {/* Primary Hero Image */}
+                  <div
+                    onClick={() => setLightboxIndex(0)}
+                    style={{
+                      borderRadius: 28, overflow: 'hidden',
+                      background: '#F0EDE6', marginBottom: 16,
+                      boxShadow: '0 20px 50px -24px rgba(0,0,0,0.2)',
+                      maxHeight: 480, position: 'relative', cursor: 'zoom-in',
+                    }}
+                  >
+                    <img
+                      src={mediaUrl(allImages[0])}
+                      alt={article.title}
+                      style={{
+                        display: 'block', width: '100%',
+                        height: 480, objectFit: 'cover',
+                        transition: 'transform 360ms ease',
+                      }}
+                      className="br-news-hero-img"
+                    />
+                    <div style={{
+                      position: 'absolute', bottom: 16, right: 16,
+                      background: 'rgba(10,10,15,0.78)', backdropFilter: 'blur(8px)',
+                      color: '#FFD700', fontFamily: 'var(--br-mono)', fontSize: 12, fontWeight: 700,
+                      padding: '6px 14px', borderRadius: 999, letterSpacing: '0.04em',
+                    }}>
+                      📷 {allImages.length} photos · Click to view gallery
+                    </div>
+                  </div>
+
+                  {/* Secondary Thumbnails Row */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: `repeat(${Math.min(allImages.length - 1, 4)}, 1fr)`,
+                    gap: 14,
+                  }}>
+                    {allImages.slice(1, 5).map((img, idx) => {
+                      const actualIdx = idx + 1;
+                      const isLast = idx === 3 && allImages.length > 5;
+                      const extraCount = allImages.length - 5;
+                      return (
+                        <div
+                          key={actualIdx}
+                          onClick={() => setLightboxIndex(actualIdx)}
+                          style={{
+                            borderRadius: 18, overflow: 'hidden',
+                            background: '#F0EDE6', height: 140,
+                            boxShadow: '0 8px 24px -12px rgba(0,0,0,0.12)',
+                            cursor: 'zoom-in', position: 'relative',
+                          }}
+                        >
+                          <img
+                            src={mediaUrl(img)}
+                            alt=""
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 360ms ease' }}
+                            className="br-news-hero-img"
+                          />
+                          {isLast && extraCount > 0 && (
+                            <div style={{
+                              position: 'absolute', inset: 0,
+                              background: 'rgba(10,10,15,0.75)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              color: '#fff', fontFamily: 'var(--br-display)', fontSize: 20, fontWeight: 800,
+                            }}>
+                              +{extraCount + 1}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
 
               {/* Centred text column */}
               <div style={{ maxWidth: 780, margin: '0 auto' }}>
@@ -176,6 +311,14 @@ export function NewsArticlePageContent({ slugOverride }: { slugOverride?: string
                   }}>
                     {formatDate(article.published_at, locale)}
                   </time>
+                  {allImages.length > 1 && (
+                    <span style={{
+                      fontFamily: 'var(--br-mono)', fontSize: 11,
+                      color: 'rgba(0,0,0,0.45)', letterSpacing: '0.08em',
+                    }}>
+                      · 📷 {allImages.length} photos
+                    </span>
+                  )}
                 </div>
 
                 {/* Title */}
@@ -188,14 +331,15 @@ export function NewsArticlePageContent({ slugOverride }: { slugOverride?: string
                   {article.title}
                 </h1>
 
-                {/* Body */}
-                <div style={{
-                  fontFamily: 'var(--br-body)', fontSize: 'clamp(15px, 1.5vw, 18px)',
-                  lineHeight: 1.8, color: '#1a1a1a',
-                  whiteSpace: 'pre-wrap',
-                }}>
-                  {article.description}
-                </div>
+                {/* Body (Render HTML with rich styling) */}
+                <div
+                  className="br-news-body"
+                  dangerouslySetInnerHTML={{ __html: article.description }}
+                  style={{
+                    fontFamily: 'var(--br-body)', fontSize: 'clamp(15px, 1.5vw, 18px)',
+                    lineHeight: 1.85, color: '#1a1a1a',
+                  }}
+                />
 
                 {/* Divider */}
                 <div style={{ borderTop: '1px solid rgba(0,0,0,0.09)', margin: '48px 0 40px' }} />
@@ -239,6 +383,109 @@ export function NewsArticlePageContent({ slugOverride }: { slugOverride?: string
         </section>
       </main>
 
+      {/* ── Interactive Lightbox Modal ─────────────────────────────── */}
+      {lightboxIndex !== null && allImages[lightboxIndex] && (
+        <div
+          onClick={() => setLightboxIndex(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(5, 5, 8, 0.94)', backdropFilter: 'blur(12px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '24px 16px',
+          }}
+        >
+          {/* Close button */}
+          <button
+            type="button"
+            onClick={() => setLightboxIndex(null)}
+            style={{
+              position: 'absolute', top: 20, right: 20,
+              width: 44, height: 44, borderRadius: '50%',
+              background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)',
+              color: '#fff', fontSize: 20, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 10, transition: 'background 160ms',
+            }}
+            title="Close (Esc)"
+          >
+            ✕
+          </button>
+
+          {/* Counter */}
+          <div style={{
+            position: 'absolute', top: 24, left: 24,
+            color: '#FFD700', fontFamily: 'var(--br-mono)', fontSize: 13, fontWeight: 700,
+            letterSpacing: '0.1em',
+          }}>
+            {lightboxIndex + 1} / {allImages.length}
+          </div>
+
+          {/* Prev button */}
+          {allImages.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxIndex((prev) => (prev !== null ? (prev - 1 + allImages.length) % allImages.length : 0));
+              }}
+              style={{
+                position: 'absolute', left: 20,
+                width: 50, height: 50, borderRadius: '50%',
+                background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)',
+                color: '#fff', fontSize: 22, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                zIndex: 10, transition: 'all 160ms',
+              }}
+              title="Previous (Left arrow)"
+            >
+              ←
+            </button>
+          )}
+
+          {/* Image */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '90vw', maxHeight: '85vh',
+              position: 'relative', display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <img
+              src={mediaUrl(allImages[lightboxIndex])}
+              alt=""
+              style={{
+                maxWidth: '100%', maxHeight: '85vh',
+                objectFit: 'contain', borderRadius: 14,
+                boxShadow: '0 24px 72px rgba(0,0,0,0.6)',
+              }}
+            />
+          </div>
+
+          {/* Next button */}
+          {allImages.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxIndex((prev) => (prev !== null ? (prev + 1) % allImages.length : 0));
+              }}
+              style={{
+                position: 'absolute', right: 20,
+                width: 50, height: 50, borderRadius: '50%',
+                background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)',
+                color: '#fff', fontSize: 22, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                zIndex: 10, transition: 'all 160ms',
+              }}
+              title="Next (Right arrow)"
+            >
+              →
+            </button>
+          )}
+        </div>
+      )}
+
       <style>{`
         .br-news-back:hover {
           color: #0A0A0F !important;
@@ -248,8 +495,61 @@ export function NewsArticlePageContent({ slugOverride }: { slugOverride?: string
           transform: translateY(-2px);
           box-shadow: 0 14px 36px -10px rgba(255,215,0,0.65) !important;
         }
-        @media (max-width: 960px) {
-          /* collapse 3-col grid to 1 col */
+        .br-news-hero-img:hover {
+          transform: scale(1.02);
+        }
+        .br-news-body h1 {
+          font-family: var(--br-display);
+          font-size: clamp(26px, 3.5vw, 36px);
+          font-weight: 800;
+          margin: 32px 0 16px;
+          line-height: 1.15;
+          letter-spacing: -0.025em;
+          color: #0A0A0F;
+        }
+        .br-news-body h2 {
+          font-family: var(--br-display);
+          font-size: clamp(22px, 2.8vw, 28px);
+          font-weight: 700;
+          margin: 28px 0 14px;
+          line-height: 1.2;
+          letter-spacing: -0.02em;
+          color: #0A0A0F;
+        }
+        .br-news-body h3 {
+          font-family: var(--br-display);
+          font-size: clamp(18px, 2.2vw, 22px);
+          font-weight: 600;
+          margin: 22px 0 10px;
+          line-height: 1.3;
+          letter-spacing: -0.015em;
+          color: #0A0A0F;
+        }
+        .br-news-body p {
+          margin: 0 0 16px;
+        }
+        .br-news-body ul, .br-news-body ol {
+          margin: 12px 0 20px 24px;
+          padding: 0;
+        }
+        .br-news-body li {
+          margin-bottom: 8px;
+        }
+        .br-news-body strong {
+          font-weight: 700;
+          color: #0A0A0F;
+        }
+        .br-news-body u {
+          text-decoration: underline;
+          text-underline-offset: 3px;
+        }
+        .br-news-body s {
+          text-decoration: line-through;
+          opacity: 0.75;
+        }
+        .br-news-body a {
+          color: #2563EB;
+          text-decoration: underline;
         }
       `}</style>
 

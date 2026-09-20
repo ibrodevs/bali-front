@@ -31,7 +31,10 @@ const stagger = {
 };
 
 function NewsCard({ article, locale, readMoreLabel, href }: { article: ApiNewsArticle; locale: string; readMoreLabel: string; href: string }) {
-  const imgSrc = article.image ? mediaUrl(article.image) : null;
+  const allImages = [article.image, ...(article.images || []).map((img) => img.image)].filter(Boolean) as string[];
+  const imgSrc = allImages[0] ? mediaUrl(allImages[0]) : null;
+  const totalPhotos = allImages.length;
+  const plainDesc = article.description ? article.description.replace(/<[^>]*>/g, '').trim() : '';
 
   return (
     <Link href={href} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
@@ -71,6 +74,18 @@ function NewsCard({ article, locale, readMoreLabel, href }: { article: ApiNewsAr
               <span style={{ fontFamily: 'var(--br-mono)', fontSize: 11, letterSpacing: '0.1em', color: 'rgba(0,0,0,0.28)', textTransform: 'uppercase' }}>No image</span>
             </div>
           )}
+          {totalPhotos > 1 && (
+            <div style={{
+              position: 'absolute', top: 12, right: 12,
+              background: 'rgba(10,10,15,0.78)', backdropFilter: 'blur(6px)',
+              color: '#FFD700', fontFamily: 'var(--br-mono)', fontSize: 11, fontWeight: 700,
+              padding: '4px 9px', borderRadius: 999, letterSpacing: '0.04em',
+              display: 'flex', alignItems: 'center', gap: 4, zIndex: 2,
+            }}>
+              <span>📷</span>
+              <span>{totalPhotos} photos</span>
+            </div>
+          )}
           <div style={{
             position: 'absolute', inset: 0,
             background: 'linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.06) 100%)',
@@ -102,7 +117,7 @@ function NewsCard({ article, locale, readMoreLabel, href }: { article: ApiNewsAr
             flex: 1, margin: '0 0 20px',
             display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
           }}>
-            {article.description}
+            {plainDesc}
           </p>
 
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 'auto' }}>

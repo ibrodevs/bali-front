@@ -544,10 +544,18 @@ export type AdminFaqPayload = {
   translations?: ApiAdminFaqTranslation[];
 };
 
+export type ApiNewsImage = {
+  id: number;
+  image: string;
+  alt_text?: string;
+  sort_order?: number;
+};
+
 export type ApiNewsArticle = {
   id: number;
   slug: string;
   image: string | null;
+  images?: ApiNewsImage[];
   published_at: string;
   title: string;
   description: string;
@@ -711,8 +719,70 @@ async function apiAllPages<T>(path: string, options: ListRequestOptions = {}): P
   return items;
 }
 
+const bootstrapMemoryCache = new Map<string, { data: ApiBootstrap; ts: number }>();
+const bootstrapInFlight = new Map<string, Promise<ApiBootstrap>>();
+const BOOTSTRAP_CACHE_TTL = 60 * 1000;
+
+export function getCachedBootstrap(lang?: string): ApiBootstrap | null {
+  const key = lang || 'en';
+  const entry = bootstrapMemoryCache.get(key);
+  if (entry && Date.now() - entry.ts < BOOTSTRAP_CACHE_TTL) {
+    return entry.data;
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = sessionStorage.getItem(`br_bootstrap_${key}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && Date.now() - parsed.ts < BOOTSTRAP_CACHE_TTL * 5) {
+          bootstrapMemoryCache.set(key, { data: parsed.data, ts: parsed.ts });
+          return parsed.data;
+        }
+      }
+    } catch {}
+  }
+  return null;
+}
+
+export function clearBootstrapCache() {
+  bootstrapMemoryCache.clear();
+  if (typeof window !== 'undefined') {
+    try {
+      Object.keys(sessionStorage).forEach((k) => {
+        if (k.startsWith('br_bootstrap_')) sessionStorage.removeItem(k);
+      });
+    } catch {}
+  }
+}
+
 export const endpoints = {
-  bootstrap: (lang?: string) => api<ApiBootstrap>('/public/bootstrap/', { lang }),
+  bootstrap: (lang?: string, options?: { forceRefresh?: boolean }) => {
+    const key = lang || 'en';
+    if (!options?.forceRefresh) {
+      const cached = getCachedBootstrap(key);
+      if (cached) return Promise.resolve(cached);
+      const inFlight = bootstrapInFlight.get(key);
+      if (inFlight) return inFlight;
+    }
+
+    const promise = api<ApiBootstrap>('/public/bootstrap/', { lang })
+      .then((data) => {
+        const now = Date.now();
+        bootstrapMemoryCache.set(key, { data, ts: now });
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem(`br_bootstrap_${key}`, JSON.stringify({ data, ts: now }));
+          } catch {}
+        }
+        return data;
+      })
+      .finally(() => {
+        bootstrapInFlight.delete(key);
+      });
+
+    bootstrapInFlight.set(key, promise);
+    return promise;
+  },
   publicPageSettings: () => api<ApiPublicPageSettings>('/public/page-settings/'),
 
   scooters: (params?: { search?: string; start_date?: string; end_date?: string; page?: number }, lang?: string) =>
@@ -977,6 +1047,20 @@ export const endpoints = {
     api<ApiNewsArticle>(`/admin/content/news/${id}/`, { method: 'PATCH', body, auth: true }),
   adminDeleteNews: (id: number | string) =>
     api<void>(`/admin/content/news/${id}/`, { method: 'DELETE', auth: true }),
+  adminUploadNewsImages: (articleId: number | string, files: File[]) => {
+    const form = new FormData();
+    files.forEach((f) => form.append('images', f));
+    return api<ApiNewsImage[]>(`/admin/content/news/${articleId}/images/`, {
+      method: 'POST',
+      body: form,
+      auth: true,
+    });
+  },
+  adminDeleteNewsImage: (articleId: number | string, imageId: number | string) =>
+    api<void>(`/admin/content/news/${articleId}/images/${imageId}/`, {
+      method: 'DELETE',
+      auth: true,
+    }),
 
   // Location Section (admin)
   adminLocationSections: () =>

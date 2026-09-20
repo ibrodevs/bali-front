@@ -39,6 +39,7 @@ import {
   PromoCodePayload,
   ApiLoginLog,
   ApiNewsArticle,
+  ApiNewsImage,
   ApiPayment,
   ApiQuickReply,
   ApiScooterDetail,
@@ -49,6 +50,7 @@ import {
   endpoints,
   unwrapList,
 } from '@/lib/endpoints';
+import RichTextEditor from '@/components/RichTextEditor';
 import { translateAdminUiText } from '@/lib/i18n/adminUi';
 import { useAdminLocale } from '@/lib/i18n/AdminLocaleProvider';
 import { useAuth } from '@/lib/i18n/AuthProvider';
@@ -3306,9 +3308,11 @@ function NewsView({ isMobile }: { isMobile: boolean }) {
   const [articles, setArticles] = useState<ApiNewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [editingArticle, setEditingArticle] = useState<ApiNewsArticle | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
   const emptyForm = () => ({
     slug: '',
@@ -3316,7 +3320,10 @@ function NewsView({ isMobile }: { isMobile: boolean }) {
     is_active: true,
     sort_order: 0,
     translations: LANGUAGES.map((lang) => ({ language: lang, title: '', description: '' })),
-    imageFile: null as File | null,
+    imageFiles: [] as File[],
+    existingCover: null as string | null,
+    existingImages: [] as ApiNewsImage[],
+    removedImageIds: [] as number[],
   });
 
   const [form, setForm] = useState(emptyForm());
@@ -3334,6 +3341,8 @@ function NewsView({ isMobile }: { isMobile: boolean }) {
   const openNew = () => {
     setEditingArticle(null);
     setForm(emptyForm());
+    setSaveError(null);
+    setSlugManuallyEdited(false);
     setShowForm(true);
   };
 
@@ -3343,40 +3352,96 @@ function NewsView({ isMobile }: { isMobile: boolean }) {
     setForm({
       slug: article.slug,
       published_at: article.published_at,
-      is_active: true,
-      sort_order: 0,
+      is_active: (article as any).is_active ?? true,
+      sort_order: (article as any).sort_order ?? 0,
       translations: LANGUAGES.map((lang) => {
         const found = existingTranslations.find((t) => t.language === lang);
         return { language: lang, title: found?.title || '', description: found?.description || '' };
       }),
-      imageFile: null,
+      imageFiles: [],
+      existingCover: article.image || null,
+      existingImages: article.images || [],
+      removedImageIds: [],
     });
+    setSaveError(null);
+    setSlugManuallyEdited(true);
     setShowForm(true);
   };
 
-  const closeForm = () => { setShowForm(false); setEditingArticle(null); };
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingArticle(null);
+    setSaveError(null);
+  };
+
+  const handleAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setForm((prev) => ({
+      ...prev,
+      imageFiles: [...prev.imageFiles, ...files],
+    }));
+    e.target.value = '';
+  };
+
+  const handleRemoveNewFile = (idx: number) => {
+    setForm((prev) => ({
+      ...prev,
+      imageFiles: prev.imageFiles.filter((_, i) => i !== idx),
+    }));
+  };
+
+  const handleRemoveExistingImage = (id: number) => {
+    setForm((prev) => ({
+      ...prev,
+      existingImages: prev.existingImages.filter((img) => img.id !== id),
+      removedImageIds: [...prev.removedImageIds, id],
+    }));
+  };
 
   const handleSave = async () => {
+    setSaveError(null);
+    const validTranslations = form.translations.filter((t) => t.title.trim());
+    if (validTranslations.length === 0) {
+      setSaveError('Please enter a title for at least one language.');
+      return;
+    }
+
+    let slug = form.slug.trim();
+    if (!slug) {
+      slug = validTranslations[0].title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      if (!slug) slug = `news-${Date.now()}`;
+    }
+
     setSaving(true);
     try {
       const fd = new FormData();
-      fd.append('slug', form.slug);
-      fd.append('published_at', form.published_at);
+      fd.append('slug', slug);
+      fd.append('published_at', form.published_at || new Date().toISOString().slice(0, 10));
       fd.append('is_active', String(form.is_active));
       fd.append('sort_order', String(form.sort_order));
-      if (form.imageFile) fd.append('image', form.imageFile);
 
-      const translations = form.translations.filter((t) => t.title.trim());
-      fd.append('translations', JSON.stringify(translations));
+      // Append all selected new images
+      form.imageFiles.forEach((file) => {
+        fd.append('images', file);
+      });
+
+      fd.append('translations', JSON.stringify(validTranslations));
 
       if (editingArticle) {
         await endpoints.adminUpdateNews(editingArticle.id, fd);
+        for (const imageId of form.removedImageIds) {
+          try {
+            await endpoints.adminDeleteNewsImage(editingArticle.id, imageId);
+          } catch {}
+        }
       } else {
         await endpoints.adminCreateNews(fd);
       }
       closeForm();
       load();
-    } catch {
+    } catch (err: any) {
+      setSaveError(err?.message || 'Failed to save news article. Please check the fields and try again.');
     } finally {
       setSaving(false);
     }
@@ -3395,10 +3460,17 @@ function NewsView({ isMobile }: { isMobile: boolean }) {
   };
 
   const setTranslation = (lang: string, field: 'title' | 'description', value: string) => {
-    setForm((prev) => ({
-      ...prev,
-      translations: prev.translations.map((t) => t.language === lang ? { ...t, [field]: value } : t),
-    }));
+    setForm((prev) => {
+      let nextSlug = prev.slug;
+      if (field === 'title' && !slugManuallyEdited && (lang === 'en' || !nextSlug)) {
+        nextSlug = value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      }
+      return {
+        ...prev,
+        slug: nextSlug,
+        translations: prev.translations.map((t) => t.language === lang ? { ...t, [field]: value } : t),
+      };
+    });
   };
 
   const inputStyle: CSSProperties = {
@@ -3411,7 +3483,7 @@ function NewsView({ isMobile }: { isMobile: boolean }) {
     <div style={{ padding: isMobile ? 16 : 28, height: '100%', overflowY: 'auto' }}>
       <SectionHeader
         title="News Management"
-        subtitle="Manage multilingual news articles"
+        subtitle="Manage multilingual news articles with rich formatting and multi-image galleries"
         action={<Button variant="primary" onClick={openNew}>+ Add article</Button>}
       />
 
@@ -3423,21 +3495,43 @@ function NewsView({ isMobile }: { isMobile: boolean }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {articles.map((article) => {
             const enTranslation = article.translations?.find((t) => t.language === 'en') || article.translations?.[0];
+            const coverImage = article.image || article.images?.[0]?.image;
+            const totalImages = (article.images?.length || (article.image ? 1 : 0));
             return (
               <div key={article.id} style={{ background: A.white, border: `1px solid ${A.g200}`, borderRadius: 12, padding: '16px 20px', display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-                {article.image && (
-                  <img src={mediaUrl(article.image)} alt="" style={{ width: 80, height: 56, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+                {coverImage && (
+                  <div style={{ position: 'relative', width: 80, height: 56, flexShrink: 0 }}>
+                    <img src={mediaUrl(coverImage)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} />
+                    {totalImages > 1 && (
+                      <span style={{
+                        position: 'absolute', bottom: 4, right: 4,
+                        background: 'rgba(0,0,0,0.75)', color: '#FFD700',
+                        fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 700,
+                        padding: '2px 5px', borderRadius: 4,
+                      }}>
+                        📷 {totalImages}
+                      </span>
+                    )}
+                  </div>
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 15, color: A.black, marginBottom: 4 }}>
                     {enTranslation?.title || article.slug}
                   </div>
-                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
-                    {article.published_at} · {article.slug}
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>{article.published_at}</span>
+                    <span>·</span>
+                    <span>{article.slug}</span>
+                    {totalImages > 0 && (
+                      <>
+                        <span>·</span>
+                        <span style={{ color: '#0A0A0F', fontWeight: 600 }}>{totalImages} {totalImages === 1 ? 'image' : 'images'}</span>
+                      </>
+                    )}
                   </div>
                   {enTranslation?.description && (
                     <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g700, marginTop: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {enTranslation.description}
+                      {enTranslation.description.replace(/<[^>]*>/g, '')}
                     </div>
                   )}
                 </div>
@@ -3456,43 +3550,159 @@ function NewsView({ isMobile }: { isMobile: boolean }) {
       {/* Form Modal */}
       {showForm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px', overflowY: 'auto' }}>
-          <div style={{ background: A.white, borderRadius: 16, padding: 28, width: '100%', maxWidth: 680, position: 'relative' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <div style={{ background: A.white, borderRadius: 16, padding: 28, width: '100%', maxWidth: 740, position: 'relative' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h3 style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 18, color: A.black, margin: 0 }}>
                 {editingArticle ? 'Edit article' : 'New article'}
               </h3>
               <Button variant="ghost" onClick={closeForm}>✕</Button>
             </div>
 
+            {saveError && (
+              <div style={{
+                background: '#FEF2F2', border: '1px solid #F87171', color: '#991B1B',
+                borderRadius: 8, padding: '10px 14px', marginBottom: 18,
+                fontSize: 13, fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <span style={{ fontWeight: 700 }}>Error:</span>
+                <span>{saveError}</span>
+              </div>
+            )}
+
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 14, marginBottom: 20 }}>
               <div>
                 <label style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Slug</label>
-                <input style={inputStyle} value={form.slug} onChange={(e) => setForm((p) => ({ ...p, slug: e.target.value }))} placeholder="my-article-slug" />
+                <input
+                  style={inputStyle}
+                  value={form.slug}
+                  onChange={(e) => {
+                    setSlugManuallyEdited(true);
+                    setForm((p) => ({ ...p, slug: e.target.value }));
+                  }}
+                  placeholder="article-slug"
+                />
               </div>
               <div>
                 <label style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Published date</label>
                 <input type="date" style={inputStyle} value={form.published_at} onChange={(e) => setForm((p) => ({ ...p, published_at: e.target.value }))} />
               </div>
-              <div>
-                <label style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Image</label>
-                <input type="file" accept="image/*" style={{ ...inputStyle, padding: '7px 12px' }}
-                  onChange={(e) => setForm((p) => ({ ...p, imageFile: e.target.files?.[0] ?? null }))} />
+            </div>
+
+            {/* Multiple Images Upload & Gallery */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <label style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  Images (Add 2+ images for gallery)
+                </label>
+                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500 }}>
+                  {form.existingImages.length + form.imageFiles.length + (form.existingCover && !form.existingImages.length ? 1 : 0)} selected
+                </span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 24 }}>
-                <input type="checkbox" id="isActive" checked={form.is_active} onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.checked }))} style={{ width: 16, height: 16 }} />
-                <label htmlFor="isActive" style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.black, cursor: 'pointer' }}>Published</label>
+
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                id="news-images-upload"
+                style={{ display: 'none' }}
+                onChange={handleAddImages}
+              />
+              <label
+                htmlFor="news-images-upload"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '9px 16px', background: '#F3F4F6', border: '1px dashed #9CA3AF',
+                  borderRadius: 8, cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                  fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 12,
+                }}
+              >
+                + Choose 1 or more images
+              </label>
+
+              {/* Thumbnails grid */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                {/* Existing cover image if not in existingImages */}
+                {form.existingCover && form.existingImages.length === 0 && (
+                  <div style={{ position: 'relative', width: 90, height: 68, borderRadius: 8, overflow: 'hidden', border: '1px solid #E5E7EB' }}>
+                    <img src={mediaUrl(form.existingCover)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <span style={{ position: 'absolute', bottom: 2, left: 2, background: 'rgba(0,0,0,0.7)', color: '#FFD700', fontSize: 9, padding: '1px 4px', borderRadius: 3 }}>Cover</span>
+                  </div>
+                )}
+
+                {/* Existing gallery images */}
+                {form.existingImages.map((img) => (
+                  <div key={img.id} style={{ position: 'relative', width: 90, height: 68, borderRadius: 8, overflow: 'hidden', border: '1px solid #E5E7EB' }}>
+                    <img src={mediaUrl(img.image)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveExistingImage(img.id)}
+                      style={{
+                        position: 'absolute', top: 2, right: 2,
+                        width: 20, height: 20, borderRadius: '50%',
+                        background: 'rgba(220,38,38,0.9)', color: '#fff',
+                        border: 0, cursor: 'pointer', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', fontSize: 11,
+                      }}
+                      title="Remove image"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+
+                {/* Newly selected files */}
+                {form.imageFiles.map((file, idx) => (
+                  <div key={idx} style={{ position: 'relative', width: 90, height: 68, borderRadius: 8, overflow: 'hidden', border: '2px solid #FFD700' }}>
+                    <img src={URL.createObjectURL(file)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveNewFile(idx)}
+                      style={{
+                        position: 'absolute', top: 2, right: 2,
+                        width: 20, height: 20, borderRadius: '50%',
+                        background: 'rgba(220,38,38,0.9)', color: '#fff',
+                        border: 0, cursor: 'pointer', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', fontSize: 11,
+                      }}
+                      title="Remove image"
+                    >
+                      ✕
+                    </button>
+                    <span style={{ position: 'absolute', bottom: 2, left: 2, background: 'rgba(0,0,0,0.7)', color: '#22C55E', fontSize: 9, padding: '1px 4px', borderRadius: 3 }}>New</span>
+                  </div>
+                ))}
               </div>
             </div>
 
-            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12 }}>Translations</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+              <input type="checkbox" id="isActive" checked={form.is_active} onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.checked }))} style={{ width: 16, height: 16 }} />
+              <label htmlFor="isActive" style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.black, cursor: 'pointer' }}>Published (active)</label>
+            </div>
+
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, color: A.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12 }}>Translations & Content</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {form.translations.map((t) => (
-                <div key={t.language} style={{ background: A.g100, borderRadius: 10, padding: 14 }}>
+                <div key={t.language} style={{ background: A.g100, borderRadius: 10, padding: 16 }}>
                   <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 700, color: A.g700, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t.language}</div>
-                  <div style={{ marginBottom: 8 }}>
-                    <input style={inputStyle} placeholder="Title" value={t.title} onChange={(e) => setTranslation(t.language, 'title', e.target.value)} />
+                  <div style={{ marginBottom: 10 }}>
+                    <input
+                      style={inputStyle}
+                      placeholder={`Title (${t.language.toUpperCase()})`}
+                      value={t.title}
+                      onChange={(e) => setTranslation(t.language, 'title', e.target.value)}
+                    />
                   </div>
-                  <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} placeholder="Description" value={t.description} onChange={(e) => setTranslation(t.language, 'description', e.target.value)} />
+                  <div>
+                    <label style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 600, color: A.g500, display: 'block', marginBottom: 6 }}>
+                      Description / Article body (Rich Text formatting)
+                    </label>
+                    <RichTextEditor
+                      value={t.description}
+                      onChange={(val) => setTranslation(t.language, 'description', val)}
+                      placeholder={`Write ${t.language.toUpperCase()} content with rich formatting…`}
+                      minHeight={140}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
