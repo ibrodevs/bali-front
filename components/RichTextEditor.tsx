@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState, forwardRef } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 
 type RichTextEditorProps = {
   value: string;
@@ -34,61 +34,11 @@ const FONT_SIZES = [
   { label: '48px (Hero)', value: '48' },
 ];
 
-interface EditorContentProps {
-  onInput: () => void;
-  onKeyUp: () => void;
-  onMouseUp: () => void;
-  onBlur: () => void;
-  placeholder: string;
-  minHeight: number;
-  height?: number;
-  fontFamily: string;
-  fontSize: string;
+function isContentEmpty(html: string): boolean {
+  if (!html) return true;
+  const stripped = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+  return stripped.length === 0;
 }
-
-// Memoized contentEditable element: React will NOT re-render this component on parent state
-// updates while the user is typing, ensuring React reconciliation never deletes typed characters.
-const EditorContent = React.memo(
-  forwardRef<HTMLDivElement, EditorContentProps>((props, ref) => {
-    return (
-      <div
-        ref={ref}
-        contentEditable
-        suppressContentEditableWarning
-        className="br-editor-content"
-        onInput={props.onInput}
-        onKeyUp={props.onKeyUp}
-        onMouseUp={props.onMouseUp}
-        onBlur={props.onBlur}
-        data-placeholder={props.placeholder}
-        style={{
-          padding: '14px 16px',
-          minHeight: props.minHeight,
-          height: props.height ? `${props.height}px` : undefined,
-          resize: 'vertical',
-          outline: 'none',
-          fontFamily: props.fontFamily || 'Inter, sans-serif',
-          fontSize: `${props.fontSize}px`,
-          lineHeight: 1.75,
-          color: '#111827',
-          background: '#fff',
-          overflowY: 'auto',
-          boxSizing: 'border-box',
-          cursor: 'text',
-        }}
-      />
-    );
-  }),
-  (prev, next) => {
-    // Only re-render if height or minHeight changes; never on typing/render ticks!
-    return (
-      prev.height === next.height &&
-      prev.minHeight === next.minHeight &&
-      prev.placeholder === next.placeholder
-    );
-  }
-);
-EditorContent.displayName = 'EditorContent';
 
 export default function RichTextEditor({
   value,
@@ -97,8 +47,15 @@ export default function RichTextEditor({
   minHeight = 160,
 }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const lastHtmlRef = useRef<string>(value || '');
 
+  // By storing the initial HTML in a ref and passing it to dangerouslySetInnerHTML,
+  // React marks this DOM element as externally managed. On subsequent re-renders,
+  // React will NEVER reconcile or touch the DOM children of this element!
+  const initialHtmlRef = useRef<string>(value || '<p><br></p>');
+  const lastEmittedValueRef = useRef<string>(value || '');
+  const isTypingRef = useRef(false);
+
+  const [hasContent, setHasContent] = useState(() => !isContentEmpty(value));
   const [activeFormats, setActiveFormats] = useState({
     bold: false,
     italic: false,
@@ -126,21 +83,21 @@ export default function RichTextEditor({
     setWordCount({ words, chars });
   };
 
-  // Populate content on mount
+  // Sync external changes (e.g. switching articles, form reset) into editor
   useEffect(() => {
-    if (editorRef.current) {
-      editorRef.current.innerHTML = value || '';
-      lastHtmlRef.current = value || '';
-      computeCounts(editorRef.current.innerText || '');
-    }
-  }, []);
+    if (isTypingRef.current) return;
 
-  // Sync value into editor ONLY when content changes externally (e.g. form reset, article switch)
-  useEffect(() => {
-    if (editorRef.current && value !== lastHtmlRef.current) {
-      editorRef.current.innerHTML = value || '';
-      lastHtmlRef.current = value || '';
-      computeCounts(editorRef.current.innerText || '');
+    if (editorRef.current) {
+      const currentHtml = editorRef.current.innerHTML;
+      const normalizedCurrent = isContentEmpty(currentHtml) ? '' : currentHtml;
+      const normalizedNext = isContentEmpty(value) ? '' : value;
+
+      if (normalizedNext !== lastEmittedValueRef.current && normalizedCurrent !== normalizedNext) {
+        editorRef.current.innerHTML = normalizedNext || '<p><br></p>';
+        lastEmittedValueRef.current = normalizedNext;
+        setHasContent(!isContentEmpty(normalizedNext));
+        computeCounts(editorRef.current.innerText || '');
+      }
     }
   }, [value]);
 
@@ -170,6 +127,30 @@ export default function RichTextEditor({
     } catch {}
   };
 
+  const handleInput = () => {
+    if (!editorRef.current) return;
+    isTypingRef.current = true;
+    const rawHtml = editorRef.current.innerHTML;
+    const empty = isContentEmpty(rawHtml);
+    setHasContent(!empty);
+
+    const emitted = empty ? '' : rawHtml;
+    lastEmittedValueRef.current = emitted;
+    onChange(emitted);
+    computeCounts(editorRef.current.innerText || '');
+    updateFormatStates();
+    isTypingRef.current = false;
+  };
+
+  const handleBlur = () => {
+    if (!editorRef.current) return;
+    const rawHtml = editorRef.current.innerHTML;
+    const empty = isContentEmpty(rawHtml);
+    if (empty && rawHtml !== '<p><br></p>') {
+      editorRef.current.innerHTML = '<p><br></p>';
+    }
+  };
+
   const exec = (command: string, val: string | undefined = undefined) => {
     if (editorRef.current) {
       editorRef.current.focus();
@@ -177,30 +158,14 @@ export default function RichTextEditor({
     document.execCommand(command, false, val);
     if (editorRef.current) {
       const html = editorRef.current.innerHTML;
-      lastHtmlRef.current = html;
-      onChange(html);
+      const empty = isContentEmpty(html);
+      setHasContent(!empty);
+      const emitted = empty ? '' : html;
+      lastEmittedValueRef.current = emitted;
+      onChange(emitted);
       computeCounts(editorRef.current.innerText || '');
     }
     updateFormatStates();
-  };
-
-  const handleInput = () => {
-    if (editorRef.current) {
-      const html = editorRef.current.innerHTML;
-      lastHtmlRef.current = html;
-      onChange(html);
-      computeCounts(editorRef.current.innerText || '');
-    }
-  };
-
-  const handleBlur = () => {
-    if (editorRef.current) {
-      const html = editorRef.current.innerHTML;
-      if (html !== lastHtmlRef.current) {
-        lastHtmlRef.current = html;
-        onChange(html);
-      }
-    }
   };
 
   const handleBlockChange = (tag: string) => {
@@ -215,8 +180,11 @@ export default function RichTextEditor({
     setCurrentBlock(tag);
     if (editorRef.current) {
       const html = editorRef.current.innerHTML;
-      lastHtmlRef.current = html;
-      onChange(html);
+      const empty = isContentEmpty(html);
+      setHasContent(!empty);
+      const emitted = empty ? '' : html;
+      lastEmittedValueRef.current = emitted;
+      onChange(emitted);
       computeCounts(editorRef.current.innerText || '');
     }
   };
@@ -236,8 +204,11 @@ export default function RichTextEditor({
     });
 
     const html = editorRef.current.innerHTML;
-    lastHtmlRef.current = html;
-    onChange(html);
+    const empty = isContentEmpty(html);
+    setHasContent(!empty);
+    const emitted = empty ? '' : html;
+    lastEmittedValueRef.current = emitted;
+    onChange(emitted);
     setCurrentFont(fontFamilyValue);
     updateFormatStates();
   };
@@ -246,9 +217,8 @@ export default function RichTextEditor({
     if (!editorRef.current) return;
     editorRef.current.focus();
     const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return;
 
-    if (!sel.isCollapsed) {
+    if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
       document.execCommand('fontSize', false, '7');
       const fonts = editorRef.current.querySelectorAll('font[size="7"]');
       fonts.forEach((f) => {
@@ -258,13 +228,16 @@ export default function RichTextEditor({
         f.parentNode?.replaceChild(span, f);
       });
     } else {
-      // Set container font size directly so next typing adopts this size
+      // Set container font size directly so text typed next adopts this size
       editorRef.current.style.fontSize = `${sizePx}px`;
     }
 
     const html = editorRef.current.innerHTML;
-    lastHtmlRef.current = html;
-    onChange(html);
+    const empty = isContentEmpty(html);
+    setHasContent(!empty);
+    const emitted = empty ? '' : html;
+    lastEmittedValueRef.current = emitted;
+    onChange(emitted);
     setCurrentFontSize(String(sizePx));
     updateFormatStates();
   };
@@ -281,13 +254,27 @@ export default function RichTextEditor({
       setIsCodeView(false);
       setTimeout(() => {
         if (editorRef.current) {
-          editorRef.current.innerHTML = value || '';
-          lastHtmlRef.current = value || '';
+          editorRef.current.innerHTML = value || '<p><br></p>';
+          lastEmittedValueRef.current = value || '';
+          setHasContent(!isContentEmpty(value));
           computeCounts(editorRef.current.innerText || '');
         }
       }, 0);
     } else {
       setIsCodeView(true);
+    }
+  };
+
+  const focusEditorAtEnd = () => {
+    if (!editorRef.current) return;
+    editorRef.current.focus();
+    const sel = window.getSelection();
+    if (sel) {
+      const range = document.createRange();
+      range.selectNodeContents(editorRef.current);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
     }
   };
 
@@ -644,7 +631,7 @@ export default function RichTextEditor({
           value={value}
           onChange={(e) => {
             const html = e.target.value;
-            lastHtmlRef.current = html;
+            lastEmittedValueRef.current = html;
             onChange(html);
             computeCounts(html);
           }}
@@ -667,24 +654,57 @@ export default function RichTextEditor({
         />
       ) : (
         <div
-          onClick={() => {
-            if (editorRef.current && document.activeElement !== editorRef.current) {
-              editorRef.current.focus();
-            }
+          onClick={focusEditorAtEnd}
+          style={{
+            position: 'relative',
+            cursor: 'text',
+            minHeight,
+            background: '#fff',
           }}
-          style={{ cursor: 'text' }}
         >
-          <EditorContent
+          {/* Floating placeholder: does NOT use :before on contentEditable, so it never blocks WebKit caret */}
+          {!hasContent && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 14,
+                left: 16,
+                color: '#9CA3AF',
+                pointerEvents: 'none',
+                fontFamily: currentFont || 'Inter, sans-serif',
+                fontSize: `${currentFontSize}px`,
+                lineHeight: 1.75,
+                userSelect: 'none',
+              }}
+            >
+              {placeholder}
+            </div>
+          )}
+
+          <div
             ref={editorRef}
+            contentEditable
+            suppressContentEditableWarning
+            dangerouslySetInnerHTML={{ __html: initialHtmlRef.current }}
             onInput={handleInput}
             onKeyUp={updateFormatStates}
             onMouseUp={updateFormatStates}
             onBlur={handleBlur}
-            placeholder={placeholder}
-            minHeight={minHeight}
-            height={editorHeight}
-            fontFamily={currentFont}
-            fontSize={currentFontSize}
+            style={{
+              padding: '14px 16px',
+              minHeight,
+              height: editorHeight ? `${editorHeight}px` : undefined,
+              resize: 'vertical',
+              outline: 'none',
+              fontFamily: currentFont || 'Inter, sans-serif',
+              fontSize: `${currentFontSize}px`,
+              lineHeight: 1.75,
+              color: '#111827',
+              background: 'transparent',
+              overflowY: 'auto',
+              boxSizing: 'border-box',
+              cursor: 'text',
+            }}
           />
         </div>
       )}
@@ -742,53 +762,9 @@ export default function RichTextEditor({
           ))}
         </div>
       </div>
-
-      <style>{`
-        .br-editor-content:empty:before {
-          content: attr(data-placeholder);
-          color: #9CA3AF;
-          pointer-events: none;
-        }
-        .br-editor-content h1 {
-          font-size: 28px;
-          font-weight: 700;
-          margin: 14px 0 8px;
-          line-height: 1.2;
-          letter-spacing: -0.02em;
-        }
-        .br-editor-content h2 {
-          font-size: 22px;
-          font-weight: 700;
-          margin: 12px 0 6px;
-          line-height: 1.25;
-          letter-spacing: -0.015em;
-        }
-        .br-editor-content h3 {
-          font-size: 18px;
-          font-weight: 600;
-          margin: 10px 0 4px;
-          line-height: 1.3;
-        }
-        .br-editor-content blockquote {
-          border-left: 3px solid #FFD700;
-          padding-left: 12px;
-          margin: 10px 0;
-          color: #4B5563;
-          font-style: italic;
-        }
-        .br-editor-content p {
-          margin: 0 0 8px;
-        }
-        .br-editor-content ul, .br-editor-content ol {
-          margin: 4px 0 8px 24px;
-          padding: 0;
-        }
-        .br-editor-content li {
-          margin-bottom: 4px;
-        }
-      `}</style>
     </div>
   );
 }
+
 
 
