@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 
 type RichTextEditorProps = {
   value: string;
@@ -43,14 +43,13 @@ function isContentEmpty(html: string): boolean {
 export default function RichTextEditor({
   value,
   onChange,
-  placeholder = 'Enter text…',
+  placeholder = 'Write content with rich formatting…',
   minHeight = 160,
 }: RichTextEditorProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const editorRef = useRef<HTMLDivElement | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const lastEmittedRef = useRef<string>(value || '');
+  const isInitializedRef = useRef(false);
 
-  const [hasContent, setHasContent] = useState(() => !isContentEmpty(value));
   const [activeFormats, setActiveFormats] = useState({
     bold: false,
     italic: false,
@@ -78,23 +77,26 @@ export default function RichTextEditor({
     setWordCount({ words, chars });
   };
 
-  const updateFormatStates = () => {
-    if (typeof document === 'undefined') return;
+  const updateFormatStates = useCallback(() => {
+    const iframe = iframeRef.current;
+    const doc = iframe?.contentDocument;
+    if (!doc) return;
+
     try {
       setActiveFormats({
-        bold: document.queryCommandState('bold'),
-        italic: document.queryCommandState('italic'),
-        underline: document.queryCommandState('underline'),
-        strikeThrough: document.queryCommandState('strikeThrough'),
-        justifyLeft: document.queryCommandState('justifyLeft'),
-        justifyCenter: document.queryCommandState('justifyCenter'),
-        justifyRight: document.queryCommandState('justifyRight'),
-        justifyFull: document.queryCommandState('justifyFull'),
-        insertUnorderedList: document.queryCommandState('insertUnorderedList'),
-        insertOrderedList: document.queryCommandState('insertOrderedList'),
+        bold: doc.queryCommandState('bold'),
+        italic: doc.queryCommandState('italic'),
+        underline: doc.queryCommandState('underline'),
+        strikeThrough: doc.queryCommandState('strikeThrough'),
+        justifyLeft: doc.queryCommandState('justifyLeft'),
+        justifyCenter: doc.queryCommandState('justifyCenter'),
+        justifyRight: doc.queryCommandState('justifyRight'),
+        justifyFull: doc.queryCommandState('justifyFull'),
+        insertUnorderedList: doc.queryCommandState('insertUnorderedList'),
+        insertOrderedList: doc.queryCommandState('insertOrderedList'),
       });
 
-      const blockVal = document.queryCommandValue('formatBlock');
+      const blockVal = doc.queryCommandValue('formatBlock');
       if (blockVal) {
         const clean = blockVal.toLowerCase().replace(/[<>]/g, '');
         if (['p', 'h1', 'h2', 'h3', 'blockquote'].includes(clean)) {
@@ -102,142 +104,168 @@ export default function RichTextEditor({
         }
       }
     } catch {}
-  };
+  }, []);
 
-  // Mount native contentEditable element.
-  // Using a native DOM element completely decouples rich text editing from React's
-  // virtual DOM reconciliation, guaranteeing 100% reliable native typing in all browsers.
+  // Initialize the iframe document in designMode.
+  // Running the editor inside an isolated iframe guarantees that React's virtual DOM
+  // reconciliation NEVER interferes with DOM nodes, caret position, or keyboard input!
   useEffect(() => {
-    if (!containerRef.current) return;
+    const iframe = iframeRef.current;
+    if (!iframe) return;
 
-    const el = document.createElement('div');
-    el.contentEditable = 'true';
-    el.spellcheck = true;
-    el.style.width = '100%';
-    el.style.minHeight = `${minHeight}px`;
-    el.style.height = editorHeight ? `${editorHeight}px` : 'auto';
-    el.style.padding = '14px 16px';
-    el.style.outline = 'none';
-    el.style.fontFamily = 'Inter, sans-serif';
-    el.style.fontSize = '14px';
-    el.style.lineHeight = '1.75';
-    el.style.color = '#111827';
-    el.style.background = 'transparent';
-    el.style.overflowY = 'auto';
-    el.style.boxSizing = 'border-box';
-    el.style.cursor = 'text';
+    const setupIframe = () => {
+      const doc = iframe.contentDocument;
+      if (!doc || isInitializedRef.current) return;
+      isInitializedRef.current = true;
 
-    const initial = value || '<p><br></p>';
-    el.innerHTML = initial;
-    editorRef.current = el;
-    containerRef.current.appendChild(el);
-    computeCounts(el.innerText || '');
+      const initialHtml = value || '<p><br></p>';
 
-    const handleInput = () => {
-      const html = el.innerHTML;
-      const empty = isContentEmpty(html);
-      setHasContent(!empty);
-      const emitted = empty ? '' : html;
-      lastEmittedRef.current = emitted;
-      onChange(emitted);
-      computeCounts(el.innerText || '');
-      updateFormatStates();
+      doc.open();
+      doc.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    background: #ffffff;
+  }
+  body {
+    padding: 14px 16px;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.75;
+    color: #111827;
+    outline: none;
+    cursor: text;
+    box-sizing: border-box;
+    word-break: break-word;
+  }
+  h1 { font-size: 28px; font-weight: 700; margin: 14px 0 8px; line-height: 1.2; }
+  h2 { font-size: 22px; font-weight: 700; margin: 12px 0 6px; line-height: 1.25; }
+  h3 { font-size: 18px; font-weight: 600; margin: 10px 0 4px; line-height: 1.3; }
+  blockquote { border-left: 3px solid #FFD700; padding-left: 12px; margin: 10px 0; color: #4B5563; font-style: italic; }
+  p { margin: 0 0 8px; }
+  ul, ol { margin: 4px 0 8px 24px; padding: 0; }
+  li { margin-bottom: 4px; }
+</style>
+</head>
+<body>${initialHtml}</body>
+</html>`);
+      doc.close();
+
+      doc.designMode = 'on';
+
+      const handleInput = () => {
+        const html = doc.body.innerHTML;
+        const empty = isContentEmpty(html);
+        const emitted = empty ? '' : html;
+        lastEmittedRef.current = emitted;
+        onChange(emitted);
+        computeCounts(doc.body.innerText || '');
+        updateFormatStates();
+      };
+
+      doc.addEventListener('input', handleInput);
+      doc.addEventListener('keyup', updateFormatStates);
+      doc.addEventListener('mouseup', updateFormatStates);
+
+      computeCounts(doc.body.innerText || '');
     };
 
-    const handleKeyUp = () => {
-      updateFormatStates();
-    };
-
-    const handleMouseUp = () => {
-      updateFormatStates();
-    };
-
-    el.addEventListener('input', handleInput);
-    el.addEventListener('keyup', handleKeyUp);
-    el.addEventListener('mouseup', handleMouseUp);
+    if (iframe.contentDocument?.readyState === 'complete') {
+      setupIframe();
+    } else {
+      iframe.addEventListener('load', setupIframe);
+    }
 
     return () => {
-      el.removeEventListener('input', handleInput);
-      el.removeEventListener('keyup', handleKeyUp);
-      el.removeEventListener('mouseup', handleMouseUp);
-      if (containerRef.current && containerRef.current.contains(el)) {
-        containerRef.current.removeChild(el);
-      }
-      editorRef.current = null;
+      iframe.removeEventListener('load', setupIframe);
     };
   }, []);
 
-  // Sync external changes (e.g. switching articles, form reset) into editor
+  // Sync external changes (e.g. switching articles, form reset) into iframe
   useEffect(() => {
-    if (editorRef.current && value !== lastEmittedRef.current) {
-      const currentHtml = editorRef.current.innerHTML;
+    const iframe = iframeRef.current;
+    const doc = iframe?.contentDocument;
+    if (!doc || !isInitializedRef.current) return;
+
+    if (value !== lastEmittedRef.current) {
+      const currentHtml = doc.body.innerHTML;
       const normalizedCurrent = isContentEmpty(currentHtml) ? '' : currentHtml;
       const normalizedNext = isContentEmpty(value) ? '' : value;
 
       if (normalizedCurrent !== normalizedNext) {
-        editorRef.current.innerHTML = normalizedNext || '<p><br></p>';
+        doc.body.innerHTML = normalizedNext || '<p><br></p>';
         lastEmittedRef.current = normalizedNext;
-        setHasContent(!isContentEmpty(normalizedNext));
-        computeCounts(editorRef.current.innerText || '');
+        computeCounts(doc.body.innerText || '');
       }
     }
   }, [value]);
 
   const exec = (command: string, val: string | undefined = undefined) => {
-    if (editorRef.current) {
-      editorRef.current.focus();
-    }
-    document.execCommand(command, false, val);
-    if (editorRef.current) {
-      const html = editorRef.current.innerHTML;
-      const empty = isContentEmpty(html);
-      setHasContent(!empty);
-      const emitted = empty ? '' : html;
-      lastEmittedRef.current = emitted;
-      onChange(emitted);
-      computeCounts(editorRef.current.innerText || '');
-    }
+    const iframe = iframeRef.current;
+    const doc = iframe?.contentDocument;
+    if (!doc || !iframe.contentWindow) return;
+
+    iframe.contentWindow.focus();
+    doc.execCommand(command, false, val);
+
+    const html = doc.body.innerHTML;
+    const empty = isContentEmpty(html);
+    const emitted = empty ? '' : html;
+    lastEmittedRef.current = emitted;
+    onChange(emitted);
+    computeCounts(doc.body.innerText || '');
     updateFormatStates();
   };
 
   const handleBlockChange = (tag: string) => {
-    if (editorRef.current) {
-      editorRef.current.focus();
-    }
+    const iframe = iframeRef.current;
+    const doc = iframe?.contentDocument;
+    if (!doc || !iframe.contentWindow) return;
+
+    iframe.contentWindow.focus();
     if (tag === 'p') {
-      document.execCommand('formatBlock', false, '<p>');
+      doc.execCommand('formatBlock', false, '<p>');
     } else if (tag === 'h1' || tag === 'h2' || tag === 'h3' || tag === 'blockquote') {
-      document.execCommand('formatBlock', false, `<${tag}>`);
+      doc.execCommand('formatBlock', false, `<${tag}>`);
     }
     setCurrentBlock(tag);
-    if (editorRef.current) {
-      const html = editorRef.current.innerHTML;
-      const empty = isContentEmpty(html);
-      setHasContent(!empty);
-      const emitted = empty ? '' : html;
-      lastEmittedRef.current = emitted;
-      onChange(emitted);
-      computeCounts(editorRef.current.innerText || '');
-    }
+
+    const html = doc.body.innerHTML;
+    const empty = isContentEmpty(html);
+    const emitted = empty ? '' : html;
+    lastEmittedRef.current = emitted;
+    onChange(emitted);
+    computeCounts(doc.body.innerText || '');
   };
 
   const applyFontFamily = (fontFamilyValue: string) => {
-    if (!editorRef.current) return;
-    editorRef.current.focus();
-    document.execCommand('fontName', false, fontFamilyValue);
+    const iframe = iframeRef.current;
+    const doc = iframe?.contentDocument;
+    if (!doc || !iframe.contentWindow) return;
+
+    iframe.contentWindow.focus();
+    const sel = iframe.contentWindow.getSelection();
+    if (!sel || sel.isCollapsed) {
+      doc.body.style.fontFamily = fontFamilyValue;
+    }
+    doc.execCommand('fontName', false, fontFamilyValue);
 
     // Replace any legacy <font face="..."> with clean <span style="font-family: ...">
-    const fonts = editorRef.current.querySelectorAll('font[face]');
+    const fonts = doc.querySelectorAll('font[face]');
     fonts.forEach((f) => {
-      const span = document.createElement('span');
+      const span = doc.createElement('span');
       span.style.fontFamily = fontFamilyValue;
       span.innerHTML = f.innerHTML;
       f.parentNode?.replaceChild(span, f);
     });
 
-    const html = editorRef.current.innerHTML;
+    const html = doc.body.innerHTML;
     const empty = isContentEmpty(html);
-    setHasContent(!empty);
     const emitted = empty ? '' : html;
     lastEmittedRef.current = emitted;
     onChange(emitted);
@@ -246,26 +274,28 @@ export default function RichTextEditor({
   };
 
   const applyFontSize = (sizePx: string | number) => {
-    if (!editorRef.current) return;
-    editorRef.current.focus();
-    const sel = window.getSelection();
+    const iframe = iframeRef.current;
+    const doc = iframe?.contentDocument;
+    if (!doc || !iframe.contentWindow) return;
+
+    iframe.contentWindow.focus();
+    const sel = iframe.contentWindow.getSelection();
 
     if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
-      document.execCommand('fontSize', false, '7');
-      const fonts = editorRef.current.querySelectorAll('font[size="7"]');
+      doc.execCommand('fontSize', false, '7');
+      const fonts = doc.querySelectorAll('font[size="7"]');
       fonts.forEach((f) => {
-        const span = document.createElement('span');
+        const span = doc.createElement('span');
         span.style.fontSize = `${sizePx}px`;
         span.innerHTML = f.innerHTML;
         f.parentNode?.replaceChild(span, f);
       });
     } else {
-      editorRef.current.style.fontSize = `${sizePx}px`;
+      doc.body.style.fontSize = `${sizePx}px`;
     }
 
-    const html = editorRef.current.innerHTML;
+    const html = doc.body.innerHTML;
     const empty = isContentEmpty(html);
-    setHasContent(!empty);
     const emitted = empty ? '' : html;
     lastEmittedRef.current = emitted;
     onChange(emitted);
@@ -281,13 +311,15 @@ export default function RichTextEditor({
 
   const toggleCodeView = () => {
     if (isCodeView) {
+      // Return to visual view
       setIsCodeView(false);
       setTimeout(() => {
-        if (editorRef.current) {
-          editorRef.current.innerHTML = value || '<p><br></p>';
+        const iframe = iframeRef.current;
+        const doc = iframe?.contentDocument;
+        if (doc) {
+          doc.body.innerHTML = value || '<p><br></p>';
           lastEmittedRef.current = value || '';
-          setHasContent(!isContentEmpty(value));
-          computeCounts(editorRef.current.innerText || '');
+          computeCounts(doc.body.innerText || '');
         }
       }, 0);
     } else {
@@ -297,9 +329,6 @@ export default function RichTextEditor({
 
   const handleHeightPreset = (h: number) => {
     setEditorHeight(h);
-    if (editorRef.current) {
-      editorRef.current.style.height = `${h}px`;
-    }
   };
 
   const btnStyle = (active: boolean): React.CSSProperties => ({
@@ -649,36 +678,28 @@ export default function RichTextEditor({
         </button>
       </div>
 
-      {/* ── Editor Area ─────────────────────────────────────────── */}
-      <div style={{ position: 'relative', minHeight, background: '#fff' }}>
-        {/* Floating placeholder */}
-        {!hasContent && !isCodeView && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 14,
-              left: 16,
-              color: '#9CA3AF',
-              pointerEvents: 'none',
-              fontFamily: currentFont || 'Inter, sans-serif',
-              fontSize: `${currentFontSize}px`,
-              lineHeight: 1.75,
-              userSelect: 'none',
-              zIndex: 1,
-            }}
-          >
-            {placeholder}
-          </div>
-        )}
-
-        {/* Native contentEditable container */}
-        <div
-          ref={containerRef}
+      {/* ── Editor Area: Isolated Iframe OR Textarea ─────────────── */}
+      <div
+        style={{
+          position: 'relative',
+          minHeight,
+          height: editorHeight ? `${editorHeight}px` : undefined,
+          resize: 'vertical',
+          overflow: 'auto',
+          background: '#fff',
+        }}
+      >
+        <iframe
+          ref={iframeRef}
+          title="Rich Text Editor"
           style={{
-            display: isCodeView ? 'none' : 'block',
+            width: '100%',
+            height: '100%',
             minHeight,
-            resize: 'vertical',
-            overflow: 'auto',
+            border: 'none',
+            outline: 'none',
+            display: isCodeView ? 'none' : 'block',
+            background: '#ffffff',
           }}
         />
 
@@ -691,20 +712,19 @@ export default function RichTextEditor({
               lastEmittedRef.current = html;
               onChange(html);
               computeCounts(html);
-              setHasContent(!isContentEmpty(html));
             }}
             placeholder="Write HTML markup here…"
             style={{
               width: '100%',
+              height: '100%',
               minHeight,
-              height: editorHeight ? `${editorHeight}px` : undefined,
               padding: '14px 16px',
               fontFamily: 'Consolas, Monaco, "Courier New", monospace',
               fontSize: 13,
               lineHeight: 1.6,
               border: 'none',
               outline: 'none',
-              resize: 'vertical',
+              resize: 'none',
               background: '#1F2937',
               color: '#F9FAFB',
               boxSizing: 'border-box',
@@ -770,6 +790,7 @@ export default function RichTextEditor({
     </div>
   );
 }
+
 
 
 
