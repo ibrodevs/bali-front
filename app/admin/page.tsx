@@ -8316,10 +8316,30 @@ function BookingFormModal({
             <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 20, color: A.black }}>
               {mode === 'edit' ? `Edit Booking #${booking?.order_number || ''}` : 'Create New Booking'}
             </div>
-            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, marginTop: 2 }}>
-              {mode === 'edit'
-                ? 'Unrestricted admin edit — change dates, hours, scooter, pricing & status.'
-                : 'Unrestricted admin creation — create bookings for any past or future period.'}
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: A.g500, marginTop: 2, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span>
+                {mode === 'edit'
+                  ? 'Unrestricted admin edit — change dates, hours, scooter, pricing & status.'
+                  : 'Unrestricted admin creation — create bookings for any past or future period.'}
+              </span>
+              {mode === 'edit' && booking?.created_at && (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    padding: '2px 8px',
+                    borderRadius: 6,
+                    background: booking.source === 'admin' ? '#F3E8FF' : '#EFF6FF',
+                    color: booking.source === 'admin' ? '#7E22CE' : '#1D4ED8',
+                    border: `1px solid ${booking.source === 'admin' ? '#E9D5FF' : '#DBEAFE'}`,
+                  }}
+                >
+                  📅 Создано: {formatDateTime(booking.created_at)} ({booking.source === 'admin' ? 'Админом' : 'Клиентом на сайте'})
+                </span>
+              )}
             </div>
           </div>
           <Button variant="ghost" onClick={onClose}>Close</Button>
@@ -8811,15 +8831,50 @@ function BookingsView({
               <Panel key={item.id} style={{ padding: isMobile ? 14 : 20 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1.1fr 1fr', gap: isMobile ? 10 : 16, alignItems: 'start' }}>
                   <div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8, alignItems: 'center' }}>
                       <Badge color={bookingBadgeColor(item.status)}>{item.status}</Badge>
                       <Badge color={paymentBadgeColor(item.latest_payment?.status || item.payment_status)}>
                         {item.latest_payment?.status || item.payment_status}
                       </Badge>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: '3px 8px',
+                          borderRadius: 6,
+                          background: item.source === 'admin' ? '#F3E8FF' : '#EFF6FF',
+                          color: item.source === 'admin' ? '#7E22CE' : '#1D4ED8',
+                          border: `1px solid ${item.source === 'admin' ? '#E9D5FF' : '#DBEAFE'}`,
+                        }}
+                      >
+                        {item.source === 'admin' ? '👤 Создано админом' : '🌐 Клиент на сайте'}
+                      </span>
                     </div>
-                    <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 17, color: A.black, marginBottom: 4 }}>
+                    <div style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: 17, color: A.black, marginBottom: 2 }}>
                       #{item.order_number}
                     </div>
+                    {item.created_at && (
+                      <div
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          fontFamily: 'Inter, sans-serif',
+                          fontSize: 12,
+                          color: A.g500,
+                          marginBottom: 8,
+                        }}
+                      >
+                        <span style={{ fontSize: 11 }}>📅</span>
+                        <span style={{ fontWeight: 600, color: A.g700 }}>Создано:</span>
+                        <span style={{ color: A.black, fontWeight: 500 }}>
+                          {formatDateTime(item.created_at)}
+                        </span>
+                      </div>
+                    )}
                     <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600, color: A.g700 }}>
                       {item.contact_name || item.user || 'Guest'}
                     </div>
@@ -8883,7 +8938,7 @@ function BookingsView({
                     </div>
                     {item.delivery_time && (
                       <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: A.g500, marginTop: 2 }}>
-                        <strong>Time:</strong> {item.delivery_time}
+                        <strong>Time:</strong> {formatDateTime(item.delivery_time)}
                       </div>
                     )}
                   </div>
@@ -9910,6 +9965,11 @@ function CalendarView({
                             </span>
                           )}
                         </div>
+                        {item.created_at && (
+                          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: A.g500, marginTop: 4 }}>
+                            📅 Создано: {formatDateTime(item.created_at)} ({item.source === 'admin' ? 'Админом' : 'Клиентом на сайте'})
+                          </div>
+                        )}
                       </div>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                         <Badge color={item.status === 'active' ? 'green' : item.status === 'completed' ? 'blue' : 'default'}>{item.status}</Badge>

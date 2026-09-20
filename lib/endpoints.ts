@@ -162,6 +162,8 @@ export type ApiBooking = {
   payments?: ApiPayment[];
   latest_payment?: ApiPayment | null;
   created_at?: string;
+  source?: 'admin' | 'client';
+  created_by_role?: 'admin' | 'client';
 };
 
 export type ApiPayment = {
