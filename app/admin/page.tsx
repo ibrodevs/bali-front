@@ -7586,6 +7586,7 @@ function OverviewView({
 }) {
   const { bookings, scooters, users, revenue, payments } = data;
   const formatMoney = useAdminMoneyFormatter();
+  const { currency, convertAmountValue } = useCurrency();
 
   const paidBookings = bookings.filter(
     (item) => item.payment_status === 'paid' || item.latest_payment?.status === 'succeeded',
@@ -7600,29 +7601,57 @@ function OverviewView({
     ? paidBookings.reduce((sum, item) => sum + Number(item.total_price || 0), 0) / paidBookings.length
     : 0;
 
-  const monthlyMap = new Map<string, number>();
+  type MonthlyStat = { amount: number; count: number };
+  const monthlyMap = new Map<string, MonthlyStat>();
   for (let i = 11; i >= 0; i -= 1) {
     const date = new Date();
     date.setUTCDate(1);
     date.setUTCMonth(date.getUTCMonth() - i);
-    monthlyMap.set(monthKey(date.toISOString()), 0);
+    monthlyMap.set(monthKey(date.toISOString()), { amount: 0, count: 0 });
   }
   for (const item of paidBookings) {
     const key = monthKey(item.created_at);
     if (monthlyMap.has(key)) {
-      monthlyMap.set(key, (monthlyMap.get(key) || 0) + Number(item.total_price || 0));
+      const entry = monthlyMap.get(key)!;
+      entry.amount += Number(item.total_price || 0);
+      entry.count += 1;
     }
   }
-  const monthlyRevenue = Array.from(monthlyMap.entries()).map(([key, amount]) => {
+  const monthlyRevenue = Array.from(monthlyMap.entries()).map(([key, stat], idx, arr) => {
     const [year, month] = key.split('-');
+    const prevStat = idx > 0 ? arr[idx - 1][1] : null;
+    let growth: number | null = null;
+    if (prevStat && prevStat.amount > 0) {
+      growth = Math.round(((stat.amount - prevStat.amount) / prevStat.amount) * 100);
+    } else if (prevStat && prevStat.amount === 0 && stat.amount > 0) {
+      growth = 100;
+    }
     return {
+      key,
       label: new Intl.DateTimeFormat('en-US', { month: 'short' }).format(
         new Date(Date.UTC(Number(year), Number(month) - 1, 1)),
       ),
-      amount,
+      amount: stat.amount,
+      count: stat.count,
+      growth,
     };
   });
   const maxRevenue = Math.max(...monthlyRevenue.map((item) => item.amount), 1);
+
+  const formatChartAmount = (amountUsd: number): string => {
+    if (!amountUsd || amountUsd <= 0) return '0';
+    const converted = convertAmountValue(amountUsd, 'USD', currency);
+    const symbol = CURRENCY_SYMBOLS[currency] || (currency === 'RUB' ? '₽' : currency === 'USD' ? '$' : currency === 'IDR' ? 'Rp ' : `${currency} `);
+    if (converted >= 1_000_000) {
+      const val = (converted / 1_000_000).toFixed(1).replace(/\.0$/, '');
+      return `${symbol}${val}M`;
+    }
+    if (converted >= 1_000) {
+      const val = (converted / 1_000).toFixed(1).replace(/\.0$/, '');
+      return `${symbol}${val}k`;
+    }
+    return `${symbol}${Math.round(converted)}`;
+  };
 
   const auditLogs = data.auditLogs.slice(0, 5);
   const loginLogs = data.loginLogs.slice(0, 3);
@@ -7646,22 +7675,118 @@ function OverviewView({
             subtitle="Last 12 months from paid bookings"
             action={<Button variant="dark" onClick={() => onOpenView('analytics')}>Open Analytics</Button>}
           />
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 180 }}>
-            {monthlyRevenue.map((item) => (
-              <div key={item.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: isMobile ? 4 : 8, height: 220, paddingTop: 10 }}>
+            {monthlyRevenue.map((item) => {
+              const hasRevenue = item.amount > 0;
+              const isMax = item.amount === maxRevenue && hasRevenue;
+              const barHeight = Math.max(4, Math.round((item.amount / maxRevenue) * 125));
+              const displayAmount = formatChartAmount(item.amount);
+              const tooltip = `${item.label}: ${formatMoney(item.amount)}${item.count > 0 ? ` (${item.count} bookings)` : ''}${item.growth !== null ? ` | ${item.growth > 0 ? '+' : ''}${item.growth}% vs prev month` : ''}`;
+
+              return (
                 <div
-                  title={`${item.label}: ${formatMoney(item.amount)}`}
+                  key={item.key}
                   style={{
-                    width: '100%',
-                    minHeight: 4,
-                    height: `${Math.max(4, (item.amount / maxRevenue) * 140)}px`,
-                    background: item.amount === maxRevenue && item.amount > 0 ? A.gold : A.g200,
-                    borderRadius: '6px 6px 0 0',
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    height: '100%',
+                    justifyContent: 'flex-end',
+                    minWidth: 0,
                   }}
-                />
-                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: A.g500 }}>{item.label}</div>
-              </div>
-            ))}
+                >
+                  {/* ── Above Bar: Amount & Growth % ── */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'flex-end',
+                      minHeight: 34,
+                      marginBottom: 6,
+                      width: '100%',
+                    }}
+                  >
+                    {item.growth !== null && hasRevenue && (
+                      <span
+                        style={{
+                          fontFamily: 'Inter, sans-serif',
+                          fontSize: 9,
+                          fontWeight: 700,
+                          color: item.growth > 0 ? '#16A34A' : item.growth < 0 ? '#DC2626' : '#6B7280',
+                          lineHeight: 1,
+                          marginBottom: 2,
+                          whiteSpace: 'nowrap',
+                        }}
+                        title={`Dynamics: ${item.growth > 0 ? '+' : ''}${item.growth}% vs previous month`}
+                      >
+                        {item.growth > 0 ? `+${item.growth}%` : `${item.growth}%`}
+                      </span>
+                    )}
+                    <span
+                      style={{
+                        fontFamily: 'Sora, sans-serif',
+                        fontSize: isMobile ? 9 : 11,
+                        fontWeight: isMax ? 800 : hasRevenue ? 700 : 500,
+                        color: isMax ? '#0A0A0F' : hasRevenue ? '#374151' : '#9CA3AF',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: '100%',
+                        textAlign: 'center',
+                        lineHeight: 1.1,
+                      }}
+                      title={tooltip}
+                    >
+                      {displayAmount}
+                    </span>
+                  </div>
+
+                  {/* ── The Bar ── */}
+                  <div
+                    title={tooltip}
+                    style={{
+                      width: '100%',
+                      maxWidth: 36,
+                      minHeight: 4,
+                      height: `${barHeight}px`,
+                      background: isMax ? A.gold : hasRevenue ? '#E5E7EB' : '#F3F4F6',
+                      borderRadius: '6px 6px 0 0',
+                      transition: 'all 180ms ease',
+                      cursor: 'pointer',
+                    }}
+                  />
+
+                  {/* ── Under Bar: Month Label & Bookings Count ── */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 8 }}>
+                    <div
+                      style={{
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: 11,
+                        fontWeight: hasRevenue ? 700 : 500,
+                        color: hasRevenue ? A.black : A.g500,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {item.label}
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: 9,
+                        color: hasRevenue ? A.g700 : A.g400,
+                        marginTop: 1,
+                        fontWeight: hasRevenue ? 600 : 400,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {item.count > 0 ? `${item.count} b.` : '—'}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </Panel>
 
