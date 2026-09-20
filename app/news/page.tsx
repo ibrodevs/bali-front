@@ -34,7 +34,9 @@ function NewsCard({ article, locale, readMoreLabel, href }: { article: ApiNewsAr
   const allImages = [article.image, ...(article.images || []).map((img) => img.image)].filter(Boolean) as string[];
   const imgSrc = allImages[0] ? mediaUrl(allImages[0]) : null;
   const totalPhotos = allImages.length;
-  const plainDesc = article.description ? article.description.replace(/<[^>]*>/g, '').trim() : '';
+  const title = article.title || article.translations?.find((t) => t.title)?.title || 'Untitled';
+  const rawDesc = article.description || article.translations?.find((t) => t.description)?.description || '';
+  const plainDesc = rawDesc ? rawDesc.replace(/<[^>]*>/g, '').trim() : '';
 
   return (
     <Link href={href} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
@@ -57,7 +59,7 @@ function NewsCard({ article, locale, readMoreLabel, href }: { article: ApiNewsAr
           {imgSrc ? (
             <img
               src={imgSrc}
-              alt={article.title}
+              alt={title}
               className="br-news-card-img"
               style={{
                 position: 'absolute', inset: 0, width: '100%', height: '100%',
@@ -108,7 +110,7 @@ function NewsCard({ article, locale, readMoreLabel, href }: { article: ApiNewsAr
             letterSpacing: '-0.025em', color: '#0A0A0F',
             margin: '0 0 10px', flex: 0,
           }}>
-            {article.title}
+            {title}
           </h3>
 
           <p style={{

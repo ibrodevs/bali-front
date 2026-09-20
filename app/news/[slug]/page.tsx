@@ -63,12 +63,15 @@ export function NewsArticlePageContent({ slugOverride }: { slugOverride?: string
       .finally(() => setLoading(false));
   }, [locale, slug]);
 
+  const articleTitle = article?.title || article?.translations?.find((t) => t.title)?.title || '';
+  const articleDesc = article?.description || article?.translations?.find((t) => t.description)?.description || '';
+
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    if (article?.title) {
-      document.title = `${article.title} · BALI-RENT`;
+    if (articleTitle) {
+      document.title = `${articleTitle} · BALI-RENT`;
     }
-  }, [article?.title]);
+  }, [articleTitle]);
 
   const allImages = useMemo(() => {
     const list: string[] = [];
@@ -180,7 +183,7 @@ export function NewsArticlePageContent({ slugOverride }: { slugOverride?: string
                 >
                   <img
                     src={mediaUrl(allImages[0])}
-                    alt={article.title}
+                    alt={articleTitle}
                     style={{
                       display: 'block', width: '100%',
                       height: 540, objectFit: 'cover',
@@ -328,13 +331,13 @@ export function NewsArticlePageContent({ slugOverride }: { slugOverride?: string
                   letterSpacing: '-0.04em', color: '#0A0A0F',
                   margin: '0 0 36px',
                 }}>
-                  {article.title}
+                  {articleTitle}
                 </h1>
 
                 {/* Body (Render HTML with rich styling) */}
                 <div
                   className="br-news-body"
-                  dangerouslySetInnerHTML={{ __html: article.description }}
+                  dangerouslySetInnerHTML={{ __html: articleDesc }}
                   style={{
                     fontFamily: 'var(--br-body)', fontSize: 'clamp(15px, 1.5vw, 18px)',
                     lineHeight: 1.85, color: '#1a1a1a',
