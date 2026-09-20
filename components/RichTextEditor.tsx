@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, forwardRef } from 'react';
 
 type RichTextEditorProps = {
   value: string;
@@ -34,6 +34,62 @@ const FONT_SIZES = [
   { label: '48px (Hero)', value: '48' },
 ];
 
+interface EditorContentProps {
+  onInput: () => void;
+  onKeyUp: () => void;
+  onMouseUp: () => void;
+  onBlur: () => void;
+  placeholder: string;
+  minHeight: number;
+  height?: number;
+  fontFamily: string;
+  fontSize: string;
+}
+
+// Memoized contentEditable element: React will NOT re-render this component on parent state
+// updates while the user is typing, ensuring React reconciliation never deletes typed characters.
+const EditorContent = React.memo(
+  forwardRef<HTMLDivElement, EditorContentProps>((props, ref) => {
+    return (
+      <div
+        ref={ref}
+        contentEditable
+        suppressContentEditableWarning
+        className="br-editor-content"
+        onInput={props.onInput}
+        onKeyUp={props.onKeyUp}
+        onMouseUp={props.onMouseUp}
+        onBlur={props.onBlur}
+        data-placeholder={props.placeholder}
+        style={{
+          padding: '14px 16px',
+          minHeight: props.minHeight,
+          height: props.height ? `${props.height}px` : undefined,
+          resize: 'vertical',
+          outline: 'none',
+          fontFamily: props.fontFamily || 'Inter, sans-serif',
+          fontSize: `${props.fontSize}px`,
+          lineHeight: 1.75,
+          color: '#111827',
+          background: '#fff',
+          overflowY: 'auto',
+          boxSizing: 'border-box',
+          cursor: 'text',
+        }}
+      />
+    );
+  }),
+  (prev, next) => {
+    // Only re-render if height or minHeight changes; never on typing/render ticks!
+    return (
+      prev.height === next.height &&
+      prev.minHeight === next.minHeight &&
+      prev.placeholder === next.placeholder
+    );
+  }
+);
+EditorContent.displayName = 'EditorContent';
+
 export default function RichTextEditor({
   value,
   onChange,
@@ -41,8 +97,6 @@ export default function RichTextEditor({
   minHeight = 160,
 }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
-  // Track the last HTML value produced by typing or toolbar actions to avoid
-  // destructive re-renders that reset the cursor / clear focus on each keystroke.
   const lastHtmlRef = useRef<string>(value || '');
 
   const [activeFormats, setActiveFormats] = useState({
@@ -62,7 +116,24 @@ export default function RichTextEditor({
   const [currentFont, setCurrentFont] = useState('Inter, sans-serif');
   const [currentFontSize, setCurrentFontSize] = useState('14');
   const [editorHeight, setEditorHeight] = useState<number>(minHeight);
+  const [isCodeView, setIsCodeView] = useState(false);
   const [wordCount, setWordCount] = useState({ words: 0, chars: 0 });
+
+  const computeCounts = (text: string) => {
+    const trimmed = text.trim();
+    const words = trimmed ? trimmed.split(/\s+/).length : 0;
+    const chars = trimmed.length;
+    setWordCount({ words, chars });
+  };
+
+  // Populate content on mount
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.innerHTML = value || '';
+      lastHtmlRef.current = value || '';
+      computeCounts(editorRef.current.innerText || '');
+    }
+  }, []);
 
   // Sync value into editor ONLY when content changes externally (e.g. form reset, article switch)
   useEffect(() => {
@@ -72,13 +143,6 @@ export default function RichTextEditor({
       computeCounts(editorRef.current.innerText || '');
     }
   }, [value]);
-
-  const computeCounts = (text: string) => {
-    const trimmed = text.trim();
-    const words = trimmed ? trimmed.split(/\s+/).length : 0;
-    const chars = trimmed.length;
-    setWordCount({ words, chars });
-  };
 
   const updateFormatStates = () => {
     if (typeof document === 'undefined') return;
@@ -102,13 +166,6 @@ export default function RichTextEditor({
         if (['p', 'h1', 'h2', 'h3', 'blockquote'].includes(clean)) {
           setCurrentBlock(clean);
         }
-      }
-
-      const fontVal = document.queryCommandValue('fontName');
-      if (fontVal) {
-        const cleanFont = fontVal.replace(/['"]/g, '');
-        const matched = FONT_FAMILIES.find((f) => f.value.toLowerCase().includes(cleanFont.toLowerCase()));
-        if (matched) setCurrentFont(matched.value);
       }
     } catch {}
   };
@@ -134,7 +191,6 @@ export default function RichTextEditor({
       onChange(html);
       computeCounts(editorRef.current.innerText || '');
     }
-    updateFormatStates();
   };
 
   const handleBlur = () => {
@@ -202,17 +258,8 @@ export default function RichTextEditor({
         f.parentNode?.replaceChild(span, f);
       });
     } else {
-      // Collapsed cursor: insert zero-width span and place caret inside so typed text adopts size
-      const range = sel.getRangeAt(0);
-      const span = document.createElement('span');
-      span.style.fontSize = `${sizePx}px`;
-      span.innerHTML = '&#8203;';
-      range.insertNode(span);
-      const newRange = document.createRange();
-      newRange.setStart(span.firstChild || span, 1);
-      newRange.collapse(true);
-      sel.removeAllRanges();
-      sel.addRange(newRange);
+      // Set container font size directly so next typing adopts this size
+      editorRef.current.style.fontSize = `${sizePx}px`;
     }
 
     const html = editorRef.current.innerHTML;
@@ -226,6 +273,22 @@ export default function RichTextEditor({
     const current = parseInt(currentFontSize, 10) || 14;
     const next = Math.max(10, Math.min(72, current + delta));
     applyFontSize(next);
+  };
+
+  const toggleCodeView = () => {
+    if (isCodeView) {
+      // Returning from code view to visual view
+      setIsCodeView(false);
+      setTimeout(() => {
+        if (editorRef.current) {
+          editorRef.current.innerHTML = value || '';
+          lastHtmlRef.current = value || '';
+          computeCounts(editorRef.current.innerText || '');
+        }
+      }, 0);
+    } else {
+      setIsCodeView(true);
+    }
   };
 
   const btnStyle = (active: boolean): React.CSSProperties => ({
@@ -295,6 +358,7 @@ export default function RichTextEditor({
           value={currentBlock}
           onChange={(e) => handleBlockChange(e.target.value)}
           style={selectStyle}
+          disabled={isCodeView}
           title="Format Block"
         >
           <option value="p">Paragraph</option>
@@ -313,6 +377,7 @@ export default function RichTextEditor({
             value={currentFont}
             onChange={(e) => applyFontFamily(e.target.value)}
             style={{ ...selectStyle, maxWidth: 130 }}
+            disabled={isCodeView}
             title="Font Family (Шрифт)"
           >
             {FONT_FAMILIES.map((f) => (
@@ -330,17 +395,18 @@ export default function RichTextEditor({
             value={currentFontSize}
             onChange={(e) => applyFontSize(e.target.value)}
             style={{ ...selectStyle, width: 68 }}
+            disabled={isCodeView}
             title="Font Size (Размер шрифта)"
           >
             {FONT_SIZES.map((s) => (
               <option key={s.value} value={s.value}>{s.value}px</option>
             ))}
           </select>
-          {/* Quick step buttons */}
           <button
             type="button"
             title="Decrease font size (-2px)"
             style={{ ...btnStyle(false), minWidth: 22, padding: '0 4px', fontSize: 11 }}
+            disabled={isCodeView}
             onMouseDown={(e) => { e.preventDefault(); stepFontSize(-2); }}
           >
             A-
@@ -349,6 +415,7 @@ export default function RichTextEditor({
             type="button"
             title="Increase font size (+2px)"
             style={{ ...btnStyle(false), minWidth: 22, padding: '0 4px', fontSize: 11 }}
+            disabled={isCodeView}
             onMouseDown={(e) => { e.preventDefault(); stepFontSize(2); }}
           >
             A+
@@ -362,6 +429,7 @@ export default function RichTextEditor({
           type="button"
           title="Bold (Ctrl+B)"
           style={btnStyle(activeFormats.bold)}
+          disabled={isCodeView}
           onMouseDown={(e) => { e.preventDefault(); exec('bold'); }}
         >
           <strong>B</strong>
@@ -370,6 +438,7 @@ export default function RichTextEditor({
           type="button"
           title="Italic (Ctrl+I)"
           style={btnStyle(activeFormats.italic)}
+          disabled={isCodeView}
           onMouseDown={(e) => { e.preventDefault(); exec('italic'); }}
         >
           <em>I</em>
@@ -378,6 +447,7 @@ export default function RichTextEditor({
           type="button"
           title="Underline (Ctrl+U)"
           style={btnStyle(activeFormats.underline)}
+          disabled={isCodeView}
           onMouseDown={(e) => { e.preventDefault(); exec('underline'); }}
         >
           <u>U</u>
@@ -386,6 +456,7 @@ export default function RichTextEditor({
           type="button"
           title="Strikethrough"
           style={btnStyle(activeFormats.strikeThrough)}
+          disabled={isCodeView}
           onMouseDown={(e) => { e.preventDefault(); exec('strikeThrough'); }}
         >
           <s>S</s>
@@ -398,6 +469,7 @@ export default function RichTextEditor({
           type="button"
           title="Align Left"
           style={btnStyle(activeFormats.justifyLeft)}
+          disabled={isCodeView}
           onMouseDown={(e) => { e.preventDefault(); exec('justifyLeft'); }}
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -411,6 +483,7 @@ export default function RichTextEditor({
           type="button"
           title="Align Center"
           style={btnStyle(activeFormats.justifyCenter)}
+          disabled={isCodeView}
           onMouseDown={(e) => { e.preventDefault(); exec('justifyCenter'); }}
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -424,6 +497,7 @@ export default function RichTextEditor({
           type="button"
           title="Align Right"
           style={btnStyle(activeFormats.justifyRight)}
+          disabled={isCodeView}
           onMouseDown={(e) => { e.preventDefault(); exec('justifyRight'); }}
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -437,6 +511,7 @@ export default function RichTextEditor({
           type="button"
           title="Justify"
           style={btnStyle(activeFormats.justifyFull)}
+          disabled={isCodeView}
           onMouseDown={(e) => { e.preventDefault(); exec('justifyFull'); }}
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -454,6 +529,7 @@ export default function RichTextEditor({
           type="button"
           title="Bullet List"
           style={btnStyle(activeFormats.insertUnorderedList)}
+          disabled={isCodeView}
           onMouseDown={(e) => { e.preventDefault(); exec('insertUnorderedList'); }}
         >
           • List
@@ -462,6 +538,7 @@ export default function RichTextEditor({
           type="button"
           title="Numbered List"
           style={btnStyle(activeFormats.insertOrderedList)}
+          disabled={isCodeView}
           onMouseDown={(e) => { e.preventDefault(); exec('insertOrderedList'); }}
         >
           1. List
@@ -474,6 +551,7 @@ export default function RichTextEditor({
           type="button"
           title="Gold accent (#D4AF37)"
           style={{ ...btnStyle(false), color: '#D4AF37' }}
+          disabled={isCodeView}
           onMouseDown={(e) => { e.preventDefault(); exec('foreColor', '#D4AF37'); }}
         >
           ● Gold
@@ -482,6 +560,7 @@ export default function RichTextEditor({
           type="button"
           title="Dark text (#0A0A0F)"
           style={{ ...btnStyle(false), color: '#0A0A0F' }}
+          disabled={isCodeView}
           onMouseDown={(e) => { e.preventDefault(); exec('foreColor', '#0A0A0F'); }}
         >
           ● Dark
@@ -490,6 +569,7 @@ export default function RichTextEditor({
           type="button"
           title="Red accent (#DC2626)"
           style={{ ...btnStyle(false), color: '#DC2626' }}
+          disabled={isCodeView}
           onMouseDown={(e) => { e.preventDefault(); exec('foreColor', '#DC2626'); }}
         >
           ● Red
@@ -500,6 +580,7 @@ export default function RichTextEditor({
           type="button"
           title="Highlight Yellow"
           style={{ ...btnStyle(false), background: '#FEF08A', color: '#854D0E', borderColor: '#FDE047' }}
+          disabled={isCodeView}
           onMouseDown={(e) => { e.preventDefault(); exec('hiliteColor', '#FEF08A'); }}
         >
           Highlight
@@ -512,6 +593,7 @@ export default function RichTextEditor({
           type="button"
           title="Undo (Ctrl+Z)"
           style={btnStyle(false)}
+          disabled={isCodeView}
           onMouseDown={(e) => { e.preventDefault(); exec('undo'); }}
         >
           ↺
@@ -520,6 +602,7 @@ export default function RichTextEditor({
           type="button"
           title="Redo (Ctrl+Y)"
           style={btnStyle(false)}
+          disabled={isCodeView}
           onMouseDown={(e) => { e.preventDefault(); exec('redo'); }}
         >
           ↻
@@ -530,37 +613,81 @@ export default function RichTextEditor({
           type="button"
           title="Clear formatting"
           style={{ ...btnStyle(false), color: '#DC2626' }}
+          disabled={isCodeView}
           onMouseDown={(e) => { e.preventDefault(); exec('removeFormat'); }}
         >
           ✕ Clear
         </button>
+
+        <div style={{ flex: 1 }} />
+
+        {/* View Code / Visual toggle button */}
+        <button
+          type="button"
+          title={isCodeView ? 'Switch to Visual Editor' : 'Switch to HTML Code View'}
+          style={{
+            ...btnStyle(isCodeView),
+            fontFamily: 'monospace',
+            fontSize: 11,
+            fontWeight: 700,
+            padding: '0 8px',
+          }}
+          onClick={toggleCodeView}
+        >
+          {isCodeView ? '✎ Visual' : '< > HTML'}
+        </button>
       </div>
 
-      {/* ── Editor contentEditable Area ─────────────────────────── */}
-      <div
-        ref={editorRef}
-        contentEditable
-        suppressContentEditableWarning
-        onInput={handleInput}
-        onKeyUp={updateFormatStates}
-        onMouseUp={updateFormatStates}
-        onBlur={handleBlur}
-        data-placeholder={placeholder}
-        style={{
-          padding: '14px 16px',
-          minHeight,
-          height: editorHeight ? `${editorHeight}px` : undefined,
-          resize: 'vertical',
-          outline: 'none',
-          fontFamily: currentFont || 'Inter, sans-serif',
-          fontSize: `${currentFontSize}px`,
-          lineHeight: 1.75,
-          color: '#111827',
-          background: '#fff',
-          overflowY: 'auto',
-          boxSizing: 'border-box',
-        }}
-      />
+      {/* ── Editor contentEditable Area OR HTML Code View ────────────── */}
+      {isCodeView ? (
+        <textarea
+          value={value}
+          onChange={(e) => {
+            const html = e.target.value;
+            lastHtmlRef.current = html;
+            onChange(html);
+            computeCounts(html);
+          }}
+          placeholder="Write HTML markup here…"
+          style={{
+            width: '100%',
+            minHeight,
+            height: editorHeight ? `${editorHeight}px` : undefined,
+            padding: '14px 16px',
+            fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+            fontSize: 13,
+            lineHeight: 1.6,
+            border: 'none',
+            outline: 'none',
+            resize: 'vertical',
+            background: '#1F2937',
+            color: '#F9FAFB',
+            boxSizing: 'border-box',
+          }}
+        />
+      ) : (
+        <div
+          onClick={() => {
+            if (editorRef.current && document.activeElement !== editorRef.current) {
+              editorRef.current.focus();
+            }
+          }}
+          style={{ cursor: 'text' }}
+        >
+          <EditorContent
+            ref={editorRef}
+            onInput={handleInput}
+            onKeyUp={updateFormatStates}
+            onMouseUp={updateFormatStates}
+            onBlur={handleBlur}
+            placeholder={placeholder}
+            minHeight={minHeight}
+            height={editorHeight}
+            fontFamily={currentFont}
+            fontSize={currentFontSize}
+          />
+        </div>
+      )}
 
       {/* ── Status bar & Height Controls ─────────────────────────── */}
       <div
@@ -616,51 +743,52 @@ export default function RichTextEditor({
         </div>
       </div>
 
-      <style jsx>{`
-        div[contentEditable]:empty:before {
+      <style>{`
+        .br-editor-content:empty:before {
           content: attr(data-placeholder);
           color: #9CA3AF;
           pointer-events: none;
         }
-        div[contentEditable] h1 {
+        .br-editor-content h1 {
           font-size: 28px;
           font-weight: 700;
           margin: 14px 0 8px;
           line-height: 1.2;
           letter-spacing: -0.02em;
         }
-        div[contentEditable] h2 {
+        .br-editor-content h2 {
           font-size: 22px;
           font-weight: 700;
           margin: 12px 0 6px;
           line-height: 1.25;
           letter-spacing: -0.015em;
         }
-        div[contentEditable] h3 {
+        .br-editor-content h3 {
           font-size: 18px;
           font-weight: 600;
           margin: 10px 0 4px;
           line-height: 1.3;
         }
-        div[contentEditable] blockquote {
+        .br-editor-content blockquote {
           border-left: 3px solid #FFD700;
           padding-left: 12px;
           margin: 10px 0;
           color: #4B5563;
           font-style: italic;
         }
-        div[contentEditable] p {
+        .br-editor-content p {
           margin: 0 0 8px;
         }
-        div[contentEditable] ul, div[contentEditable] ol {
+        .br-editor-content ul, .br-editor-content ol {
           margin: 4px 0 8px 24px;
           padding: 0;
         }
-        div[contentEditable] li {
+        .br-editor-content li {
           margin-bottom: 4px;
         }
       `}</style>
     </div>
   );
 }
+
 
