@@ -9,13 +9,42 @@ type RichTextEditorProps = {
   minHeight?: number;
 };
 
+const FONT_FAMILIES = [
+  { label: 'Inter (Default)', value: 'Inter, sans-serif' },
+  { label: 'Sora (Display)', value: 'Sora, sans-serif' },
+  { label: 'Arial (Sans)', value: 'Arial, sans-serif' },
+  { label: 'Georgia (Serif)', value: 'Georgia, serif' },
+  { label: 'Times New Roman', value: '"Times New Roman", Times, serif' },
+  { label: 'Courier New (Mono)', value: '"Courier New", Courier, monospace' },
+  { label: 'Trebuchet MS', value: '"Trebuchet MS", sans-serif' },
+  { label: 'Verdana', value: 'Verdana, sans-serif' },
+];
+
+const FONT_SIZES = [
+  { label: '11px (Tiny)', value: '11' },
+  { label: '12px (Small)', value: '12' },
+  { label: '14px (Normal)', value: '14' },
+  { label: '16px (Medium)', value: '16' },
+  { label: '18px (Large)', value: '18' },
+  { label: '20px (H4 / Subtitle)', value: '20' },
+  { label: '24px (H3)', value: '24' },
+  { label: '28px (H2)', value: '28' },
+  { label: '32px (H1)', value: '32' },
+  { label: '36px (Display)', value: '36' },
+  { label: '48px (Hero)', value: '48' },
+];
+
 export default function RichTextEditor({
   value,
   onChange,
   placeholder = 'Enter text…',
-  minHeight = 150,
+  minHeight = 160,
 }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
+  // Track the last HTML value produced by typing or toolbar actions to avoid
+  // destructive re-renders that reset the cursor / clear focus on each keystroke.
+  const lastHtmlRef = useRef<string>(value || '');
+
   const [activeFormats, setActiveFormats] = useState({
     bold: false,
     italic: false,
@@ -28,16 +57,28 @@ export default function RichTextEditor({
     insertUnorderedList: false,
     insertOrderedList: false,
   });
-  const [currentBlock, setCurrentBlock] = useState('p');
 
-  // Sync value into editor only when content changes externally
+  const [currentBlock, setCurrentBlock] = useState('p');
+  const [currentFont, setCurrentFont] = useState('Inter, sans-serif');
+  const [currentFontSize, setCurrentFontSize] = useState('14');
+  const [editorHeight, setEditorHeight] = useState<number>(minHeight);
+  const [wordCount, setWordCount] = useState({ words: 0, chars: 0 });
+
+  // Sync value into editor ONLY when content changes externally (e.g. form reset, article switch)
   useEffect(() => {
-    if (editorRef.current) {
-      if (editorRef.current.innerHTML !== value) {
-        editorRef.current.innerHTML = value || '';
-      }
+    if (editorRef.current && value !== lastHtmlRef.current) {
+      editorRef.current.innerHTML = value || '';
+      lastHtmlRef.current = value || '';
+      computeCounts(editorRef.current.innerText || '');
     }
   }, [value]);
+
+  const computeCounts = (text: string) => {
+    const trimmed = text.trim();
+    const words = trimmed ? trimmed.split(/\s+/).length : 0;
+    const chars = trimmed.length;
+    setWordCount({ words, chars });
+  };
 
   const updateFormatStates = () => {
     if (typeof document === 'undefined') return;
@@ -57,7 +98,17 @@ export default function RichTextEditor({
 
       const blockVal = document.queryCommandValue('formatBlock');
       if (blockVal) {
-        setCurrentBlock(blockVal.toLowerCase().replace(/[<>]/g, ''));
+        const clean = blockVal.toLowerCase().replace(/[<>]/g, '');
+        if (['p', 'h1', 'h2', 'h3', 'blockquote'].includes(clean)) {
+          setCurrentBlock(clean);
+        }
+      }
+
+      const fontVal = document.queryCommandValue('fontName');
+      if (fontVal) {
+        const cleanFont = fontVal.replace(/['"]/g, '');
+        const matched = FONT_FAMILIES.find((f) => f.value.toLowerCase().includes(cleanFont.toLowerCase()));
+        if (matched) setCurrentFont(matched.value);
       }
     } catch {}
   };
@@ -67,18 +118,33 @@ export default function RichTextEditor({
       editorRef.current.focus();
     }
     document.execCommand(command, false, val);
-    updateFormatStates();
     if (editorRef.current) {
-      onChange(editorRef.current.innerHTML);
+      const html = editorRef.current.innerHTML;
+      lastHtmlRef.current = html;
+      onChange(html);
+      computeCounts(editorRef.current.innerText || '');
     }
+    updateFormatStates();
   };
 
   const handleInput = () => {
     if (editorRef.current) {
       const html = editorRef.current.innerHTML;
+      lastHtmlRef.current = html;
       onChange(html);
+      computeCounts(editorRef.current.innerText || '');
     }
     updateFormatStates();
+  };
+
+  const handleBlur = () => {
+    if (editorRef.current) {
+      const html = editorRef.current.innerHTML;
+      if (html !== lastHtmlRef.current) {
+        lastHtmlRef.current = html;
+        onChange(html);
+      }
+    }
   };
 
   const handleBlockChange = (tag: string) => {
@@ -87,15 +153,79 @@ export default function RichTextEditor({
     }
     if (tag === 'p') {
       document.execCommand('formatBlock', false, '<p>');
-    } else if (tag === 'h1' || tag === 'h2' || tag === 'h3') {
+    } else if (tag === 'h1' || tag === 'h2' || tag === 'h3' || tag === 'blockquote') {
       document.execCommand('formatBlock', false, `<${tag}>`);
-    } else if (tag === 'small') {
-      document.execCommand('fontSize', false, '1');
     }
     setCurrentBlock(tag);
     if (editorRef.current) {
-      onChange(editorRef.current.innerHTML);
+      const html = editorRef.current.innerHTML;
+      lastHtmlRef.current = html;
+      onChange(html);
+      computeCounts(editorRef.current.innerText || '');
     }
+  };
+
+  const applyFontFamily = (fontFamilyValue: string) => {
+    if (!editorRef.current) return;
+    editorRef.current.focus();
+    document.execCommand('fontName', false, fontFamilyValue);
+
+    // Replace any legacy <font face="..."> with clean <span style="font-family: ...">
+    const fonts = editorRef.current.querySelectorAll('font[face]');
+    fonts.forEach((f) => {
+      const span = document.createElement('span');
+      span.style.fontFamily = fontFamilyValue;
+      span.innerHTML = f.innerHTML;
+      f.parentNode?.replaceChild(span, f);
+    });
+
+    const html = editorRef.current.innerHTML;
+    lastHtmlRef.current = html;
+    onChange(html);
+    setCurrentFont(fontFamilyValue);
+    updateFormatStates();
+  };
+
+  const applyFontSize = (sizePx: string | number) => {
+    if (!editorRef.current) return;
+    editorRef.current.focus();
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+
+    if (!sel.isCollapsed) {
+      document.execCommand('fontSize', false, '7');
+      const fonts = editorRef.current.querySelectorAll('font[size="7"]');
+      fonts.forEach((f) => {
+        const span = document.createElement('span');
+        span.style.fontSize = `${sizePx}px`;
+        span.innerHTML = f.innerHTML;
+        f.parentNode?.replaceChild(span, f);
+      });
+    } else {
+      // Collapsed cursor: insert zero-width span and place caret inside so typed text adopts size
+      const range = sel.getRangeAt(0);
+      const span = document.createElement('span');
+      span.style.fontSize = `${sizePx}px`;
+      span.innerHTML = '&#8203;';
+      range.insertNode(span);
+      const newRange = document.createRange();
+      newRange.setStart(span.firstChild || span, 1);
+      newRange.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
+    }
+
+    const html = editorRef.current.innerHTML;
+    lastHtmlRef.current = html;
+    onChange(html);
+    setCurrentFontSize(String(sizePx));
+    updateFormatStates();
+  };
+
+  const stepFontSize = (delta: number) => {
+    const current = parseInt(currentFontSize, 10) || 14;
+    const next = Math.max(10, Math.min(72, current + delta));
+    applyFontSize(next);
   };
 
   const btnStyle = (active: boolean): React.CSSProperties => ({
@@ -115,18 +245,35 @@ export default function RichTextEditor({
     fontFamily: 'Inter, sans-serif',
     cursor: 'pointer',
     userSelect: 'none',
-    transition: 'all 140ms ease',
+    transition: 'all 120ms ease',
   });
+
+  const selectStyle: React.CSSProperties = {
+    height: 28,
+    padding: '0 6px',
+    borderRadius: 6,
+    border: '1px solid rgba(0,0,0,0.12)',
+    background: '#fff',
+    fontSize: 12,
+    fontFamily: 'Inter, sans-serif',
+    color: '#111827',
+    cursor: 'pointer',
+    outline: 'none',
+  };
+
+  const divider = (
+    <div style={{ width: 1, height: 18, background: 'rgba(0,0,0,0.12)', margin: '0 2px' }} />
+  );
 
   return (
     <div
       style={{
         border: '1px solid rgba(0,0,0,0.14)',
         borderRadius: 10,
-        overflow: 'hidden',
         background: '#fff',
         display: 'flex',
         flexDirection: 'column',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
       }}
     >
       {/* ── Toolbar ────────────────────────────────────────────── */}
@@ -135,42 +282,85 @@ export default function RichTextEditor({
           display: 'flex',
           flexWrap: 'wrap',
           alignItems: 'center',
-          gap: 4,
+          gap: 5,
           padding: '6px 8px',
           background: '#F9FAFB',
           borderBottom: '1px solid rgba(0,0,0,0.08)',
+          borderTopLeftRadius: 10,
+          borderTopRightRadius: 10,
         }}
       >
-        {/* Block / Font Size selector */}
+        {/* Paragraph / Heading block */}
         <select
           value={currentBlock}
           onChange={(e) => handleBlockChange(e.target.value)}
-          style={{
-            height: 28,
-            padding: '0 8px',
-            borderRadius: 6,
-            border: '1px solid rgba(0,0,0,0.12)',
-            background: '#fff',
-            fontSize: 12,
-            fontFamily: 'Inter, sans-serif',
-            color: '#111827',
-            cursor: 'pointer',
-            outline: 'none',
-          }}
+          style={selectStyle}
+          title="Format Block"
         >
-          <option value="p">Normal (14px)</option>
-          <option value="h1">Heading 1 (24px)</option>
-          <option value="h2">Heading 2 (20px)</option>
-          <option value="h3">Heading 3 (17px)</option>
-          <option value="small">Small text (12px)</option>
+          <option value="p">Paragraph</option>
+          <option value="h1">Heading 1</option>
+          <option value="h2">Heading 2</option>
+          <option value="h3">Heading 3</option>
+          <option value="blockquote">Quote</option>
         </select>
 
-        <div style={{ width: 1, height: 18, background: 'rgba(0,0,0,0.12)', margin: '0 2px' }} />
+        {divider}
 
-        {/* Font styling: Bold, Italic, Underline, Strikethrough */}
+        {/* Font Family (Шрифт) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <span style={{ fontSize: 11, color: '#6B7280', fontWeight: 600, paddingLeft: 2 }}>Font:</span>
+          <select
+            value={currentFont}
+            onChange={(e) => applyFontFamily(e.target.value)}
+            style={{ ...selectStyle, maxWidth: 130 }}
+            title="Font Family (Шрифт)"
+          >
+            {FONT_FAMILIES.map((f) => (
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {divider}
+
+        {/* Font Size (Размер шрифта) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <span style={{ fontSize: 11, color: '#6B7280', fontWeight: 600, paddingLeft: 2 }}>Size:</span>
+          <select
+            value={currentFontSize}
+            onChange={(e) => applyFontSize(e.target.value)}
+            style={{ ...selectStyle, width: 68 }}
+            title="Font Size (Размер шрифта)"
+          >
+            {FONT_SIZES.map((s) => (
+              <option key={s.value} value={s.value}>{s.value}px</option>
+            ))}
+          </select>
+          {/* Quick step buttons */}
+          <button
+            type="button"
+            title="Decrease font size (-2px)"
+            style={{ ...btnStyle(false), minWidth: 22, padding: '0 4px', fontSize: 11 }}
+            onMouseDown={(e) => { e.preventDefault(); stepFontSize(-2); }}
+          >
+            A-
+          </button>
+          <button
+            type="button"
+            title="Increase font size (+2px)"
+            style={{ ...btnStyle(false), minWidth: 22, padding: '0 4px', fontSize: 11 }}
+            onMouseDown={(e) => { e.preventDefault(); stepFontSize(2); }}
+          >
+            A+
+          </button>
+        </div>
+
+        {divider}
+
+        {/* Inline styles: Bold, Italic, Underline, Strikethrough */}
         <button
           type="button"
-          title="Bold"
+          title="Bold (Ctrl+B)"
           style={btnStyle(activeFormats.bold)}
           onMouseDown={(e) => { e.preventDefault(); exec('bold'); }}
         >
@@ -178,7 +368,7 @@ export default function RichTextEditor({
         </button>
         <button
           type="button"
-          title="Italic"
+          title="Italic (Ctrl+I)"
           style={btnStyle(activeFormats.italic)}
           onMouseDown={(e) => { e.preventDefault(); exec('italic'); }}
         >
@@ -186,7 +376,7 @@ export default function RichTextEditor({
         </button>
         <button
           type="button"
-          title="Underline"
+          title="Underline (Ctrl+U)"
           style={btnStyle(activeFormats.underline)}
           onMouseDown={(e) => { e.preventDefault(); exec('underline'); }}
         >
@@ -201,16 +391,16 @@ export default function RichTextEditor({
           <s>S</s>
         </button>
 
-        <div style={{ width: 1, height: 18, background: 'rgba(0,0,0,0.12)', margin: '0 2px' }} />
+        {divider}
 
-        {/* Text Orientation / Alignment */}
+        {/* Text Alignment */}
         <button
           type="button"
           title="Align Left"
           style={btnStyle(activeFormats.justifyLeft)}
           onMouseDown={(e) => { e.preventDefault(); exec('justifyLeft'); }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="17" y1="10" x2="3" y2="10" />
             <line x1="21" y1="6" x2="3" y2="6" />
             <line x1="21" y1="14" x2="3" y2="14" />
@@ -223,7 +413,7 @@ export default function RichTextEditor({
           style={btnStyle(activeFormats.justifyCenter)}
           onMouseDown={(e) => { e.preventDefault(); exec('justifyCenter'); }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="18" y1="10" x2="6" y2="10" />
             <line x1="21" y1="6" x2="3" y2="6" />
             <line x1="21" y1="14" x2="3" y2="14" />
@@ -236,7 +426,7 @@ export default function RichTextEditor({
           style={btnStyle(activeFormats.justifyRight)}
           onMouseDown={(e) => { e.preventDefault(); exec('justifyRight'); }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="21" y1="10" x2="7" y2="10" />
             <line x1="21" y1="6" x2="3" y2="6" />
             <line x1="21" y1="14" x2="3" y2="14" />
@@ -249,7 +439,7 @@ export default function RichTextEditor({
           style={btnStyle(activeFormats.justifyFull)}
           onMouseDown={(e) => { e.preventDefault(); exec('justifyFull'); }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="21" y1="10" x2="3" y2="10" />
             <line x1="21" y1="6" x2="3" y2="6" />
             <line x1="21" y1="14" x2="3" y2="14" />
@@ -257,7 +447,7 @@ export default function RichTextEditor({
           </svg>
         </button>
 
-        <div style={{ width: 1, height: 18, background: 'rgba(0,0,0,0.12)', margin: '0 2px' }} />
+        {divider}
 
         {/* Lists */}
         <button
@@ -277,12 +467,12 @@ export default function RichTextEditor({
           1. List
         </button>
 
-        <div style={{ width: 1, height: 18, background: 'rgba(0,0,0,0.12)', margin: '0 2px' }} />
+        {divider}
 
-        {/* Colors */}
+        {/* Text Colors */}
         <button
           type="button"
-          title="Gold accent"
+          title="Gold accent (#D4AF37)"
           style={{ ...btnStyle(false), color: '#D4AF37' }}
           onMouseDown={(e) => { e.preventDefault(); exec('foreColor', '#D4AF37'); }}
         >
@@ -290,20 +480,56 @@ export default function RichTextEditor({
         </button>
         <button
           type="button"
-          title="Dark text"
+          title="Dark text (#0A0A0F)"
           style={{ ...btnStyle(false), color: '#0A0A0F' }}
           onMouseDown={(e) => { e.preventDefault(); exec('foreColor', '#0A0A0F'); }}
         >
           ● Dark
         </button>
+        <button
+          type="button"
+          title="Red accent (#DC2626)"
+          style={{ ...btnStyle(false), color: '#DC2626' }}
+          onMouseDown={(e) => { e.preventDefault(); exec('foreColor', '#DC2626'); }}
+        >
+          ● Red
+        </button>
 
-        <div style={{ width: 1, height: 18, background: 'rgba(0,0,0,0.12)', margin: '0 2px' }} />
+        {/* Highlight / Background */}
+        <button
+          type="button"
+          title="Highlight Yellow"
+          style={{ ...btnStyle(false), background: '#FEF08A', color: '#854D0E', borderColor: '#FDE047' }}
+          onMouseDown={(e) => { e.preventDefault(); exec('hiliteColor', '#FEF08A'); }}
+        >
+          Highlight
+        </button>
+
+        {divider}
+
+        {/* Undo / Redo */}
+        <button
+          type="button"
+          title="Undo (Ctrl+Z)"
+          style={btnStyle(false)}
+          onMouseDown={(e) => { e.preventDefault(); exec('undo'); }}
+        >
+          ↺
+        </button>
+        <button
+          type="button"
+          title="Redo (Ctrl+Y)"
+          style={btnStyle(false)}
+          onMouseDown={(e) => { e.preventDefault(); exec('redo'); }}
+        >
+          ↻
+        </button>
 
         {/* Clear formatting */}
         <button
           type="button"
           title="Clear formatting"
-          style={btnStyle(false)}
+          style={{ ...btnStyle(false), color: '#DC2626' }}
           onMouseDown={(e) => { e.preventDefault(); exec('removeFormat'); }}
         >
           ✕ Clear
@@ -314,23 +540,81 @@ export default function RichTextEditor({
       <div
         ref={editorRef}
         contentEditable
+        suppressContentEditableWarning
         onInput={handleInput}
         onKeyUp={updateFormatStates}
         onMouseUp={updateFormatStates}
-        onBlur={handleInput}
+        onBlur={handleBlur}
         data-placeholder={placeholder}
         style={{
-          padding: '12px 14px',
+          padding: '14px 16px',
           minHeight,
+          height: editorHeight ? `${editorHeight}px` : undefined,
+          resize: 'vertical',
           outline: 'none',
-          fontFamily: 'Inter, sans-serif',
-          fontSize: 14,
-          lineHeight: 1.7,
+          fontFamily: currentFont || 'Inter, sans-serif',
+          fontSize: `${currentFontSize}px`,
+          lineHeight: 1.75,
           color: '#111827',
           background: '#fff',
           overflowY: 'auto',
+          boxSizing: 'border-box',
         }}
       />
+
+      {/* ── Status bar & Height Controls ─────────────────────────── */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '6px 12px',
+          background: '#FAFAFA',
+          borderTop: '1px solid rgba(0,0,0,0.06)',
+          borderBottomLeftRadius: 10,
+          borderBottomRightRadius: 10,
+          fontSize: 11,
+          fontFamily: 'Inter, sans-serif',
+          color: '#6B7280',
+          userSelect: 'none',
+          flexWrap: 'wrap',
+          gap: 8,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span>{wordCount.words} words · {wordCount.chars} characters</span>
+          <span style={{ color: '#9CA3AF' }}>|</span>
+          <span style={{ color: '#9CA3AF' }}>Drag ⤡ corner to resize</span>
+        </div>
+
+        {/* Height Presets */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#9CA3AF' }}>Height:</span>
+          {[
+            { label: 'Compact', h: 160 },
+            { label: 'Medium', h: 280 },
+            { label: 'Tall', h: 460 },
+          ].map((preset) => (
+            <button
+              key={preset.label}
+              type="button"
+              onClick={() => setEditorHeight(preset.h)}
+              style={{
+                background: editorHeight === preset.h ? '#E5E7EB' : 'transparent',
+                border: '1px solid rgba(0,0,0,0.1)',
+                borderRadius: 4,
+                padding: '2px 7px',
+                fontSize: 10,
+                fontWeight: editorHeight === preset.h ? 700 : 500,
+                color: editorHeight === preset.h ? '#111827' : '#6B7280',
+                cursor: 'pointer',
+              }}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <style jsx>{`
         div[contentEditable]:empty:before {
@@ -339,22 +623,31 @@ export default function RichTextEditor({
           pointer-events: none;
         }
         div[contentEditable] h1 {
-          font-size: 24px;
+          font-size: 28px;
           font-weight: 700;
-          margin: 12px 0 8px;
-          line-height: 1.25;
+          margin: 14px 0 8px;
+          line-height: 1.2;
+          letter-spacing: -0.02em;
         }
         div[contentEditable] h2 {
-          font-size: 20px;
+          font-size: 22px;
           font-weight: 700;
-          margin: 10px 0 6px;
-          line-height: 1.3;
+          margin: 12px 0 6px;
+          line-height: 1.25;
+          letter-spacing: -0.015em;
         }
         div[contentEditable] h3 {
-          font-size: 17px;
+          font-size: 18px;
           font-weight: 600;
-          margin: 8px 0 4px;
-          line-height: 1.35;
+          margin: 10px 0 4px;
+          line-height: 1.3;
+        }
+        div[contentEditable] blockquote {
+          border-left: 3px solid #FFD700;
+          padding-left: 12px;
+          margin: 10px 0;
+          color: #4B5563;
+          font-style: italic;
         }
         div[contentEditable] p {
           margin: 0 0 8px;
@@ -363,7 +656,11 @@ export default function RichTextEditor({
           margin: 4px 0 8px 24px;
           padding: 0;
         }
+        div[contentEditable] li {
+          margin-bottom: 4px;
+        }
       `}</style>
     </div>
   );
 }
+
